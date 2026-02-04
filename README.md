@@ -7,24 +7,6 @@ The project is split into two main folders:
 
 ---
 
-## Project Structure
-
-project-root/
-│
-├── back/
-│ ├── requirements-base.txt
-│ ├── manage.py
-│ └── ...
-│
-├── front/
-│ ├── package.json
-│ └── ...
-│
-└── README.md
-
-
----
-
 ## Backend (Django)
 
 ### Tech stack
