@@ -9,8 +9,14 @@ export default function Profile() {
   const { user, loading } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    dispatch(fetchProfile());
-  }, [dispatch]);
+  const token = localStorage.getItem("access");
+  if (!token) {
+    navigate("/login");
+    return;
+  }
+
+  dispatch(fetchProfile()).unwrap().catch(() => navigate("/login"));
+}, [dispatch, navigate]);
 
   const handleLogout = async () => {
     dispatch(logoutUser());
@@ -18,12 +24,12 @@ export default function Profile() {
   };
 
   if (loading) return <p>Loading...</p>;
-  if (!user) return <p>No user</p>;
-
+  if (!user) return null; // unauth will be redirected
+  
   return (
     <div className="profile-container">
       <h2>Profile</h2>
-
+  
       {user.avatar && (
         <img
           src={`http://127.0.0.1:8000${user.avatar}`}
@@ -31,9 +37,12 @@ export default function Profile() {
           width={120}
         />
       )}
-
+  
       <p>Email: {user.email}</p>
-
+      {user.preferences && (
+        <p>Budget: {user.preferences.budget ?? "N/A"}</p>
+      )}
+  
       <button onClick={handleLogout}>Logout</button>
     </div>
   );

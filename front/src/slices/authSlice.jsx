@@ -32,9 +32,13 @@ export const loginUser = createAsyncThunk(
 /* PROFILE */
 export const fetchProfile = createAsyncThunk(
   "auth/profile",
-  async () => {
-    const res = await api.get("users/profile/");
-    return res.data;
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await api.get("users/profile/");
+      return res.data; // this will now be JSON
+    } catch (err) {
+      return rejectWithValue(err.response?.data || "Cannot fetch profile");
+    }
   }
 );
 
@@ -71,13 +75,24 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      .addCase(fetchProfile.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(fetchProfile.fulfilled, (state, action) => {
         state.user = action.payload;
+        state.loading = false;
+      })
+      .addCase(fetchProfile.rejected, (state, action) => {
+        state.user = null;
+        state.loading = false;
+        state.error = action.payload;
       })
       .addCase(uploadUserPhoto.fulfilled, (state, action) => {
         state.user = action.payload;
       });
-  },
+}
+
 });
 
 export const { logoutUser } = authSlice.actions;

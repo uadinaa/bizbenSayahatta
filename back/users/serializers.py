@@ -23,10 +23,18 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop('password2')
         user = User.objects.create_user(**validated_data)
+        UserPreferences.objects.create(user=user)
         return user 
-    
+
 
 class UserPreferencesSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserPreferences
         fields = ('budget', 'travel_style', 'interests')
+
+class UserSerializer(serializers.ModelSerializer):
+    preferences = UserPreferencesSerializer(read_only=True)
+
+    class Meta:
+        model = User
+        fields = ('email', 'avatar', 'username', 'preferences')

@@ -11,6 +11,8 @@ function App() {
       <Link to="/signup"> sign up</Link>
       <br></br>
       <Link to="/profile"> profile</Link>
+      <br></br>
+      <Link to="/inspiration"> inspiration</Link>
     </>
   )
 }

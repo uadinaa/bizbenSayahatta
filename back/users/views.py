@@ -4,6 +4,7 @@ from .models import User, UserPreferences
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from .serializers import UserSerializer
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -15,7 +16,7 @@ class UserProfileView(APIView):
 
     def get(self, request):
         prefs, created = UserPreferences.objects.get_or_create(user=request.user)
-        serializer = UserPreferencesSerializer(prefs)
+        serializer = UserSerializer(request.user)
         return Response(serializer.data)
     
     def put(self, request):
@@ -25,5 +26,3 @@ class UserProfileView(APIView):
         serializer.save()
         return Response(serializer.data)
     
-
-
