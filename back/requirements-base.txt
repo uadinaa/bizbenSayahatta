@@ -5,5 +5,5 @@ django-cors-headers
 python-dotenv
 requests
 django-filter
-
+openai
 

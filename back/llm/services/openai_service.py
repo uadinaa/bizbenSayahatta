@@ -10,23 +10,43 @@ SYSTEM_PROMPT = """
 Отвечай кратко и по делу.
 """
 
+
 def ask_travel_ai(user_message: str, context: str = "") -> str:
-    messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
+    input_parts = [
+        {
+            "role": "system",
+            "content": [
+                {"type": "input_text", "text": SYSTEM_PROMPT}
+            ],
+        },
     ]
 
     if context:
-        messages.append({
-            "role": "system",
-            "content": f"Контекст пользователя:\n{context}"
-        })
+        input_parts.append(
+            {
+                "role": "system",
+                "content": [
+                    {
+                        "type": "input_text",
+                        "text": f"Контекст пользователя:\n{context}",
+                    }
+                ],
+            }
+        )
 
-    messages.append({"role": "user", "content": user_message})
+    input_parts.append(
+        {
+            "role": "user",
+            "content": [
+                {"type": "input_text", "text": user_message}
+            ],
+        }
+    )
 
-    response = client.chat.completions.create(
+    response = client.responses.create(
         model="gpt-4o-mini",
-        messages=messages,
+        input=input_parts,
         temperature=0.7,
     )
 
-    return response.choices[0].message.content
+    return response.output_text

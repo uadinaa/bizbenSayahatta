@@ -1,20 +1,17 @@
-import './App.css'
-import { Link } from 'react-router-dom'
+import './App.css';
+import { Outlet } from "react-router-dom";
+import Header from "./components/Header";
 
 function App() {
-
   return (
-    <>
-      <h1>Vite + React</h1>
-      <Link to="/login"> login</Link>
-      <br></br>
-      <Link to="/signup"> sign up</Link>
-      <br></br>
-      <Link to="/profile"> profile</Link>
-      <br></br>
-      <Link to="/inspiration"> inspiration</Link>
-    </>
-  )
+    <div>
+      <Header isAuth={false} />
+      
+      <main style={{ padding: "20px" }}>
+        <Outlet />
+      </main>
+    </div>
+  );
 }
 
-export default App
+export default App;

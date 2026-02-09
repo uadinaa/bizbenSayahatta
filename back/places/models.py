@@ -18,6 +18,12 @@ class Place(models.Model):
     types = models.JSONField(default=list)
     rating = models.FloatField(null=True, blank=True)
     user_ratings_total = models.IntegerField(null=True, blank=True)
+    price_level = models.CharField(max_length=30, null=True, blank=True)
+    opening_hours = models.JSONField(null=True, blank=True)
+    photo_url = models.URLField(null=True, blank=True, max_length=1000)
+    website = models.URLField(null=True, blank=True, max_length=1000)
+    neighborhood = models.CharField(max_length=100, null=True, blank=True)
+    is_must_visit = models.BooleanField(default=False)
 
     address = models.TextField()
     city = models.CharField(max_length=100)

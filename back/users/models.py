@@ -29,6 +29,7 @@ class UserPreferences(models.Model):
 
     budget = models.IntegerField(null=True, blank=True)
     travel_style = models.CharField(max_length=50, null=True, blank=True)
+    open_now = models.BooleanField(null=True, blank=True)
 
     interests = models.JSONField(default=list, blank=True)
 

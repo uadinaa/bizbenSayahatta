@@ -30,7 +30,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 class UserPreferencesSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserPreferences
-        fields = ('budget', 'travel_style', 'interests')
+        fields = ('budget', 'travel_style', 'open_now', 'interests')
 
 class UserSerializer(serializers.ModelSerializer):
     preferences = UserPreferencesSerializer(read_only=True)

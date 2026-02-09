@@ -1,0 +1,148 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+
+body, html {
+  margin: 0;
+  padding: 0;
+  font-family: 'DM Sans', sans-serif;
+  background-color: #FAFAF9;
+}
+
+.login-page {
+  min-height: 80vh; 
+  display: flex;
+  justify-content: center;
+  align-items: flex-start; 
+  padding-top: 60px;
+}
+
+.login-form {
+  background-color: #fff;
+  padding: 32px 36px;
+  border-radius: 20px; 
+  width: 400px; 
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative; 
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 
+              0 10px 20px rgba(0, 0, 0, 0.10);
+  transition: box-shadow 0.3s ease; 
+}
+
+
+
+.login-form h2 {
+  text-align: center;
+  margin-bottom: 16px;
+  font-weight: 400; 
+  font-size: 20px;
+  color: #5a5450; 
+  z-index: 1; 
+}
+
+
+.tabs-wrapper {
+  position: relative;
+  display: flex;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+
+.tabs-wrapper::before {
+  content: "";
+  position: absolute;
+  top: -5px; 
+  left: -5px; 
+  width: calc(100% + 10px); 
+  height: calc(100% + 10px); 
+  background-color: #f2f2f2; 
+  border-radius: 14px; 
+  z-index: 0; 
+}
+
+
+.tabs {
+  display: flex;
+  flex: 1;
+  background-color: #f2f2f2;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+  z-index: 1; 
+}
+
+
+.tab {
+  flex: 1;
+  padding: 13px 0; 
+  border: none;
+  background-color: #eee;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  border-radius: 10px; 
+  color: #5a5450;
+  font-size: 14px;
+}
+
+.tab.active {
+  background-color: #75B7C1;
+  color: #fff;
+}
+
+input {
+  width: 100%; 
+  padding: 12px 16px; 
+  border-radius: 10px; 
+  border: 1px solid #e0e0e0;
+  font-size: 14px;
+  background-color: #eee; 
+  box-sizing: border-box; 
+}
+  
+input:focus {
+  outline: none;
+  border-color: #75B7C1;
+  background-color: #fff; 
+}
+
+.forgot-password {
+  font-size: 12px;
+  color: #172CAF;
+  text-decoration: none;
+  margin-bottom: 16px;
+  display: inline-block;
+}
+
+.login-btn {
+  width: 100%;
+  padding: 12px;
+  background-color: rgba(14, 10, 7, 0.9); 
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.login-btn:hover {
+  background-color: rgba(14, 10, 7, 1); 
+}
+
+.error {
+  color: red;
+  font-size: 13px;
+}
+
+.loading {
+  color: #333;
+  font-size: 13px;
+}
+
+.signup-text {
+  text-align: center;
+  font-size: 13px;
+}

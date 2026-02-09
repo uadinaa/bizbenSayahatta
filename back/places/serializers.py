@@ -11,6 +11,12 @@ class PlaceSerializer(serializers.ModelSerializer):
             "city",
             "country",
             "rating",
+            "price_level",
+            "opening_hours",
+            "photo_url",
+            "website",
+            "neighborhood",
+            "is_must_visit",
             "status",
             "saves_count",
         ]

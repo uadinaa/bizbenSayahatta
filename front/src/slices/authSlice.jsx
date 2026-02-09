@@ -42,6 +42,18 @@ export const fetchProfile = createAsyncThunk(
   }
 );
 
+export const updatePreferences = createAsyncThunk(
+  "auth/updatePreferences",
+  async (data, { rejectWithValue }) => {
+    try {
+      const res = await api.put("users/profile/", data);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data || "Cannot update profile");
+    }
+  }
+);
+
 /* AVATAR UPLOAD */
 export const uploadUserPhoto = createAsyncThunk(
   "auth/uploadPhoto",
@@ -88,11 +100,15 @@ const authSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+      .addCase(updatePreferences.fulfilled, (state, action) => {
+        if (state.user) {
+          state.user.preferences = action.payload;
+        }
+      })
       .addCase(uploadUserPhoto.fulfilled, (state, action) => {
         state.user = action.payload;
       });
-}
-
+  },
 });
 
 export const { logoutUser } = authSlice.actions;
