@@ -31,9 +31,11 @@ Windows
 venv\Scripts\activate
 
 Install dependencies:
+pip install Pillow
 pip install -r requirements-base.txt
 
 Apply migrations:
+python manage.py makemigrations
 python manage.py migrate
 
 Run server:
