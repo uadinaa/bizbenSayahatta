@@ -89,3 +89,23 @@ class SavedPlace(models.Model):
 
     def __str__(self):
         return f"{self.user} saved {self.place}"
+
+
+class VisitedPlace(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="visited_places",
+    )
+    place = models.ForeignKey(
+        "Place",
+        on_delete=models.CASCADE,
+        related_name="visited_by",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "place")
+
+    def __str__(self):
+        return f"{self.user} visited {self.place}"

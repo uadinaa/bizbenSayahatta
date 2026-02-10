@@ -6,10 +6,29 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from places.models import Place
-from places.serializers import PlaceSerializer
+from places.models import Place, VisitedPlace, SavedPlace
+from places.serializers import PlaceSerializer, PlaceMapSerializer
 from places.services.google_places import get_places
 from places.services.save_place import save_place_for_user
+
+BADGE_LEVELS = [
+    {"code": "starter", "label": "Starter", "threshold": 1},
+    {"code": "explorer", "label": "Explorer", "threshold": 5},
+    {"code": "adventurer", "label": "Adventurer", "threshold": 10},
+    {"code": "globetrotter", "label": "Globetrotter", "threshold": 20},
+]
+
+
+def _get_badges(visited_count):
+    return [
+        {
+            "code": badge["code"],
+            "label": badge["label"],
+            "threshold": badge["threshold"],
+        }
+        for badge in BADGE_LEVELS
+        if visited_count >= badge["threshold"]
+    ]
 
 class PlaceFilter(FilterSet):
     category = filters.CharFilter(field_name="category", lookup_expr='iexact')
@@ -125,11 +144,70 @@ class SavePlaceAPIView(APIView):
     def post(self, request, place_id):
         save_place_for_user(
             user=request.user,
-            place_id=place_id
+            place_id=place_id,
         )
         return Response(
             {"detail": "Place saved"},
             status=status.HTTP_201_CREATED
+        )
+
+
+class WishlistAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        category = request.query_params.get("category")
+        places = (
+            Place.objects.filter(saved_by__user=request.user)
+            .order_by("-saved_by__created_at")
+            .distinct()
+        )
+        if category and category.lower() != "all":
+            places = places.filter(category__iexact=category)
+        serializer = PlaceMapSerializer(places, many=True)
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK,
+        )
+
+
+class VisitPlaceAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, place_id):
+        place = Place.objects.get(id=place_id)
+        VisitedPlace.objects.get_or_create(user=request.user, place=place)
+        visited_count = VisitedPlace.objects.filter(user=request.user).count()
+        badges = _get_badges(visited_count)
+        return Response(
+            {
+                "detail": "Place marked as visited",
+                "visited_count": visited_count,
+                "badges": badges,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class VisitedPlacesAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        places = (
+            Place.objects.filter(visited_by__user=request.user)
+            .order_by("-visited_by__created_at")
+            .distinct()
+        )
+        serializer = PlaceMapSerializer(places, many=True)
+        visited_count = places.count()
+        badges = _get_badges(visited_count)
+        return Response(
+            {
+                "count": visited_count,
+                "badges": badges,
+                "results": serializer.data,
+            },
+            status=status.HTTP_200_OK,
         )
 
 
