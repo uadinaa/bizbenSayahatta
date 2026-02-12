@@ -92,6 +92,29 @@ def _extract_neighborhood(place):
     return None
 
 
+def _extract_country(place):
+    """
+    Try to extract country from addressComponents. Fallback to last part
+    of formattedAddress or city value if nothing found.
+    """
+    components = place.get("addressComponents", [])
+
+    # Primary: look for country component
+    for component in components:
+        types = component.get("types", [])
+        if "country" in types:
+            return component.get("longText") or component.get("shortText")
+
+    # Fallback: try to take last part of formattedAddress
+    formatted_address = place.get("formattedAddress")
+    if formatted_address:
+        parts = [p.strip() for p in formatted_address.split(",") if p.strip()]
+        if parts:
+            return parts[-1]
+
+    return None
+
+
 def save_places_to_db(places_data, city: str, category: str):
     saved_places = []
 
@@ -99,6 +122,7 @@ def save_places_to_db(places_data, city: str, category: str):
         location = place.get("location", {})
         photos = place.get("photos", [])
         photo_url = _build_photo_url(photos[0]) if photos else None
+        country = _extract_country(place) or city
 
         obj, _ = Place.objects.update_or_create(
             google_place_id=place["id"],
@@ -114,6 +138,7 @@ def save_places_to_db(places_data, city: str, category: str):
                 "website": place.get("websiteUri"),
                 "neighborhood": _extract_neighborhood(place),
                 "address": place.get("formattedAddress", ""),
+                "country": country,
                 "city": city,
                 "lat": location.get("latitude"),
                 "lng": location.get("longitude"),

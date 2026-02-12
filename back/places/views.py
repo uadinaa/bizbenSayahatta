@@ -142,13 +142,19 @@ class SavePlaceAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, place_id):
-        save_place_for_user(
-            user=request.user,
-            place_id=place_id,
-        )
+        try:
+            save_place_for_user(
+                user=request.user,
+                place_id=place_id,
+            )
+        except Place.DoesNotExist:
+            return Response(
+                {"detail": "Place not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         return Response(
             {"detail": "Place saved"},
-            status=status.HTTP_201_CREATED
+            status=status.HTTP_201_CREATED,
         )
 
 
@@ -175,7 +181,13 @@ class VisitPlaceAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, place_id):
-        place = Place.objects.get(id=place_id)
+        try:
+            place = Place.objects.get(id=place_id)
+        except Place.DoesNotExist:
+            return Response(
+                {"detail": "Place not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         VisitedPlace.objects.get_or_create(user=request.user, place=place)
         visited_count = VisitedPlace.objects.filter(user=request.user).count()
         badges = _get_badges(visited_count)
@@ -215,7 +227,13 @@ class PlaceMustVisitAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, place_id):
-        place = Place.objects.get(id=place_id)
+        try:
+            place = Place.objects.get(id=place_id)
+        except Place.DoesNotExist:
+            return Response(
+                {"detail": "Place not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         if "is_must_visit" in request.data:
             place.is_must_visit = bool(request.data.get("is_must_visit"))
