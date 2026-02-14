@@ -1,0 +1,92 @@
+.footer {
+  background: #fafafa;
+  padding: 15px 80px 30px;
+  font-family: "Inter", system-ui, sans-serif;
+  color: #1f2937;
+}
+
+.footer-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 60px;
+}
+
+.footer-brand {
+  max-width: 280px;
+}
+
+.logo {
+  width: 48px;
+  height: 48px;
+  background: #facc15;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.footer-brand h3 {
+  margin: 0;
+  line-height: 1.2;
+}
+
+.footer-brand p {
+  margin-top: 10px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.footer-links {
+  display: flex;
+  gap: 200px;
+}
+
+.footer-links div {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.footer-links h4 {
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: #111827;
+}
+
+.footer-links a {
+  text-decoration: none;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.footer-links a:hover {
+  color: #111827;
+}
+
+.footer-bottom {
+  margin-top: 50px;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 20px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.brand-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-top h3 {
+  margin: 0;
+  line-height: 1.2;
+}
+.footer-brand p {
+  word-spacing: 4px;   /* увеличивает расстояние между словами */
+  line-height: 1.6;   /* (по желанию) делает текст более «воздушным» */
+}
+

@@ -1,114 +1,176 @@
-import { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { Link, useNavigate } from "react-router-dom";
-import { logoutUser, fetchProfile, updatePreferences } from "../slices/authSlice";
+import { useState, useEffect } from "react";
+import "../styles/ProfileCard.css";
 
-export default function Profile() {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const { user, loading } = useSelector((state) => state.auth);
-  const [budget, setBudget] = useState("");
-  const [travelStyle, setTravelStyle] = useState("");
-  const [interests, setInterests] = useState("");
-  const [openNow, setOpenNow] = useState("");
+export default function ProfileCard() {
+  const defaultAvatar = "/avatar.svg";
 
-  useEffect(() => {
-  const token = localStorage.getItem("access");
-  if (!token) {
-    navigate("/login");
-    return;
-  }
+  // Инициализация данных из localStorage
+  const [username, setUsername] = useState(localStorage.getItem("username") || "Username");
+  const [avatar, setAvatar] = useState(localStorage.getItem("avatar") || defaultAvatar);
+  const [cover, setCover] = useState(localStorage.getItem("cover") || null);
+  const [email] = useState(localStorage.getItem("email") || "user@email.com");
+  const [travelStyle, setTravelStyle] = useState(localStorage.getItem("travelStyle") || "Hiking");
 
-  dispatch(fetchProfile()).unwrap().catch(() => navigate("/login"));
-}, [dispatch, navigate]);
+  // Временные данные для модалки
+  const [tempUsername, setTempUsername] = useState(username);
+  const [tempAvatar, setTempAvatar] = useState(avatar);
+  const [tempStyle, setTempStyle] = useState(travelStyle);
 
-  useEffect(() => {
-    if (user?.preferences) {
-      setBudget(
-        user.preferences.budget === null || user.preferences.budget === undefined
-          ? ""
-          : String(user.preferences.budget)
-      );
-      setTravelStyle(user.preferences.travel_style || "");
-      setOpenNow(user.preferences.open_now ? "true" : "");
-      setInterests((user.preferences.interests || []).join(", "));
+  const [isEditOpen, setIsEditOpen] = useState(false);
+
+  // Конвертация файла в base64
+  const fileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  // Модалка
+  const openModal = () => {
+    setTempUsername(username);
+    setTempAvatar(avatar);
+    setTempStyle(travelStyle);
+    setIsEditOpen(true);
+  };
+
+  const closeModal = () => setIsEditOpen(false);
+
+  const saveChanges = () => {
+    setUsername(tempUsername);
+    setAvatar(tempAvatar);
+    setTravelStyle(tempStyle);
+
+    localStorage.setItem("username", tempUsername);
+    localStorage.setItem("avatar", tempAvatar);
+    localStorage.setItem("travelStyle", tempStyle);
+
+    setIsEditOpen(false);
+  };
+
+  // Аватар
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const base64 = await fileToBase64(file);
+      setTempAvatar(base64);
     }
-  }, [user]);
-
-  const handleSavePreferences = async (e) => {
-    e.preventDefault();
-    const payload = {
-      budget: budget === "" ? null : Number(budget),
-      travel_style: travelStyle || null,
-      open_now: openNow === "true" ? true : null,
-      interests: interests
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean),
-    };
-    dispatch(updatePreferences(payload));
   };
 
-  const handleLogout = async () => {
-    dispatch(logoutUser());
-    navigate("/login");
+  const removeAvatar = () => setTempAvatar(defaultAvatar);
+
+  // Cover
+  const handleCoverChange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const base64 = await fileToBase64(file);
+      setCover(base64);
+      localStorage.setItem(base64);
+    }
   };
 
-  if (loading) return <p>Loading...</p>;
-  if (!user) return null; // unauth will be redirected
-  
   return (
-    <div className="profile-container">
-      <h2>Profile</h2>
-  
-      {user.avatar && (
+    <div className="profile-wrapper">
+      <div className="cover">
+        {!cover && <div className="cover-bg"></div>}
+        {cover && <img src={cover} alt="Cover" className="cover-img" />}
+
         <img
-          src={`http://127.0.0.1:8000${user.avatar}`}
-          alt="profile"
-          width={120}
+          src="/camera.svg"
+          alt="Edit Cover"
+          className="cover-edit-icon"
+          onClick={() => document.getElementById("coverInput").click()}
         />
-      )}
-  
-      <p>Email: {user.email}</p>
-      <form onSubmit={handleSavePreferences} style={{ marginTop: 16 }}>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          <input
-            type="number"
-            min="0"
-            max="4"
-            placeholder="Budget (0-4)"
-            value={budget}
-            onChange={(e) => setBudget(e.target.value)}
-          />
-          <input
-            type="text"
-            placeholder="Travel style (e.g. relax)"
-            value={travelStyle}
-            onChange={(e) => setTravelStyle(e.target.value)}
-          />
-          <select
-            value={openNow}
-            onChange={(e) => setOpenNow(e.target.value)}
-          >
-            <option value="">Open now preference</option>
-            <option value="true">Open now only</option>
-          </select>
-          <input
-            type="text"
-            placeholder="Interests (comma separated)"
-            value={interests}
-            onChange={(e) => setInterests(e.target.value)}
-          />
+        <input
+          type="file"
+          id="coverInput"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={handleCoverChange}
+        />
+      </div>
+
+      <div className="profile-content">
+        <div
+          className="avatar"
+          style={{
+            background: avatar === defaultAvatar ? "#9ccbd3" : "transparent",
+          }}
+        >
+          <img src={avatar} alt="Avatar" />
         </div>
-        <button type="submit" style={{ marginTop: 12 }}>
-          Save preferences
-        </button>
-      </form>
-  
-      <Link to={"/planner-test"} >plan your trip</Link>
-      <button onClick={handleLogout}>Logout</button>
 
+        <div className="info">
+          <span className="email">{email}</span>
+          <span className="username">{username}</span>
 
+          <div className="style">
+            <span>Travel style:</span>
+            <strong>{travelStyle}</strong>
+          </div>
+
+          <div className="level">
+            <span>Level of the user</span>
+            <button>Upgrade Level</button>
+            <img src="/cup.svg" alt="Cup" />
+          </div>
+
+          <button className="logout">Logout</button>
+        </div>
+
+        <div className="edit" onClick={openModal}>
+          <img src="/edit.svg" alt="Edit" width="28" height="28" />
+        </div>
+      </div>
+
+      {/* МОДАЛКА */}
+      {isEditOpen && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h3>Edit profile</h3>
+
+            <label>
+              Username
+              <input
+                type="text"
+                value={tempUsername}
+                onChange={(e) => setTempUsername(e.target.value)}
+                placeholder="username"
+              />
+            </label>
+
+            <label>
+              Travel style
+              <select value={tempStyle} onChange={(e) => setTempStyle(e.target.value)}>
+                <option value="Hiking">🏔 Hiking</option>
+                <option value="City trips">🏙 City trips</option>
+                <option value="Beach">🏖 Beach</option>
+                <option value="Adventure">🧗 Adventure</option>
+                <option value="Relax">🌿 Relax</option>
+                <option value="Cultural">🏛 Cultural</option>
+              </select>
+            </label>
+
+            <label>
+              Avatar
+              <input type="file" accept="image/*" onChange={handleAvatarChange} />
+            </label>
+
+            <button type="button" className="remove-avatar" onClick={removeAvatar}>
+              Remove avatar
+            </button>
+
+            <div className="modal-actions">
+              <button onClick={saveChanges}>Save</button>
+              <button className="cancel" onClick={closeModal}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

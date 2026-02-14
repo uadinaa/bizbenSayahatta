@@ -164,3 +164,71 @@
     cursor: pointer;
   }
   
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.selectRow {
+  display: flex;
+  gap: 12px;
+}
+/* wrapper with soft shadow */
+.selectRowWithShadow {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.04),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(6px);
+}
+
+/* each select block */
+.selectBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+/* label above */
+.selectLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: #666;
+}
+
+/* hint under */
+.selectHint {
+  font-size: 11px;
+  color: #888;
+  margin-left: 4px;
+}
+.selectRowWithShadow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 0; /* убрали padding от фона */
+  border-radius: 0; /* убрали скругление */
+  background: none; /* убрали белый фон */
+  box-shadow: none; /* убрали тень */
+  backdrop-filter: none; /* убрали blur */
+}
+
+.selectBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.selectLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: #666;
+  margin-top: 20px;
+}

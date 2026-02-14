@@ -1,0 +1,137 @@
+/* TripEmpty.css */
+:root {
+  --bg: #fafaf9;
+  --ink: #2a2622;
+  --muted: #7b756f;
+  --accent: #6db2be;
+  --pill: #ffffff;
+  --pill-border: #e4ded7;
+  --shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+}
+
+.trip-page {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  padding: 32px 48px 48px;
+}
+
+.trip-header {
+  max-width: 900px;
+}
+
+.trip-title {
+  margin: 0 0 2px;
+  font-size: 30px;
+  font-weight: 600;
+}
+
+.trip-subtitle {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.trip-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.trip-tab {
+  border: 1px solid var(--pill-border);
+  background: var(--pill);
+  color: var(--ink);
+  padding: 7px 13px;
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
+}
+
+.trip-tab--active {
+  border-color: transparent;
+  box-shadow: var(--shadow);
+}
+
+.trip-badge {
+  background: #f0ebe6;
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 11px;
+}
+
+.trip-empty {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  align-items: center;
+}
+
+.trip-empty__title {
+  margin: 0 0 12px;
+  font-size: 44px;
+  line-height: 1.05;
+  font-weight: 500;
+}
+
+.trip-cta {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 11px 20px;
+  border-radius: 14px;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.trip-cta:hover {
+  background: #5aa5b2;
+  transform: translateY(-2px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.12);
+}
+
+.trip-cta__arrow {
+  font-size: 15px;
+}
+
+.trip-empty__right {
+  display: flex;
+  justify-content: center;
+}
+
+.trip-illustration {
+  width: 440px;
+  height: auto;
+  object-fit: contain;
+}
+
+@media (max-width: 900px) {
+  .trip-page {
+    padding: 24px 20px 32px;
+  }
+
+  .trip-empty {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .trip-illustration {
+    width: 320px;
+  }
+
+  .trip-empty__title {
+    font-size: 36px;
+  }
+}

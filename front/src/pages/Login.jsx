@@ -11,7 +11,7 @@ export default function Login() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [activeTab, setActiveTab] = useState("login"); // для вкладок
+  const [activeTab, setActiveTab] = useState("login");
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -28,28 +28,34 @@ export default function Login() {
 
         <div className="tabs-wrapper">
           <div className="tabs">
-          <button
-            type="button"
-            className={activeTab === "login" ? "tab active" : "tab"}
-            onClick={() => setActiveTab("login")}
-          >
+            <button
+              type="button"
+              className={activeTab === "login" ? "tab active" : "tab"}
+              onClick={() => setActiveTab("login")}
+            >
               Login
-          </button>
-          <button
-            type="button"
-            className={activeTab === "signup" ? "tab active" : "tab"}
-            onClick={() => navigate("/signup")}
-          >
-            Sign Up
-          </button>
+            </button>
+            <button
+              type="button"
+              className={activeTab === "signup" ? "tab active" : "tab"}
+              onClick={() => navigate("/signup")}
+            >
+              Sign Up
+            </button>
+          </div>
         </div>
-    </div>
 
+        {/* ✅ Исправленный рендер ошибки */}
+        {error && (
+          <p className="error">
+            {typeof error === "string"
+              ? error
+              : error.detail || error.message || "Login failed"}
+          </p>
+        )}
 
-        {error && <p className="error">{error}</p>}
         {loading && <p className="loading">Logging in...</p>}
 
-        {/* Поля формы */}
         <input
           type="email"
           placeholder="your@email.com"
@@ -57,6 +63,7 @@ export default function Login() {
           onChange={(e) => setEmail(e.target.value)}
           required
         />
+
         <input
           type="password"
           placeholder="password"

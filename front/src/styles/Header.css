@@ -1,47 +1,73 @@
 .header {
-    background-color: #FAFAF9;
-    padding: 8px 28px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  
-  .header-title {
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    color: #000;
-  }
-  
-  .home-link {
-    text-decoration: none;
-  }
-  
-  .header-nav {
-    display: flex;
-    align-items: center;
-    gap: 76px;
-  }
-  
-  .header-link {
-    text-decoration: none;
-    font-size: 14px;
-    color: #000;
-    transition: opacity 0.2s ease;
-  }
-  
-  .header-link:hover {
-    opacity: 0.6;
-  }
-  
-  .profile-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 14px;
-  }
-  
-  .profile-icon {
-    font-size: 20px;
-  }
-  
+  background-color: #FAFAF9;
+  padding: 8px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+.brand-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo {
+  width: 40px;
+  height: 40px;
+  background-color: #6db2be;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.brand-top h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #000000; /* цвет текста логотипа */
+}
+
+.home-link {
+  text-decoration: none;
+  color: inherit; /* наследует от h3, безопасно */
+}
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 76px;
+}
+
+.header-link {
+  text-decoration: none;
+  font-size: 14px;
+  color: #6b7280; /* применяем серый цвет ко всем ссылкам */
+  transition: opacity 0.2s ease;
+}
+
+.header-link:hover {
+  opacity: 0.8; /* легкий эффект при наведении */
+}
+
+.profile-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #6b7280; /* тоже серый цвет */
+}
+
+.header-link.active {
+  color: #5a5450; /* если нужно выделять активную ссылку */
+}
