@@ -12,7 +12,7 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
-  const [activeTab, setActiveTab] = useState("signup"); // для вкладок
+  const [activeTab, setActiveTab] = useState("signup"); // для вкладок123
 
   const handleSignup = async (e) => {
     e.preventDefault();
