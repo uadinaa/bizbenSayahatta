@@ -101,6 +101,12 @@ export default function ProfileCard() {
         >
           <img src={avatar} alt="Avatar" />
         </div>
+        <button type="submit" style={{ marginTop: 12 }}>
+          Save preferences
+        </button>
+  
+      <Link to={"/chat"} >plan your trip</Link>
+      <button onClick={handleLogout}>Logout</button>
 
         <div className="info">
           <span className="email">{email}</span>

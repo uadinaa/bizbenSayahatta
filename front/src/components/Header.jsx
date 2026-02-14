@@ -32,7 +32,7 @@ export default function Header({ isAuth }) {
       <nav className="header-nav">
         <Link to="/inspiration" className="header-link">Inspiration</Link>
         <Link to="/wishlist" className="header-link">Wishlist</Link>
-        <Link to="/planner-test" className="header-link">Chat</Link>
+        <Link to="/chat" className="header-link">Chat</Link>
         <Link to="/map" className="header-link">Map</Link>
         <Link to="/trip" className="header-link">Trip</Link>
 

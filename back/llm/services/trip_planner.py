@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from typing import Iterable, List, Optional
+import math
 
-from places.models import Place
+from places.models import Place, InterestMapping
 from users.models import UserPreferences
 
 
@@ -9,6 +10,25 @@ PACE_TO_STOPS = {
     "slow": 3,
     "medium": 4,
     "fast": 5,
+}
+
+MAX_MUSEUMS_PER_DAY = 2
+MAX_FOOD_STOPS_PER_DAY = 1
+FAR_DISTANCE_KM = 8.0
+
+DEFAULT_INTEREST_TYPE_MAP = {
+    "cute museums": ["museum", "art_gallery"],
+    "culture": ["museum", "historical", "temple"],
+    "food": ["restaurant", "cafe"],
+    "coffee": ["cafe"],
+    "cafes": ["cafe"],
+    "nightlife": ["bar", "night_club"],
+    "nature": ["park", "natural_feature"],
+    "shopping": ["shopping_mall", "clothing_store", "market"],
+    "history": ["museum", "historical", "monument", "tourist_attraction"],
+    "art": ["art_gallery", "museum"],
+    "views": ["tourist_attraction", "viewpoint"],
+    "family": ["zoo", "aquarium", "park", "amusement_park"],
 }
 
 
@@ -24,12 +44,38 @@ def _normalize_interests(interests: Optional[Iterable[str]]) -> List[str]:
     return [value.strip().lower() for value in interests if value.strip()]
 
 
+def _load_interest_mapping(provider: str) -> dict:
+    mapping = {}
+    for row in InterestMapping.objects.all():
+        if not isinstance(row.mappings, dict):
+            continue
+        provider_types = row.mappings.get(provider)
+        if provider_types:
+            mapping[row.name.lower()] = provider_types
+    if not mapping:
+        mapping = DEFAULT_INTEREST_TYPE_MAP
+    return mapping
+
+
+def _expand_interest_types(interests: List[str], provider: str = "google") -> List[str]:
+    interest_map = _load_interest_mapping(provider)
+    types = set()
+    for interest in interests:
+        mapped = interest_map.get(interest)
+        if mapped:
+            types.update(mapped)
+        else:
+            types.add(interest)
+    return list(types)
+
+
 def _place_matches_interest(place: Place, interests: List[str]) -> bool:
     if not interests:
         return False
     category = (place.category or "").lower()
     types = [value.lower() for value in (place.types or [])]
-    for interest in interests:
+    expanded = _expand_interest_types(interests)
+    for interest in expanded:
         if interest in category:
             return True
         for place_type in types:
@@ -49,6 +95,77 @@ def _score_place(place: Place, interests: List[str]) -> float:
     if place.is_must_visit:
         score += 2.5
     return score
+
+
+def _place_type_set(place: Place) -> set:
+    types = set(value.lower() for value in (place.types or []))
+    category = (place.category or "").lower()
+    if category:
+        types.add(category)
+    return types
+
+
+def _is_museum_place(place: Place) -> bool:
+    types = _place_type_set(place)
+    museum_keywords = {
+        "museum",
+        "art_gallery",
+        "historical",
+        "temple",
+        "monument",
+    }
+    return any(keyword in types for keyword in museum_keywords)
+
+
+def _is_food_place(place: Place) -> bool:
+    types = _place_type_set(place)
+    food_keywords = {
+        "restaurant",
+        "cafe",
+        "bakery",
+        "meal_takeaway",
+        "bar",
+    }
+    return any(keyword in types for keyword in food_keywords)
+
+
+def _compute_centroid(places: List[Place]) -> Optional[tuple]:
+    if not places:
+        return None
+    lat_sum = 0.0
+    lng_sum = 0.0
+    count = 0
+    for place in places:
+        if place.lat is None or place.lng is None:
+            continue
+        lat_sum += place.lat
+        lng_sum += place.lng
+        count += 1
+    if count == 0:
+        return None
+    return (lat_sum / count, lng_sum / count)
+
+
+def _distance_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    radius = 6371.0
+    lat1_rad = math.radians(lat1)
+    lat2_rad = math.radians(lat2)
+    dlat = math.radians(lat2 - lat1)
+    dlng = math.radians(lng2 - lng1)
+
+    a = (
+        math.sin(dlat / 2) ** 2
+        + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlng / 2) ** 2
+    )
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return radius * c
+
+
+def _is_far_place(place: Place, centroid: Optional[tuple]) -> bool:
+    if centroid is None or place.lat is None or place.lng is None:
+        return False
+    distance = _distance_km(place.lat, place.lng, centroid[0], centroid[1])
+    return distance >= FAR_DISTANCE_KM
 
 
 def _price_level_to_number(price_level: Optional[str]) -> Optional[int]:
@@ -96,6 +213,75 @@ def _apply_preferences(
     merged_travel_style = travel_style or preferences.travel_style
 
     return merged_budget, merged_interests, merged_travel_style
+
+
+def _build_day_stops(
+    *,
+    candidates: List[ScoredPlace],
+    used_ids: set,
+    stops_per_day: int,
+    centroid: Optional[tuple],
+) -> List[ScoredPlace]:
+    day_stops: List[ScoredPlace] = []
+    museum_count = 0
+    food_count = 0
+    day_capacity = stops_per_day
+    day_has_far = False
+
+    # Prefer one food stop per day if available
+    for item in candidates:
+        if item.place.id in used_ids:
+            continue
+        if _is_food_place(item.place):
+            day_stops.append(item)
+            used_ids.add(item.place.id)
+            food_count = 1
+            break
+
+    for item in candidates:
+        place = item.place
+        if place.id in used_ids:
+            continue
+
+        is_food = _is_food_place(place)
+        is_museum = _is_museum_place(place)
+        is_far = _is_far_place(place, centroid)
+
+        if is_food and food_count >= MAX_FOOD_STOPS_PER_DAY:
+            continue
+        if is_museum and museum_count >= MAX_MUSEUMS_PER_DAY:
+            continue
+
+        if is_far:
+            if day_stops:
+                continue
+            day_has_far = True
+            day_capacity = min(day_capacity, 2)
+
+        day_stops.append(item)
+        used_ids.add(place.id)
+
+        if is_food:
+            food_count += 1
+        if is_museum:
+            museum_count += 1
+
+        if len(day_stops) >= day_capacity:
+            break
+
+    if day_has_far and food_count == 0 and len(day_stops) < day_capacity:
+        for item in candidates:
+            if item.place.id in used_ids:
+                continue
+            if _is_food_place(item.place):
+                day_stops.append(item)
+                used_ids.add(item.place.id)
+                break
+
+    # Museum stops first (morning preference)
+    day_stops.sort(key=lambda item: 0 if _is_museum_place(item.place) else 1)
+
+    return day_stops
 
 
 def build_trip_plan(
@@ -153,10 +339,15 @@ def build_trip_plan(
     candidates = scored_places[: max(total_needed * 2, total_needed)]
 
     day_plans = []
-    index = 0
+    used_ids = set()
+    centroid = _compute_centroid(places)
     for day_number in range(1, days + 1):
-        day_places = candidates[index : index + stops_per_day]
-        index += stops_per_day
+        day_places = _build_day_stops(
+            candidates=candidates,
+            used_ids=used_ids,
+            stops_per_day=stops_per_day,
+            centroid=centroid,
+        )
         if not day_places:
             break
 

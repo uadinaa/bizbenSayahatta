@@ -25,6 +25,8 @@ const router = createBrowserRouter([
       { path: "inspiration", element: <Inspiration /> },
       { path: "planner-test", element: <PlannerTest /> },
       { path: "trip", element: <Trip/> },
+      { path: "chat", element: <PlannerTest /> },
+
     ],
   },
 ]);
