@@ -12,6 +12,7 @@ import Inspiration from './pages/Inspiration';
 import PlannerTest from './pages/PlannerTest';
 import Trip from './pages/Trips';
 import Map from './pages/Map';
+import RequireAuth from "./components/RequireAuth.jsx";
 import { store } from "./store.js";
 
 const router = createBrowserRouter([
@@ -22,11 +23,11 @@ const router = createBrowserRouter([
       { index: true, element: <HomePage /> }, // <-- Главная страница
       { path: "signup", element: <Signup /> },
       { path: "login", element: <Login /> },
-      { path: "profile", element: <Profile /> },
+      { path: "profile", element: <RequireAuth><Profile /></RequireAuth> },
       { path: "inspiration", element: <Inspiration /> },
-      { path: "planner-test", element: <PlannerTest /> },
-      { path: "trip", element: <Trip/> },
-      { path: "chat", element: <PlannerTest /> },
+      { path: "planner-test", element: <RequireAuth><PlannerTest /></RequireAuth> },
+      { path: "trip", element: <RequireAuth><Trip/></RequireAuth> },
+      { path: "chat", element: <RequireAuth><PlannerTest /></RequireAuth> },
       { path: "map", element: <Map /> },
 
     ],

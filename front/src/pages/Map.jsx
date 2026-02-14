@@ -1,9 +1,12 @@
 import "../styles/Map.css";
 import 'leaflet/dist/leaflet.css';
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, CircleMarker, GeoJSON } from "react-leaflet";
 
 export default function Map() {
+  const navigate = useNavigate();
+  const isAuthed = Boolean(localStorage.getItem("access"));
   const [places, setPlaces] = useState(() => {
     const saved = localStorage.getItem("travelPlaces");
     return saved ? JSON.parse(saved) : [];
@@ -99,6 +102,10 @@ export default function Map() {
 
   const addPlace = async (e) => {
     e.preventDefault();
+    if (!isAuthed) {
+      navigate("/login");
+      return;
+    }
     if (newPlace.city && newPlace.country && newPlace.date) {
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${newPlace.city},${newPlace.country}`);
@@ -123,6 +130,14 @@ export default function Map() {
   const closeModal = () => {
     setIsModalOpen(false);
     setNewPlace({ city: "", country: "", date: "" });
+  };
+
+  const openAddModal = () => {
+    if (!isAuthed) {
+      navigate("/login");
+      return;
+    }
+    setIsModalOpen(true);
   };
 
   // Цвет стран: жёлтый — посещённые (по городам)
@@ -172,7 +187,7 @@ export default function Map() {
         <section className="visited">
           <div className="visited-header">
             <h4>Visited Places</h4>
-            <button className="add-btn" onClick={() => setIsModalOpen(true)}>+ Add</button>
+            <button className="add-btn" onClick={openAddModal}>+ Add</button>
           </div>
           <div className="visited-list">
             {places.map((p, i) => (
@@ -232,7 +247,7 @@ export default function Map() {
           <div><span className="dot"></span> City Visited</div>
         </div>
 
-        <button className="add-place-btn" onClick={() => setIsModalOpen(true)}>+ Add Place</button>
+        <button className="add-place-btn" onClick={openAddModal}>+ Add Place</button>
       </main>
 
       {/* MODAL */}

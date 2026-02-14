@@ -1,8 +1,17 @@
 import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { logoutUser } from "../slices/authSlice";
 import "../styles/ProfileCard.css";
+import profileIcon from "../assets/profile.svg";
+import editIcon from "../assets/edit.svg";
+import cupIcon from "../assets/cup.svg";
+import cameraIcon from "../assets/camera.svg";
 
 export default function ProfileCard() {
-  const defaultAvatar = "/avatar.svg";
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const defaultAvatar = profileIcon;
 
   // Инициализация данных из localStorage
   const [username, setUsername] = useState(localStorage.getItem("username") || "Username");
@@ -61,6 +70,16 @@ export default function ProfileCard() {
 
   const removeAvatar = () => setTempAvatar(defaultAvatar);
 
+  const handleLogout = () => {
+    dispatch(logoutUser());
+    localStorage.removeItem("username");
+    localStorage.removeItem("avatar");
+    localStorage.removeItem("cover");
+    localStorage.removeItem("email");
+    localStorage.removeItem("travelStyle");
+    navigate("/login");
+  };
+
   // Cover
   const handleCoverChange = async (e) => {
     const file = e.target.files[0];
@@ -78,7 +97,7 @@ export default function ProfileCard() {
         {cover && <img src={cover} alt="Cover" className="cover-img" />}
 
         <img
-          src="/camera.svg"
+          src={cameraIcon}
           alt="Edit Cover"
           className="cover-edit-icon"
           onClick={() => document.getElementById("coverInput").click()}
@@ -101,12 +120,6 @@ export default function ProfileCard() {
         >
           <img src={avatar} alt="Avatar" />
         </div>
-        <button type="submit" style={{ marginTop: 12 }}>
-          Save preferences
-        </button>
-  
-      <Link to={"/chat"} >plan your trip</Link>
-      <button onClick={handleLogout}>Logout</button>
 
         <div className="info">
           <span className="email">{email}</span>
@@ -120,14 +133,18 @@ export default function ProfileCard() {
           <div className="level">
             <span>Level of the user</span>
             <button>Upgrade Level</button>
-            <img src="/cup.svg" alt="Cup" />
+            <img src={cupIcon} alt="Cup" />
           </div>
 
-          <button className="logout">Logout</button>
+          <Link className="plan-link" to="/chat">
+            plan your trip
+          </Link>
+
+          <button className="logout" onClick={handleLogout}>Logout</button>
         </div>
 
         <div className="edit" onClick={openModal}>
-          <img src="/edit.svg" alt="Edit" width="28" height="28" />
+          <img src={editIcon} alt="Edit" width="28" height="28" />
         </div>
       </div>
 

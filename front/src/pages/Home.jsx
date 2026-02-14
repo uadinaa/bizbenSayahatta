@@ -1,5 +1,6 @@
 import "../styles/Home.css";
 import previewImg from "../assets/preview.png"; // импорт картинки
+import { Link, Navigate } from "react-router-dom";
 
 export default function HomePage() {
   return (
@@ -15,7 +16,9 @@ export default function HomePage() {
             Our intelligent assistant analyzes your preferences and creates
             perfect itineraries based on your budget, weather, and local events.
           </p>
-          <button className="create-trip-btn">Create Trip →</button>
+          <Link to="/chat">
+            <button className="create-trip-btn">Create Trip →</button>
+          </Link>
         </div>
 
         {/* Центральная иллюстрация */}

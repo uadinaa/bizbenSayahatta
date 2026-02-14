@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { fetchInspirationPlaces, toggleMustVisit } from "../api/places";
 import { fetchProfile } from "../slices/authSlice";
 import s from "../styles/Inspiration.module.css";
@@ -15,7 +16,9 @@ const Inspiration = () => {
   const [priceFilter, setPriceFilter] = useState("all");
 
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
+  const isAuthed = Boolean(localStorage.getItem("access"));
 
   const preferenceFilters = useMemo(() => {
     const prefs = user?.preferences || {};
@@ -64,6 +67,10 @@ const Inspiration = () => {
   };
 
   const handleToggleMustVisit = async (placeId, currentValue) => {
+    if (!isAuthed) {
+      navigate("/login");
+      return;
+    }
     try {
       const data = await toggleMustVisit(placeId, !currentValue);
       setPlaces((prev) =>
@@ -76,6 +83,14 @@ const Inspiration = () => {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const handleCreateTrip = () => {
+    if (!isAuthed) {
+      navigate("/login");
+      return;
+    }
+    navigate("/trip");
   };
 
   const loadPlaces = async () => {
@@ -205,7 +220,9 @@ const Inspiration = () => {
             </div>
 
             <div className={s.actions}>
-              <button className={s.action}>Create your trip →</button>
+              <button className={s.action} onClick={handleCreateTrip}>
+                Create your trip →
+              </button>
               <button
                 type="button"
                 className={s.mustVisitToggle}
@@ -233,4 +250,3 @@ const Inspiration = () => {
 };
 
 export default Inspiration;
-

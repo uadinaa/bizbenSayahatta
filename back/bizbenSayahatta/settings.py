@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'places',
     'django_filters',
     'llm',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [
@@ -102,8 +103,8 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'bizbensayahatta_db',
-        'USER': 'aisha',
-        'PASSWORD': 'Barakataishuchka5',
+        'USER': 'dinaabitova',
+        'PASSWORD': '',
         'HOST': '127.0.0.1',
         'PORT': '5432',
     }
