@@ -1,0 +1,359 @@
+/* ===== PAGE LAYOUT ===== */
+.map-page {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background: #e9eef3;
+  font-family: "Inter", sans-serif;
+}
+
+/* ===============================
+   SIDEBAR
+================================ */
+
+.map-sidebar {
+  width: 320px;
+  min-width: 320px;
+  background: #f7f7f7;
+  padding: 30px 25px 40px 40px;
+  position: relative;
+  border-right: 1px solid #e0e0e0;
+
+  display: flex;
+  flex-direction: column;
+
+  overflow-y: auto;
+}
+
+/* аккуратная линия прогресса */
+.sidebar-progress-line {
+  position: absolute;
+  left: 16px;
+  top: 40px;
+  width: 3px;
+  height: 140px;
+  background: #000;
+  border-radius: 10px;
+}
+
+/* ===== TITLE ===== */
+
+.sidebar-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+/* ===== LEVEL CARD ===== */
+
+.level-card {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  background: white;
+  padding: 15px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  margin-bottom: 20px;
+}
+
+.badge-icon {
+  width: 48px;
+  height: 48px;
+  background: #6c4eff;
+  color: white;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.level-info strong {
+  font-size: 15px;
+  display: block;
+}
+
+.badge-name {
+  font-size: 12px;
+  color: #777;
+}
+
+.level-progress-text {
+  font-size: 12px;
+  margin-top: 5px;
+  color: #444;
+}
+
+/* ===== LEVEL DOTS ===== */
+
+.level-dots {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.level-dot {
+  width: 45px;
+  height: 38px;
+  border-radius: 10px;
+  background: #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #777;
+  transition: 0.2s ease;
+}
+
+.level-dot.active {
+  background: #6c4eff;
+  color: white;
+}
+
+/* ===== STATS ===== */
+
+.stats h4 {
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+.stats-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.stat-card {
+  flex: 1;
+  background: white;
+  border-radius: 14px;
+  padding: 10px 1px 3px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  font-size: 18px;
+}
+
+.stat-card strong {
+  display: block;
+  font-size: 18px;
+  margin-top: 6px;
+}
+
+.stat-card span {
+  font-size: 11px;
+  color: #777;
+}
+
+/* Yellow progress pill */
+.world-progress {
+  background: #ffd84d;
+  padding: 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* ===== VISITED ===== */
+
+.visited {
+  margin-top: 30px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.visited-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  flex-shrink: 0;
+}
+
+.visited-list {
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 5px;
+}
+
+.add-btn {
+  background: none;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 13px;
+  color:#000;
+}
+
+.place {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.place-icon {
+  font-size: 14px;
+}
+
+.place-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.place-info strong {
+  font-size: 13px;
+}
+
+.place-info span {
+  font-size: 11px;
+  color: #777;
+}
+
+.date {
+  font-size: 11px;
+  color: #aaa;
+}
+
+/* ===== MAP AREA ===== */
+
+.map-area {
+  flex: 1;
+  position: relative;
+  background: #dfe6ee;
+  overflow: hidden;
+}
+
+/* Leaflet карта */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+}
+
+/* ===== LEGEND ===== */
+
+.legend {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  background: #ffffff;
+  padding: 12px;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  font-size: 12px;
+  z-index: 1000;
+}
+
+.legend strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.legend div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.legend .green,
+.legend .visited-country {
+  width: 10px;
+  height: 10px;
+  background: #FDD835;
+  border-radius: 3px;
+}
+
+.legend .gray {
+  width: 10px;
+  height: 10px;
+  background: #e0e0e0;
+  border-radius: 3px;
+}
+
+.legend .dot {
+  width: 10px;
+  height: 10px;
+  background: #1e88e5;
+  border-radius: 3px;
+}
+
+/* ===== ADD PLACE BUTTON ===== */
+
+.add-place-btn {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background: #000;
+  color: #fff;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 14px;
+  cursor: pointer;
+  font-size: 13px;
+  z-index: 1000;
+}
+
+/* ===== MODAL ===== */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.modal {
+  background: #fff;
+  padding: 20px;
+  border-radius: 16px;
+  width: 320px;
+}
+
+.modal h3 {
+  margin-bottom: 12px;
+}
+
+.modal label {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.modal input {
+  width: 100%;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  margin-top: 4px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 14px;
+}
+
+.submit-btn {
+  background: #1e88e5;
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.cancel-btn {
+  background: #eee;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+}

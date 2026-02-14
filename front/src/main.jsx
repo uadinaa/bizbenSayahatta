@@ -11,6 +11,7 @@ import Profile from './pages/Profile';
 import Inspiration from './pages/Inspiration';
 import PlannerTest from './pages/PlannerTest';
 import Trip from './pages/Trips';
+import Map from './pages/Map';
 import { store } from "./store.js";
 
 const router = createBrowserRouter([
@@ -26,6 +27,7 @@ const router = createBrowserRouter([
       { path: "planner-test", element: <PlannerTest /> },
       { path: "trip", element: <Trip/> },
       { path: "chat", element: <PlannerTest /> },
+      { path: "map", element: <Map /> },
 
     ],
   },
