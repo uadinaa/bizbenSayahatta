@@ -91,6 +91,14 @@ class SavedPlace(models.Model):
         return f"{self.user} saved {self.place}"
 
 
+class InterestMapping(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    mappings = models.JSONField(default=dict, blank=True)
+
+    def __str__(self):
+        return self.name
+
+
 class VisitedPlace(models.Model):
     user = models.ForeignKey(
         User,

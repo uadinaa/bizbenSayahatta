@@ -105,7 +105,7 @@ export default function Profile() {
         </button>
       </form>
   
-      <Link to={"/planner-test"} >plan your trip</Link>
+      <Link to={"/chat"} >plan your trip</Link>
       <button onClick={handleLogout}>Logout</button>
 
 
