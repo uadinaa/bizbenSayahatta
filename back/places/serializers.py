@@ -8,6 +8,7 @@ class PlaceSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "category",
+            "address",
             "city",
             "country",
             "rating",
@@ -45,4 +46,3 @@ class PlaceMapSerializer(serializers.ModelSerializer):
             "status",
             "saves_count",
         ]
-
