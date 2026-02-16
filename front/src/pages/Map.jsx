@@ -116,8 +116,15 @@ export default function Map() {
         }
         const lat = parseFloat(data[0].lat);
         const lon = parseFloat(data[0].lon);
+        const address = data[0].address || {};
+        const normalizedCity =
+          address.city || address.town || address.village || newPlace.city;
+        const normalizedCountry = address.country || newPlace.country;
 
-        setPlaces(prev => [...prev, { ...newPlace, lat, lon }]);
+        setPlaces(prev => [
+          ...prev,
+          { ...newPlace, city: normalizedCity, country: normalizedCountry, lat, lon }
+        ]);
         setNewPlace({ city: "", country: "", date: "", lat: null, lon: null });
         setIsModalOpen(false);
       } catch (err) {

@@ -15,6 +15,7 @@ PACE_TO_STOPS = {
 MAX_MUSEUMS_PER_DAY = 2
 MAX_FOOD_STOPS_PER_DAY = 1
 FAR_DISTANCE_KM = 8.0
+NEARBY_DISTANCE_KM = 3.5
 
 DEFAULT_INTEREST_TYPE_MAP = {
     "cute museums": ["museum", "art_gallery"],
@@ -168,6 +169,17 @@ def _is_far_place(place: Place, centroid: Optional[tuple]) -> bool:
     return distance >= FAR_DISTANCE_KM
 
 
+def _distance_between_places_km(source: Place, target: Place) -> float:
+    if (
+        source.lat is None
+        or source.lng is None
+        or target.lat is None
+        or target.lng is None
+    ):
+        return float("inf")
+    return _distance_km(source.lat, source.lng, target.lat, target.lng)
+
+
 def _price_level_to_number(price_level: Optional[str]) -> Optional[int]:
     if price_level is None:
         return None
@@ -228,35 +240,50 @@ def _build_day_stops(
     day_capacity = stops_per_day
     day_has_far = False
 
-    # Prefer one food stop per day if available
+    # Pick a high-score anchor first, then pull nearby places for a walkable day.
+    anchor_item: Optional[ScoredPlace] = None
     for item in candidates:
         if item.place.id in used_ids:
             continue
-        if _is_food_place(item.place):
-            day_stops.append(item)
-            used_ids.add(item.place.id)
-            food_count = 1
-            break
+        anchor_item = item
+        break
 
-    for item in candidates:
+    if anchor_item is None:
+        return day_stops
+
+    anchor_place = anchor_item.place
+    day_stops.append(anchor_item)
+    used_ids.add(anchor_place.id)
+    museum_count = 1 if _is_museum_place(anchor_place) else 0
+    food_count = 1 if _is_food_place(anchor_place) else 0
+    if _is_far_place(anchor_place, centroid):
+        day_has_far = True
+        day_capacity = min(day_capacity, 2)
+
+    available_items = [
+        item for item in candidates if item.place.id not in used_ids
+    ]
+    available_items.sort(
+        key=lambda item: (
+            _distance_between_places_km(anchor_place, item.place),
+            -item.score,
+        )
+    )
+
+    # First pass: keep walkable cluster around anchor.
+    for item in available_items:
         place = item.place
-        if place.id in used_ids:
+        distance_from_anchor = _distance_between_places_km(anchor_place, place)
+        if distance_from_anchor > NEARBY_DISTANCE_KM:
             continue
 
         is_food = _is_food_place(place)
         is_museum = _is_museum_place(place)
-        is_far = _is_far_place(place, centroid)
 
         if is_food and food_count >= MAX_FOOD_STOPS_PER_DAY:
             continue
         if is_museum and museum_count >= MAX_MUSEUMS_PER_DAY:
             continue
-
-        if is_far:
-            if day_stops:
-                continue
-            day_has_far = True
-            day_capacity = min(day_capacity, 2)
 
         day_stops.append(item)
         used_ids.add(place.id)
@@ -268,6 +295,30 @@ def _build_day_stops(
 
         if len(day_stops) >= day_capacity:
             break
+
+    # Second pass: fill remaining slots by nearest distance if needed.
+    if len(day_stops) < day_capacity:
+        for item in available_items:
+            place = item.place
+            if place.id in used_ids:
+                continue
+            is_food = _is_food_place(place)
+            is_museum = _is_museum_place(place)
+
+            if is_food and food_count >= MAX_FOOD_STOPS_PER_DAY:
+                continue
+            if is_museum and museum_count >= MAX_MUSEUMS_PER_DAY:
+                continue
+
+            day_stops.append(item)
+            used_ids.add(place.id)
+
+            if is_food:
+                food_count += 1
+            if is_museum:
+                museum_count += 1
+            if len(day_stops) >= day_capacity:
+                break
 
     if day_has_far and food_count == 0 and len(day_stops) < day_capacity:
         for item in candidates:

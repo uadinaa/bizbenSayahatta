@@ -46,6 +46,25 @@ const Inspiration = () => {
     return null;
   };
 
+  const formatLocation = (place) => {
+    const city = (place.city || "").trim();
+    let country = (place.country || "").trim();
+
+    if (!country || country.toLowerCase() === city.toLowerCase()) {
+      const address = (place.address || "").trim();
+      const parts = address.split(",").map((p) => p.trim()).filter(Boolean);
+      const maybeCountry = parts[parts.length - 1];
+      if (maybeCountry && maybeCountry.toLowerCase() !== city.toLowerCase()) {
+        country = maybeCountry;
+      } else if (!country) {
+        country = "";
+      }
+    }
+
+    if (city && country) return `${city}, ${country}`;
+    return city || country || "";
+  };
+
   const filterByPrice = (places) => {
     if (priceFilter === "all") return places;
 
@@ -201,10 +220,7 @@ const Inspiration = () => {
 
             <h3 className={s.name}>{place.name}</h3>
 
-            <p className={s.location}>
-              {place.neighborhood ? `${place.neighborhood}, ` : ""}
-              {place.city}, {place.country}
-            </p>
+            <p className={s.location}>{formatLocation(place)}</p>
 
             <div className={s.badges}>
               {formatPriceLevel(place.price_level) && (

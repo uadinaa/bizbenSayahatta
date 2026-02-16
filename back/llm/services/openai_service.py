@@ -1,5 +1,6 @@
 from openai import OpenAI
 from django.conf import settings
+import json
 
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
@@ -50,3 +51,20 @@ def ask_travel_ai(user_message: str, context: str = "") -> str:
     )
 
     return response.output_text
+
+
+def polish_trip_plan(plan: dict) -> str:
+    plan_json = json.dumps(plan, ensure_ascii=False)
+    prompt = (
+        "You are polishing an already validated travel itinerary.\n"
+        "Use the provided structured plan as source of truth.\n"
+        "Do not invent new places or dates.\n\n"
+        "Return a concise, readable itinerary with these sections:\n"
+        "1) Trip overview\n"
+        "2) Day-by-day highlights\n"
+        "3) Best time to visit (season/time-of-day guidance)\n"
+        "4) Practical tips (transport, pacing, budget)\n\n"
+        "Structured plan JSON:\n"
+        f"{plan_json}"
+    )
+    return ask_travel_ai(prompt)
