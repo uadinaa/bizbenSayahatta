@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from places.models import Place, VisitedPlace, SavedPlace
-from places.serializers import PlaceSerializer, PlaceMapSerializer
+from places.serializers import PlaceSerializer, PlaceMapSerializer, VisitedPlaceSerializer
 from places.services.google_places import get_places
 from places.services.save_place import save_place_for_user
 
@@ -171,6 +171,14 @@ class WishlistAPIView(APIView):
         )
 
 
+def _get_visited_place_for_user(user, place_id):
+    """Get VisitedPlace for this user and place. Returns None if not found."""
+    return VisitedPlace.objects.filter(
+        place_id=place_id,
+        user=user,
+    ).first()
+
+
 class VisitPlaceAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -188,18 +196,56 @@ class VisitPlaceAPIView(APIView):
             status=status.HTTP_201_CREATED,
         )
 
+    def patch(self, request, place_id):
+        visited = _get_visited_place_for_user(request.user, place_id)
+        if not visited:
+            return Response(
+                {"detail": "Visited place not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        serializer = VisitedPlaceSerializer(
+            visited,
+            data=request.data,
+            partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def delete(self, request, place_id):
+        visited = _get_visited_place_for_user(request.user, place_id)
+        if not visited:
+            return Response(
+                {"detail": "Visited place not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        visited.delete()
+        visited_count = VisitedPlace.objects.filter(user=request.user).count()
+        badges = _get_badges(visited_count)
+        return Response(
+            {
+                "detail": "Place removed from visited.",
+                "visited_count": visited_count,
+                "badges": badges,
+            },
+            status=status.HTTP_200_OK,
+        )
+
 
 class VisitedPlacesAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        places = (
-            Place.objects.filter(visited_by__user=request.user)
-            .order_by("-visited_by__created_at")
-            .distinct()
+        from django.db.models import F
+        from django.db.models.functions import Coalesce
+
+        visited = (
+            VisitedPlace.objects.filter(user=request.user)
+            .select_related("place")
+            .order_by(Coalesce(F("visited_at"), F("created_at")).desc())
         )
-        serializer = PlaceMapSerializer(places, many=True)
-        visited_count = places.count()
+        serializer = VisitedPlaceSerializer(visited, many=True)
+        visited_count = visited.count()
         badges = _get_badges(visited_count)
         return Response(
             {

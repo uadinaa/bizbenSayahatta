@@ -71,6 +71,14 @@ def _build_photo_url(photo, *, max_width=800, max_height=800):
     )
 
 
+def _extract_country(place):
+    components = place.get("addressComponents", [])
+    for component in components:
+        if "country" in component.get("types", []):
+            return component.get("longText") or component.get("shortText") or ""
+    return ""
+
+
 def _extract_neighborhood(place):
     components = place.get("addressComponents", [])
 
@@ -115,6 +123,7 @@ def save_places_to_db(places_data, city: str, category: str):
                 "neighborhood": _extract_neighborhood(place),
                 "address": place.get("formattedAddress", ""),
                 "city": city,
+                "country": _extract_country(place) or "",
                 "lat": location.get("latitude"),
                 "lng": location.get("longitude"),
             },
