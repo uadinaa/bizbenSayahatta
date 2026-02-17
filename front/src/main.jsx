@@ -1,26 +1,35 @@
 import { StrictMode } from "react";
 import { Provider } from "react-redux";
-import { createRoot } from 'react-dom/client'
+import { createRoot } from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import './index.css'
-import App from './App.jsx'
+import './index.css';
+import App from './App.jsx';
+import HomePage from './pages/Home'; // добавляем HomePage
 import Signup from './pages/Signup';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
 import Inspiration from './pages/Inspiration';
 import PlannerTest from './pages/PlannerTest';
+import Trip from './pages/Trips';
+import Map from './pages/Map';
+import RequireAuth from "./components/RequireAuth.jsx";
 import { store } from "./store.js";
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <App />, // 👈 тут Header
+    element: <App />, 
     children: [
+      { index: true, element: <HomePage /> }, // <-- Главная страница
       { path: "signup", element: <Signup /> },
       { path: "login", element: <Login /> },
-      { path: "profile", element: <Profile /> },
+      { path: "profile", element: <RequireAuth><Profile /></RequireAuth> },
       { path: "inspiration", element: <Inspiration /> },
-      { path: "planner-test", element: <PlannerTest /> },
+      { path: "planner-test", element: <RequireAuth><PlannerTest /></RequireAuth> },
+      { path: "trip", element: <RequireAuth><Trip/></RequireAuth> },
+      { path: "chat", element: <RequireAuth><PlannerTest /></RequireAuth> },
+      { path: "map", element: <Map /> },
+
     ],
   },
 ]);
@@ -31,4 +40,4 @@ createRoot(document.getElementById('root')).render(
       <RouterProvider router={router} />
     </Provider>
   </StrictMode>
-)
+);

@@ -1,3 +1,4 @@
+// Header.jsx
 import { Link, useNavigate } from "react-router-dom";
 import "../styles/Header.css";
 
@@ -16,7 +17,15 @@ export default function Header({ isAuth }) {
     <header className="header">
       <div className="header-left">
         <Link to="/" className="home-link">
-          <h1 className="header-title">BS BizbenSayahat</h1>
+          <div className="brand-top">
+            <div className="logo">
+              <span>BS</span>
+            </div>
+            <h3>
+              Bizben<br />
+              Sayahat
+            </h3>
+          </div>
         </Link>
       </div>
 
@@ -24,7 +33,7 @@ export default function Header({ isAuth }) {
         <Link to="/inspiration" className="header-link">Inspiration</Link>
         <Link to="/wishlist" className="header-link">Wishlist</Link>
         <Link to="/chat" className="header-link">Chat</Link>
-        <Link to="/planner-test" className="header-link">Map</Link>
+        <Link to="/map" className="header-link">Map</Link>
         <Link to="/trip" className="header-link">Trip</Link>
 
         <button className="profile-btn" onClick={handleProfileClick}>

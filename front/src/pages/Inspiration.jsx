@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { fetchInspirationPlaces, toggleMustVisit } from "../api/places";
 import { fetchProfile } from "../slices/authSlice";
 import s from "../styles/Inspiration.module.css";
 
-const categories = ["all", "restaurant", "museum"];
+const categories = ["all", "restaurant", "museum", "tourist_attraction"];
 
 const Inspiration = () => {
   const [places, setPlaces] = useState([]);
@@ -12,8 +13,12 @@ const Inspiration = () => {
   const [next, setNext] = useState(null);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
+  const [priceFilter, setPriceFilter] = useState("all");
+
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
+  const isAuthed = Boolean(localStorage.getItem("access"));
 
   const preferenceFilters = useMemo(() => {
     const prefs = user?.preferences || {};
@@ -35,13 +40,56 @@ const Inspiration = () => {
       PRICE_LEVEL_EXPENSIVE: 3,
       PRICE_LEVEL_VERY_EXPENSIVE: 4,
     };
-    const count = mapping[priceLevel] ?? null;
-    if (count === null) return null;
+    const count = mapping[priceLevel];
     if (count === 0) return "Free";
-    return "$".repeat(count);
+    if (count > 0) return "$".repeat(count);
+    return null;
+  };
+
+  const formatLocation = (place) => {
+    const city = (place.city || "").trim();
+    let country = (place.country || "").trim();
+
+    if (!country || country.toLowerCase() === city.toLowerCase()) {
+      const address = (place.address || "").trim();
+      const parts = address.split(",").map((p) => p.trim()).filter(Boolean);
+      const maybeCountry = parts[parts.length - 1];
+      if (maybeCountry && maybeCountry.toLowerCase() !== city.toLowerCase()) {
+        country = maybeCountry;
+      } else if (!country) {
+        country = "";
+      }
+    }
+
+    if (city && country) return `${city}, ${country}`;
+    return city || country || "";
+  };
+
+  const filterByPrice = (places) => {
+    if (priceFilter === "all") return places;
+
+    if (priceFilter === "free") {
+      return places.filter(
+        (p) => p.price_level === "PRICE_LEVEL_FREE"
+      );
+    }
+
+    if (priceFilter === "paid") {
+      return places.filter(
+        (p) =>
+          p.price_level &&
+          p.price_level !== "PRICE_LEVEL_FREE"
+      );
+    }
+
+    return places;
   };
 
   const handleToggleMustVisit = async (placeId, currentValue) => {
+    if (!isAuthed) {
+      navigate("/login");
+      return;
+    }
     try {
       const data = await toggleMustVisit(placeId, !currentValue);
       setPlaces((prev) =>
@@ -56,6 +104,14 @@ const Inspiration = () => {
     }
   };
 
+  const handleCreateTrip = () => {
+    if (!isAuthed) {
+      navigate("/login");
+      return;
+    }
+    navigate("/trip");
+  };
+
   const loadPlaces = async () => {
     const data = await fetchInspirationPlaces(
       page,
@@ -64,16 +120,18 @@ const Inspiration = () => {
       preferenceFilters
     );
 
-    setPlaces(prev =>
-      page === 1 ? data.results : [...prev, ...data.results]
+    const filteredResults = filterByPrice(data.results);
+
+    setPlaces((prev) =>
+      page === 1 ? filteredResults : [...prev, ...filteredResults]
     );
+
     setNext(data.next);
   };
 
-  // reset pagination when filters change
   useEffect(() => {
     setPage(1);
-  }, [search, category, preferenceFilters]);
+  }, [search, category, priceFilter]);
 
   useEffect(() => {
     const token = localStorage.getItem("access");
@@ -84,33 +142,54 @@ const Inspiration = () => {
 
   useEffect(() => {
     loadPlaces();
-  }, [page, search, category, preferenceFilters]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, search, category, priceFilter, preferenceFilters]);
 
   return (
     <div className={s.page}>
       <h1 className={s.title}>Inspiration</h1>
 
-      {/* Search + Filter */}
-      <div className={s.controls}>
-        <input
-          className={s.search}
-          placeholder="Search destination..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      {/* Search */}
+      <input
+        className={s.search}
+        placeholder="Search destination..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
 
-        <select
-          className={s.select}
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-        >
-          {categories.map((c) => (
-            <option key={c} value={c}>
-              {c === "all" ? "All categories" : c}
-            </option>
-          ))}
-        </select>
-      </div>
+{/* Filters under search */}
+<div className={s.controls}>
+  <div className={s.selectRowWithShadow}>
+    <div className={s.selectBlock}>
+      <span className={s.selectLabel}>By event</span>
+      <select
+        className={s.select}
+        value={category}
+        onChange={(e) => setCategory(e.target.value)}
+      >
+        {categories.map((c) => (
+          <option key={c} value={c}>
+            {c === "all" ? "All categories" : c.replace("_", " ")}
+          </option>
+        ))}
+      </select>
+    </div>
+
+    <div className={s.selectBlock}>
+      <span className={s.selectLabel}>By price</span>
+      <select
+        className={s.select}
+        value={priceFilter}
+        onChange={(e) => setPriceFilter(e.target.value)}
+      >
+        <option value="all">All prices</option>
+        <option value="free">Free</option>
+        <option value="paid">Paid</option>
+      </select>
+    </div>
+  </div>
+</div>
+
 
       {/* Cards */}
       <div className={s.grid}>
@@ -126,9 +205,9 @@ const Inspiration = () => {
             ) : (
               <div className={s.photoPlaceholder} />
             )}
+
             <div className={s.cardHeader}>
               <span className={s.category}>{place.category}</span>
-
               <div className={s.metaRow}>
                 {place.is_must_visit && (
                   <span className={s.mustVisit}>Must visit</span>
@@ -141,10 +220,7 @@ const Inspiration = () => {
 
             <h3 className={s.name}>{place.name}</h3>
 
-            <p className={s.location}>
-              {place.neighborhood ? `${place.neighborhood}, ` : ""}
-              {place.city}, {place.country}
-            </p>
+            <p className={s.location}>{formatLocation(place)}</p>
 
             <div className={s.badges}>
               {formatPriceLevel(place.price_level) && (
@@ -160,13 +236,15 @@ const Inspiration = () => {
             </div>
 
             <div className={s.actions}>
-              <button className={s.action}>
+              <button className={s.action} onClick={handleCreateTrip}>
                 Create your trip →
               </button>
               <button
                 type="button"
                 className={s.mustVisitToggle}
-                onClick={() => handleToggleMustVisit(place.id, place.is_must_visit)}
+                onClick={() =>
+                  handleToggleMustVisit(place.id, place.is_must_visit)
+                }
               >
                 {place.is_must_visit ? "Unmark" : "Mark must visit"}
               </button>
@@ -175,7 +253,7 @@ const Inspiration = () => {
         ))}
       </div>
 
-      {next && (
+      {next && ( 
         <button
           className={s.loadMore}
           onClick={() => setPage((p) => p + 1)}

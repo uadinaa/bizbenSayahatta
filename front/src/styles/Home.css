@@ -1,0 +1,249 @@
+/* Общие стили страницы */
+.home-page {
+  display: flex;
+  justify-content: center;
+  padding: 80px;
+  font-family: "Inter", system-ui, sans-serif;
+  background: #fafaf9;
+}
+
+.home-content {
+  display: flex;
+  gap: 60px;
+  max-width: 1400px;
+  width: 100%;
+  align-items: center;
+}
+
+/* Левый блок */
+.home-left h1 {
+  font-size: 60px;
+  line-height: 1.1;
+  margin-bottom: 20px;
+}
+
+.home-left p {
+  font-size: 16px;
+  color: #6b7280;
+  max-width: 400px;
+  margin-bottom: 30px;
+}
+
+.create-trip-btn {
+  background: #000;
+  color: #fff;
+  padding: 14px 28px;
+  border: none;
+  border-radius: 70px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.2s ease;
+}
+
+.create-trip-btn:hover {
+  background: #111827;
+}
+
+/* Центральная иллюстрация */
+.home-center .globe-img {
+  width: 400px;
+  height: auto;
+}
+
+/* Правый блок чата */
+.home-right .chat-card {
+  background: #fff;
+  border-radius: 24px;
+  padding: 24px;
+  width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.03);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.08), 0 8px 20px rgba(0, 0, 0, 0.02);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.home-right .chat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 30px 50px -15px rgba(0, 0, 0, 0.12);
+}
+
+/* Заголовок чата */
+.chat-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0; /* компактнее */
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* Аватарка */
+.ai-avatar {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: white;
+  box-shadow: 0 6px 14px rgba(59, 130, 246, 0.25);
+  flex-shrink: 0;
+}
+
+/* Блок информации ассистента */
+.chat-header-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;  /* расстояние между именем, статусом, мета */
+  margin-left: 6px; /* расстояние от аватара */
+}
+
+.chat-header-info .ai-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.chat-header-info .ai-status {
+  font-size: 12px;
+  color: #10b981;
+  font-weight: 500;
+}
+
+.chat-header-info .ai-meta {
+  font-size: 12px;
+  color: #64748b;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 2px;
+}
+
+/* Предпросмотр поездки */
+.trip-preview {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  padding: 6px 12px;
+  border-radius: 30px;
+  font-size: 12px;
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(102, 126, 234, 0.25);
+  white-space: nowrap;
+}
+
+/* Тело чата */
+.chat-body {
+  background: #f9fbfd;
+  border-radius: 18px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.user-msg {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 20px 20px 4px 20px;
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: 90%;
+  align-self: flex-end;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+}
+
+.ai-msg {
+  background: white;
+  color: #1e293b;
+  padding: 14px 18px;
+  border-radius: 20px 20px 20px 4px;
+  font-size: 14px;
+  line-height: 1.5;
+  border: 1px solid #edf2f7;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  position: relative;
+}
+
+.ai-msg::before {
+  content: "🤖";
+  position: absolute;
+  left: -10px;
+  bottom: -6px;
+  font-size: 18px;
+  background: white;
+  padding: 4px;
+  border-radius: 50%;
+  border: 2px solid #edf2f7;
+}
+
+/* Подвал чата */
+.chat-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.chat-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 10px 16px;
+  border-radius: 40px;
+  border: 1px solid #e2e8f0;
+  font-weight: 500;
+}
+
+.chat-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.chat-actions button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  padding: 10px 16px;
+  border-radius: 30px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #334155;
+  transition: all 0.2s ease;
+}
+
+.chat-actions button:first-child {
+  background: #f8fafc;
+}
+
+.chat-actions button:first-child::before {
+  content: "🗺️";
+  font-size: 14px;
+}
+
+.chat-actions button:last-child::before {
+  content: "❤️";
+  font-size: 14px;
+}
+
+.chat-actions button:hover {
+  background: #1e293b;
+  border-color: #1e293b;
+  color: white;
+}
+
+.chat-actions button:first-child:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+}

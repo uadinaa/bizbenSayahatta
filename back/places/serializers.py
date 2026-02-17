@@ -8,6 +8,7 @@ class PlaceSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "category",
+            "address",
             "city",
             "country",
             "rating",

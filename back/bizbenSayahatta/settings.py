@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'places',
     'django_filters',
     'llm',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [

@@ -57,9 +57,13 @@ cd front
 
 Install dependencies:
 npm install
+npm install react-simple-maps --legacy-peer-deps
+
 
 Run frontend:
 npm run dev
+npm install react-leaflet leaflet
+
 
 Frontend will run on:
 http://localhost:5174/

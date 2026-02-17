@@ -100,6 +100,30 @@ def _extract_neighborhood(place):
     return None
 
 
+def _extract_country(place):
+    components = place.get("addressComponents", [])
+    for component in components:
+        if "country" in component.get("types", []):
+            return component.get("longText") or component.get("shortText")
+    return None
+
+
+def _extract_city(place):
+    components = place.get("addressComponents", [])
+    for preferred_type in (
+        "locality",
+        "postal_town",
+        "administrative_area_level_2",
+        "sublocality",
+        "sublocality_level_1",
+        "sublocality_level_2",
+    ):
+        for component in components:
+            if preferred_type in component.get("types", []):
+                return component.get("longText") or component.get("shortText")
+    return None
+
+
 def save_places_to_db(places_data, city: str, category: str):
     saved_places = []
 
@@ -107,6 +131,8 @@ def save_places_to_db(places_data, city: str, category: str):
         location = place.get("location", {})
         photos = place.get("photos", [])
         photo_url = _build_photo_url(photos[0]) if photos else None
+        extracted_city = _extract_city(place) or city
+        extracted_country = _extract_country(place) or ""
 
         obj, _ = Place.objects.update_or_create(
             google_place_id=place["id"],
@@ -144,6 +170,8 @@ def get_places(city: str, category: str, max_results=10, force_refresh=False):
             | Q(photo_url__isnull=True)
             | Q(website__isnull=True)
             | Q(neighborhood__isnull=True)
+            | Q(country__isnull=True)
+            | Q(country__exact="")
         ).exists()
         if not missing_fields:
             return cached
