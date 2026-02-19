@@ -2,15 +2,20 @@
 import { Link, useNavigate } from "react-router-dom";
 import "../styles/Header.css";
 
-export default function Header({ isAuth }) {
+export default function Header() {
   const navigate = useNavigate();
+  const isAuth = Boolean(localStorage.getItem("access"));
+
+  const navigateProtected = (path) => {
+    if (isAuth) {
+      navigate(path);
+      return;
+    }
+    navigate("/login");
+  };
 
   const handleProfileClick = () => {
-    if (!isAuth) {
-      navigate("/login");
-    } else {
-      navigate("/profile");
-    }
+    navigateProtected("/profile");
   };
 
   return (
@@ -31,10 +36,10 @@ export default function Header({ isAuth }) {
 
       <nav className="header-nav">
         <Link to="/inspiration" className="header-link">Inspiration</Link>
-        <Link to="/wishlist" className="header-link">Wishlist</Link>
-        <Link to="/chat" className="header-link">Chat</Link>
-        <Link to="/map" className="header-link">Map</Link>
-        <Link to="/trip" className="header-link">Trip</Link>
+        <button type="button" className="header-link" onClick={() => navigateProtected("/wishlist")}>Wishlist</button>
+        <button type="button" className="header-link" onClick={() => navigateProtected("/chat")}>Chat</button>
+        <button type="button" className="header-link" onClick={() => navigateProtected("/map")}>Map</button>
+        <button type="button" className="header-link" onClick={() => navigateProtected("/trip")}>Trips</button>
 
         <button className="profile-btn" onClick={handleProfileClick}>
           Profile

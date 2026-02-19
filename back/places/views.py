@@ -6,8 +6,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from places.models import Place, VisitedPlace, SavedPlace
-from places.serializers import PlaceSerializer, PlaceMapSerializer
+from places.models import Place, VisitedPlace, SavedPlace, MustVisitPlace, UserMapPlace
+from places.serializers import PlaceSerializer, PlaceMapSerializer, UserMapPlaceSerializer
 from places.services.google_places import get_places
 from places.services.save_place import save_place_for_user
 
@@ -59,7 +59,7 @@ class InspirationListAPIView(ListAPIView):
     queryset = Place.objects.all()
     serializer_class = PlaceSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
-    filterset_fields = ["category", "status", "is_must_visit"]
+    filterset_fields = ["category", "status"]
     ordering_fields = ["rating", "saves_count"]
     ordering = ["-rating"]
 
@@ -68,6 +68,20 @@ class InspirationListAPIView(ListAPIView):
 
         budget = self.request.query_params.get("budget")
         open_now = self.request.query_params.get("open_now")
+        is_must_visit = self.request.query_params.get("is_must_visit")
+
+        if is_must_visit is not None:
+            wants_must_visit = str(is_must_visit).lower() in {"1", "true", "yes"}
+            if self.request.user.is_authenticated:
+                must_visit_place_ids = MustVisitPlace.objects.filter(
+                    user=self.request.user
+                ).values_list("place_id", flat=True)
+                if wants_must_visit:
+                    queryset = queryset.filter(id__in=must_visit_place_ids)
+                else:
+                    queryset = queryset.exclude(id__in=must_visit_place_ids)
+            elif wants_must_visit:
+                queryset = queryset.none()
 
         places = list(queryset)
 
@@ -134,7 +148,7 @@ class PlacesListAPIView(APIView):
                 if place.opening_hours is None
                 or place.opening_hours.get("openNow") == open_value
             ]
-        serializer = PlaceSerializer(places, many=True)
+        serializer = PlaceSerializer(places, many=True, context={"request": request})
 
         return Response(serializer.data)
 
@@ -164,7 +178,7 @@ class WishlistAPIView(APIView):
         )
         if category and category.lower() != "all":
             places = places.filter(category__iexact=category)
-        serializer = PlaceMapSerializer(places, many=True)
+        serializer = PlaceMapSerializer(places, many=True, context={"request": request})
         return Response(
             serializer.data,
             status=status.HTTP_200_OK,
@@ -198,7 +212,7 @@ class VisitedPlacesAPIView(APIView):
             .order_by("-visited_by__created_at")
             .distinct()
         )
-        serializer = PlaceMapSerializer(places, many=True)
+        serializer = PlaceMapSerializer(places, many=True, context={"request": request})
         visited_count = places.count()
         badges = _get_badges(visited_count)
         return Response(
@@ -218,13 +232,47 @@ class PlaceMustVisitAPIView(APIView):
         place = Place.objects.get(id=place_id)
 
         if "is_must_visit" in request.data:
-            place.is_must_visit = bool(request.data.get("is_must_visit"))
+            next_value = bool(request.data.get("is_must_visit"))
         else:
-            place.is_must_visit = not place.is_must_visit
+            next_value = not MustVisitPlace.objects.filter(
+                user=request.user,
+                place=place,
+            ).exists()
 
-        place.save(update_fields=["is_must_visit"])
+        if next_value:
+            MustVisitPlace.objects.get_or_create(user=request.user, place=place)
+        else:
+            MustVisitPlace.objects.filter(user=request.user, place=place).delete()
 
         return Response(
-            {"id": place.id, "is_must_visit": place.is_must_visit},
+            {"id": place.id, "is_must_visit": next_value},
             status=status.HTTP_200_OK,
         )
+
+
+class UserMapPlaceListCreateAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        places = UserMapPlace.objects.filter(user=request.user)
+        serializer = UserMapPlaceSerializer(places, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        serializer = UserMapPlaceSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        place = serializer.save(user=request.user)
+        return Response(UserMapPlaceSerializer(place).data, status=status.HTTP_201_CREATED)
+
+
+class UserMapPlaceDeleteAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, place_id):
+        place = UserMapPlace.objects.filter(id=place_id, user=request.user).first()
+        if not place:
+            return Response({"detail": "Map place not found"}, status=status.HTTP_404_NOT_FOUND)
+        place.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../api/axios";
+import { clearClientUserData, resetClientUserDataOnSessionChange } from "../utils/sessionData";
 
 /* SIGNUP */
 export const signUpUser = createAsyncThunk(
@@ -20,11 +21,15 @@ export const loginUser = createAsyncThunk(
   async (data, { rejectWithValue }) => {
     try {
       const res = await api.post("token/", data);
+      resetClientUserDataOnSessionChange(res.data.access);
       localStorage.setItem("access", res.data.access);
       localStorage.setItem("refresh", res.data.refresh);
       return res.data;
-    } catch {
-      return rejectWithValue("Invalid credentials");
+    } catch (err) {
+      clearClientUserData();
+      localStorage.removeItem("access");
+      localStorage.removeItem("refresh");
+      return rejectWithValue(err.response?.data?.detail || "Invalid credentials");
     }
   }
 );
@@ -81,12 +86,39 @@ const authSlice = createSlice({
   reducers: {
     logoutUser: (state) => {
       state.user = null;
+      state.error = null;
+      state.loading = false;
+      clearClientUserData();
       localStorage.removeItem("access");
       localStorage.removeItem("refresh");
     },
   },
   extraReducers: (builder) => {
     builder
+      .addCase(signUpUser.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(signUpUser.fulfilled, (state) => {
+        state.loading = false;
+        state.error = null;
+      })
+      .addCase(signUpUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(loginUser.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(loginUser.fulfilled, (state) => {
+        state.loading = false;
+        state.error = null;
+      })
+      .addCase(loginUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
       .addCase(fetchProfile.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -99,6 +131,9 @@ const authSlice = createSlice({
         state.user = null;
         state.loading = false;
         state.error = action.payload;
+        clearClientUserData();
+        localStorage.removeItem("access");
+        localStorage.removeItem("refresh");
       })
       .addCase(updatePreferences.fulfilled, (state, action) => {
         if (state.user) {
