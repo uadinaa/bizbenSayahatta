@@ -15,6 +15,9 @@ const Inspiration = () => {
   const [category, setCategory] = useState("all");
   const [priceFilter, setPriceFilter] = useState("all");
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedPlace, setSelectedPlace] = useState(null);
+
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
@@ -31,19 +34,31 @@ const Inspiration = () => {
     };
   }, [user]);
 
-  const formatPriceLevel = (priceLevel) => {
-    if (!priceLevel) return null;
-    const mapping = {
-      PRICE_LEVEL_FREE: 0,
-      PRICE_LEVEL_INEXPENSIVE: 1,
-      PRICE_LEVEL_MODERATE: 2,
-      PRICE_LEVEL_EXPENSIVE: 3,
-      PRICE_LEVEL_VERY_EXPENSIVE: 4,
-    };
-    const count = mapping[priceLevel];
-    if (count === 0) return "Free";
-    if (count > 0) return "$".repeat(count);
-    return null;
+  /* ---------------------------
+     HELPERS
+  --------------------------- */
+
+  const formatCategory = (category) => {
+    if (!category) return "";
+    return category
+      .replace("_", " ")
+      .replace(/\b\w/g, (l) => l.toUpperCase());
+  };
+
+  const renderStars = (rating) => {
+    if (!rating) return null;
+    const fullStars = Math.floor(rating);
+    const emptyStars = 5 - fullStars;
+
+    return (
+      <span>
+        {"★".repeat(fullStars)}
+        {"☆".repeat(emptyStars)}
+        <span style={{ marginLeft: 6, fontWeight: 500 }}>
+          {rating}
+        </span>
+      </span>
+    );
   };
 
   const formatLocation = (place) => {
@@ -56,8 +71,6 @@ const Inspiration = () => {
       const maybeCountry = parts[parts.length - 1];
       if (maybeCountry && maybeCountry.toLowerCase() !== city.toLowerCase()) {
         country = maybeCountry;
-      } else if (!country) {
-        country = "";
       }
     }
 
@@ -69,35 +82,43 @@ const Inspiration = () => {
     if (priceFilter === "all") return places;
 
     if (priceFilter === "free") {
-      return places.filter(
-        (p) => p.price_level === "PRICE_LEVEL_FREE"
-      );
+      return places.filter((p) => p.price_level === "PRICE_LEVEL_FREE");
     }
 
     if (priceFilter === "paid") {
       return places.filter(
-        (p) =>
-          p.price_level &&
-          p.price_level !== "PRICE_LEVEL_FREE"
+        (p) => p.price_level && p.price_level !== "PRICE_LEVEL_FREE"
       );
     }
 
     return places;
   };
 
+  /* ---------------------------
+     ACTIONS
+  --------------------------- */
+
   const handleToggleMustVisit = async (placeId, currentValue) => {
     if (!isAuthed) {
       navigate("/login");
       return;
     }
+
     try {
       const data = await toggleMustVisit(placeId, !currentValue);
+
       setPlaces((prev) =>
         prev.map((place) =>
           place.id === placeId
             ? { ...place, is_must_visit: data.is_must_visit }
             : place
         )
+      );
+
+      setSelectedPlace((prev) =>
+        prev && prev.id === placeId
+          ? { ...prev, is_must_visit: data.is_must_visit }
+          : prev
       );
     } catch (err) {
       console.error(err);
@@ -145,11 +166,14 @@ const Inspiration = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, search, category, priceFilter, preferenceFilters]);
 
+  /* ---------------------------
+     RENDER
+  --------------------------- */
+
   return (
     <div className={s.page}>
       <h1 className={s.title}>Inspiration</h1>
 
-      {/* Search */}
       <input
         className={s.search}
         placeholder="Search destination..."
@@ -157,44 +181,50 @@ const Inspiration = () => {
         onChange={(e) => setSearch(e.target.value)}
       />
 
-{/* Filters under search */}
-<div className={s.controls}>
-  <div className={s.selectRowWithShadow}>
-    <div className={s.selectBlock}>
-      <span className={s.selectLabel}>By event</span>
-      <select
-        className={s.select}
-        value={category}
-        onChange={(e) => setCategory(e.target.value)}
-      >
-        {categories.map((c) => (
-          <option key={c} value={c}>
-            {c === "all" ? "All categories" : c.replace("_", " ")}
-          </option>
-        ))}
-      </select>
-    </div>
+      <div className={s.controls}>
+        <div className={s.selectRowWithShadow}>
+          <div className={s.selectBlock}>
+            <span className={s.selectLabel}>By category</span>
+            <select
+              className={s.select}
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c === "all"
+                    ? "All categories"
+                    : formatCategory(c)}
+                </option>
+              ))}
+            </select>
+          </div>
 
-    <div className={s.selectBlock}>
-      <span className={s.selectLabel}>By price</span>
-      <select
-        className={s.select}
-        value={priceFilter}
-        onChange={(e) => setPriceFilter(e.target.value)}
-      >
-        <option value="all">All prices</option>
-        <option value="free">Free</option>
-        <option value="paid">Paid</option>
-      </select>
-    </div>
-  </div>
-</div>
+          <div className={s.selectBlock}>
+            <span className={s.selectLabel}>By price</span>
+            <select
+              className={s.select}
+              value={priceFilter}
+              onChange={(e) => setPriceFilter(e.target.value)}
+            >
+              <option value="all">All prices</option>
+              <option value="free">Free</option>
+              <option value="paid">Paid</option>
+            </select>
+          </div>
+        </div>
+      </div>
 
-
-      {/* Cards */}
       <div className={s.grid}>
         {places.map((place) => (
-          <div key={place.id} className={s.card}>
+          <div
+            key={place.id}
+            className={s.card}
+            onClick={() => {
+              setSelectedPlace(place);
+              setIsModalOpen(true);
+            }}
+          >
             {place.photo_url ? (
               <img
                 className={s.photo}
@@ -207,59 +237,117 @@ const Inspiration = () => {
             )}
 
             <div className={s.cardHeader}>
-              <span className={s.category}>{place.category}</span>
+              <span className={s.category}>
+                {formatCategory(place.category)}
+              </span>
               <div className={s.metaRow}>
-                {place.is_must_visit && (
-                  <span className={s.mustVisit}>Must visit</span>
-                )}
                 {place.rating && (
-                  <span className={s.rating}>★ {place.rating}</span>
+                  <span className={s.rating}>
+                    ★ {place.rating}
+                  </span>
                 )}
               </div>
             </div>
 
             <h3 className={s.name}>{place.name}</h3>
-
             <p className={s.location}>{formatLocation(place)}</p>
-
-            <div className={s.badges}>
-              {formatPriceLevel(place.price_level) && (
-                <span className={s.badge}>
-                  {formatPriceLevel(place.price_level)}
-                </span>
-              )}
-              {place.opening_hours?.openNow !== undefined && (
-                <span className={s.badge}>
-                  {place.opening_hours.openNow ? "Open now" : "Closed"}
-                </span>
-              )}
-            </div>
-
-            <div className={s.actions}>
-              <button className={s.action} onClick={handleCreateTrip}>
-                Create your trip →
-              </button>
-              <button
-                type="button"
-                className={s.mustVisitToggle}
-                onClick={() =>
-                  handleToggleMustVisit(place.id, place.is_must_visit)
-                }
-              >
-                {place.is_must_visit ? "Unmark" : "Mark must visit"}
-              </button>
-            </div>
           </div>
         ))}
       </div>
 
-      {next && ( 
+      {next && (
         <button
           className={s.loadMore}
           onClick={() => setPage((p) => p + 1)}
         >
           Load more
         </button>
+      )}
+
+      {isModalOpen && selectedPlace && (
+        <div
+          className={s.modalOverlay}
+          onClick={() => setIsModalOpen(false)}
+        >
+          <div
+            className={s.modal}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {selectedPlace.photo_url && (
+              <img
+                className={s.modalPhoto}
+                src={selectedPlace.photo_url}
+                alt={selectedPlace.name}
+              />
+            )}
+
+            <div className={s.modalContent}>
+              <h2>{selectedPlace.name}</h2>
+
+              <p>
+                <strong>Category:</strong>{" "}
+                {formatCategory(selectedPlace.category)}
+              </p>
+
+              {selectedPlace.rating && (
+                <p>
+                  <strong>Rating:</strong>{" "}
+                  {renderStars(selectedPlace.rating)}
+                </p>
+              )}
+
+              <p>
+                {selectedPlace.description ||
+                  "No description available"}
+              </p>
+
+              <p>
+                <strong>Location:</strong>{" "}
+                {formatLocation(selectedPlace)}
+              </p>
+
+              {selectedPlace.opening_hours?.openNow !==
+                undefined && (
+                <p>
+                  <strong>Status:</strong>{" "}
+                  {selectedPlace.opening_hours.openNow
+                    ? "Open now"
+                    : "Closed"}
+                </p>
+              )}
+
+              <div className={s.modalActions}>
+                <button
+                  className={s.lightActionBtn}
+                  onClick={() =>
+                    handleToggleMustVisit(
+                      selectedPlace.id,
+                      selectedPlace.is_must_visit
+                    )
+                  }
+                >
+                  {selectedPlace.is_must_visit
+                    ? "💚 Added to wishlist"
+                    : "❤️ Add to wishlist"}
+                </button>
+
+                <button
+                  className={s.lightActionBtn}
+                  onClick={handleCreateTrip}
+                >
+                  ✈️ Add to trip
+                </button>
+              </div>
+            </div>
+
+            <button
+              className={s.modalClose}
+              onClick={() => setIsModalOpen(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

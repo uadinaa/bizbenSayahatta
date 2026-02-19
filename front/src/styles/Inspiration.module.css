@@ -1,234 +1,308 @@
+/* ===============================
+   PAGE LAYOUT
+================================= */
+
 .page {
-    background: #fafaf9;
-    min-height: 100vh;
-    padding: 32px 48px;
-  }
-  
-  .title {
-    font-size: 32px;
-    font-weight: 600;
-    margin-bottom: 24px;
-  }
-  
-  .controls {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 32px;
-  }
-  
-  .search {
-    flex: 1;
-    padding: 12px 14px;
-    border-radius: 14px;
-    border: 1px solid #e5e5e5;
-    font-size: 14px;
-    outline: none;
-  }
-  
-  .select {
-    padding: 12px 14px;
-    border-radius: 14px;
-    border: 1px solid #e5e5e5;
-    background: white;
-    font-size: 14px;
-  }
-  
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 20px;
-  }
-  
-  .card {
-    background: white;
-    border-radius: 22px;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-  }
-  
-  .card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
-  }
-  
-  .cardHeader {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  
-  .category {
-    background: #f0f0ec;
-    padding: 6px 10px;
-    border-radius: 999px;
-    font-size: 12px;
-  }
-  
-  .rating {
-    font-size: 13px;
-  }
+  padding: 40px 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: #fafaf9;
+}
 
-  .metaRow {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
+.title {
+  font-size: 34px;
+  font-weight: 600;
+  margin-bottom: 28px;
+  color: #1f1f1f;
+}
 
-  .photo {
-    width: 100%;
-    height: 160px;
-    object-fit: cover;
-    border-radius: 16px;
-    background: #f3f3f0;
-  }
+/* ===============================
+   SEARCH + FILTERS
+================================= */
 
-  .photoPlaceholder {
-    width: 100%;
-    height: 160px;
-    border-radius: 16px;
-    background: linear-gradient(135deg, #f6f5f2, #ecebe6);
-  }
+.search {
+  width: 100%;
+  padding: 14px 18px;
+  font-size: 15px;
+  border: 1px solid #e6e6e6;
+  border-radius: 14px;
+  margin-bottom: 24px;
+  transition: all 0.2s ease;
+  background: white;
+}
 
-  .mustVisit {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: #0c3b2e;
-    background: #d8efe3;
-    padding: 4px 8px;
-    border-radius: 999px;
-  }
-  
-  .name {
-    font-size: 18px;
-    font-weight: 600;
-  }
-  
-  .location {
-    font-size: 14px;
-    color: #666;
-  }
+.search:focus {
+  outline: none;
+  border-color: #0c3b2e;
+  box-shadow: 0 0 0 3px rgba(12, 59, 46, 0.08);
+}
 
-  .badges {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .badge {
-    font-size: 12px;
-    color: #3c3c3c;
-    background: #f2f1ed;
-    padding: 6px 10px;
-    border-radius: 999px;
-  }
-
-  .actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-  }
-  
-  .action {
-    margin-top: auto;
-    background: none;
-    border: none;
-    font-weight: 500;
-    cursor: pointer;
-    padding: 0;
-    font-size: 14px;
-  }
-
-  .mustVisitToggle {
-    background: none;
-    border: none;
-    font-size: 12px;
-    color: #0c3b2e;
-    cursor: pointer;
-    padding: 0;
-  }
-  
-  .loadMore {
-    margin: 40px auto 0;
-    display: block;
-    padding: 12px 24px;
-    border-radius: 999px;
-    border: 1px solid #ddd;
-    background: white;
-    cursor: pointer;
-  }
-  
 .controls {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
   margin-bottom: 32px;
 }
 
-.selectRow {
-  display: flex;
-  gap: 12px;
-}
-/* wrapper with soft shadow */
 .selectRowWithShadow {
   display: flex;
-  gap: 12px;
-  padding: 16px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.8);
-  box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.04),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+  gap: 20px;
+}
+
+.selectBlock {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.selectLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: #666;
+}
+
+.select {
+  padding: 12px 14px;
+  font-size: 14px;
+  border: 1px solid #e6e6e6;
+  border-radius: 14px;
+  background: white;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.select:focus {
+  outline: none;
+  border-color: #0c3b2e;
+  box-shadow: 0 0 0 3px rgba(12, 59, 46, 0.08);
+}
+
+/* ===============================
+   GRID
+================================= */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 28px;
+}
+
+/* ===============================
+   CARD
+================================= */
+
+.card {
+  background: white;
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.25s ease;
+  cursor: pointer;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.05);
+}
+
+.card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
+}
+
+/* Image */
+
+.photo,
+.photoPlaceholder {
+  width: 100%;
+  height: 190px;
+}
+
+.photo {
+  object-fit: cover;
+}
+
+.photoPlaceholder {
+  background: linear-gradient(135deg, #f5f5f2, #e9e8e4);
+}
+
+/* Header */
+
+.cardHeader {
+  padding: 18px 18px 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.category {
+  font-size: 12px;
+  font-weight: 500;
+  background: #f2f1ed;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: #555;
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rating {
+  font-size: 14px;
+  font-weight: 600;
+  color: #f5a623;
+}
+
+.mustVisit {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #0c3b2e;
+  background: #d8efe3;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+/* Body */
+
+.name {
+  padding: 0 18px;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 10px 0 6px;
+  color: #222;
+}
+
+.location {
+  padding: 0 18px 18px;
+  font-size: 14px;
+  color: #777;
+}
+
+/* ===============================
+   LOAD MORE
+================================= */
+
+.loadMore {
+  display: block;
+  margin: 40px auto;
+  padding: 14px 28px;
+  border-radius: 999px;
+  border: 1px solid #e5e5e5;
+  background: white;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.loadMore:hover {
+  background: #0c3b2e;
+  color: white;
+  border-color: #0c3b2e;
+}
+
+/* ===============================
+   MODAL
+================================= */
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
   backdrop-filter: blur(6px);
 }
 
-/* each select block */
-.selectBlock {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex: 1;
+.modal {
+  background: white;
+  width: 90%;
+  max-width: 640px;
+  max-height: 90vh;
+  border-radius: 20px;
+  overflow-y: auto;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.25);
+  animation: modalFade 0.25s ease;
 }
 
-/* label above */
-.selectLabel {
-  font-size: 12px;
-  font-weight: 500;
+@keyframes modalFade {
+  from {
+    opacity: 0;
+    transform: translateY(-15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modalPhoto {
+  width: 100%;
+  height: 280px;
+  object-fit: cover;
+}
+
+.modalContent {
+  padding: 26px;
+}
+
+.modalContent h2 {
+  margin-bottom: 14px;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.modalContent p {
+  margin: 12px 0;
   color: #666;
+  line-height: 1.6;
 }
 
-/* hint under */
-.selectHint {
-  font-size: 11px;
-  color: #888;
-  margin-left: 4px;
-}
-.selectRowWithShadow {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  padding: 0; /* убрали padding от фона */
-  border-radius: 0; /* убрали скругление */
-  background: none; /* убрали белый фон */
-  box-shadow: none; /* убрали тень */
-  backdrop-filter: none; /* убрали blur */
+.modalClose {
+  display: block;
+  margin: 24px auto 28px;
+  padding: 12px 28px;
+  border-radius: 999px;
+  border: none;
+  background: #0c3b2e;
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
 }
 
-.selectBlock {
+.modalClose:hover {
+  opacity: 0.85;
+}
+/* ===============================
+   MODAL ACTION BUTTONS
+================================= */
+
+.modalActions {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  gap: 14px;
+  margin-top: 24px;
+  flex-wrap: wrap;
 }
 
-.selectLabel {
-  font-size: 12px;
+.lightActionBtn {
+  padding: 12px 20px;
+  border-radius: 999px;
+  border: 1px solid #e6e6e6;
+  background: #f9f9f7;
+  font-size: 14px;
   font-weight: 500;
-  color: #666;
-  margin-top: 20px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.lightActionBtn:hover {
+  background: #0c3b2e;
+  color: white;
+  border-color: #0c3b2e;
+  transform: translateY(-2px);
 }
