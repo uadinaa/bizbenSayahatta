@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import api from "../api/axios";
 import "../styles/PlannerTest.css";
 
 export default function PlannerTest() {
+  const [searchParams] = useSearchParams();
+  const threadFromUrl = searchParams.get("thread");
   const [threads, setThreads] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [selectedThread, setSelectedThread] = useState(null);
@@ -35,6 +38,14 @@ export default function PlannerTest() {
     try {
       const res = await api.get("llm/threads/");
       setThreads(res.data);
+      if (threadFromUrl) {
+        const fromUrlId = Number(threadFromUrl);
+        const exists = res.data.some((thread) => thread.id === fromUrlId);
+        if (exists) {
+          setSelectedId(fromUrlId);
+          return;
+        }
+      }
       if (!selectedId && res.data.length > 0) {
         setSelectedId(res.data[0].id);
       }
@@ -67,7 +78,7 @@ export default function PlannerTest() {
   useEffect(() => {
     loadThreads();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [threadFromUrl]);
 
   useEffect(() => {
     loadThreadDetail(selectedId);

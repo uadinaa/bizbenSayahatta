@@ -8,7 +8,7 @@ import 'leaflet/dist/leaflet.css';
 function App() {
   return (
     <div>
-      <Header isAuth={false} />
+      <Header />
       
       <main style={{ padding: "20px" }}>
         <Outlet />

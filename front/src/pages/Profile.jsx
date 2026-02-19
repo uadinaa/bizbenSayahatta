@@ -1,31 +1,66 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
-import { logoutUser } from "../slices/authSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchProfile, logoutUser } from "../slices/authSlice";
+import api from "../api/axios";
 import "../styles/ProfileCard.css";
 import profileIcon from "../assets/profile.svg";
 import editIcon from "../assets/edit.svg";
 import cupIcon from "../assets/cup.svg";
 import cameraIcon from "../assets/camera.svg";
 
+const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
+
+function resolveMediaUrl(url, fallback) {
+  if (!url) return fallback;
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+  return `${API_BASE}${url}`;
+}
+
 export default function ProfileCard() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { user } = useSelector((state) => state.auth);
   const defaultAvatar = profileIcon;
 
-  // Инициализация данных из localStorage
-  const [username, setUsername] = useState(localStorage.getItem("username") || "Username");
+  const [username, setUsername] = useState("Username");
   const [avatar, setAvatar] = useState(localStorage.getItem("avatar") || defaultAvatar);
   const [cover, setCover] = useState(localStorage.getItem("cover") || null);
-  const [email] = useState(localStorage.getItem("email") || "user@email.com");
-  const [travelStyle, setTravelStyle] = useState(localStorage.getItem("travelStyle") || "Hiking");
+  const [email, setEmail] = useState("user@email.com");
+  const [travelStyle, setTravelStyle] = useState(localStorage.getItem("travelStyle") || "Not set");
 
   // Временные данные для модалки
   const [tempUsername, setTempUsername] = useState(username);
   const [tempAvatar, setTempAvatar] = useState(avatar);
   const [tempStyle, setTempStyle] = useState(travelStyle);
+  const [avatarFile, setAvatarFile] = useState(null);
 
   const [isEditOpen, setIsEditOpen] = useState(false);
+
+  useEffect(() => {
+    if (localStorage.getItem("access")) {
+      dispatch(fetchProfile());
+    }
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    setEmail(user.email || "user@email.com");
+    setUsername(user.username || "Username");
+    setTravelStyle(user.preferences?.travel_style || "Not set");
+
+    const resolvedAvatar = resolveMediaUrl(user.avatar, defaultAvatar);
+    setAvatar(resolvedAvatar);
+    setTempAvatar(resolvedAvatar);
+    localStorage.setItem("avatar", resolvedAvatar);
+
+    const resolvedCover = resolveMediaUrl(user.cover, null);
+    setCover(resolvedCover);
+    localStorage.setItem("cover", resolvedCover || "");
+  }, [user]);
 
   // Конвертация файла в base64
   const fileToBase64 = (file) => {
@@ -42,29 +77,52 @@ export default function ProfileCard() {
     setTempUsername(username);
     setTempAvatar(avatar);
     setTempStyle(travelStyle);
+    setAvatarFile(null);
     setIsEditOpen(true);
   };
 
   const closeModal = () => setIsEditOpen(false);
 
-  const saveChanges = () => {
-    setUsername(tempUsername);
-    setAvatar(tempAvatar);
-    setTravelStyle(tempStyle);
+  const saveChanges = async () => {
+    try {
+      const profileRes = await api.put("users/profile/", {
+        username: tempUsername,
+        travel_style: tempStyle === "Not set" ? null : tempStyle,
+      });
 
-    localStorage.setItem("username", tempUsername);
-    localStorage.setItem("avatar", tempAvatar);
-    localStorage.setItem("travelStyle", tempStyle);
+      let updatedUserData = profileRes.data;
 
-    setIsEditOpen(false);
+      if (avatarFile) {
+        const formData = new FormData();
+        formData.append("avatar", avatarFile);
+        const avatarRes = await api.patch("users/profile/", formData);
+        updatedUserData = avatarRes.data;
+      }
+
+      const resolvedAvatar = resolveMediaUrl(updatedUserData.avatar, defaultAvatar);
+
+      setUsername(updatedUserData.username || "Username");
+      setTravelStyle(updatedUserData.preferences?.travel_style || "Not set");
+      setAvatar(resolvedAvatar);
+
+      localStorage.setItem("username", updatedUserData.username || "Username");
+      localStorage.setItem("avatar", resolvedAvatar);
+      localStorage.setItem("travelStyle", updatedUserData.preferences?.travel_style || "Not set");
+
+      setAvatarFile(null);
+      setIsEditOpen(false);
+    } catch (err) {
+      console.error("Failed to save profile", err);
+    }
   };
 
   // Аватар
   const handleAvatarChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const base64 = await fileToBase64(file);
-      setTempAvatar(base64);
+      const preview = await fileToBase64(file);
+      setTempAvatar(preview);
+      setAvatarFile(file);
     }
   };
 
@@ -83,10 +141,17 @@ export default function ProfileCard() {
   // Cover
   const handleCoverChange = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const base64 = await fileToBase64(file);
-      setCover(base64);
-      localStorage.setItem(base64);
+    if (!file) return;
+
+    try {
+      const formData = new FormData();
+      formData.append("cover", file);
+      const res = await api.patch("users/profile/", formData);
+      const resolvedCover = resolveMediaUrl(res.data.cover, null);
+      setCover(resolvedCover);
+      localStorage.setItem("cover", resolvedCover || "");
+    } catch (err) {
+      console.error("Failed to upload cover", err);
     }
   };
 

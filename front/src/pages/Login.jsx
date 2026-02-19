@@ -4,6 +4,44 @@ import { useDispatch, useSelector } from "react-redux";
 import { loginUser } from "../slices/authSlice";
 import "../styles/Login.css";
 
+function formatAuthError(error) {
+  if (!error) return "";
+  if (typeof error === "string") return error;
+
+  if (Array.isArray(error)) {
+    return error.map(formatAuthError).filter(Boolean).join(" ");
+  }
+
+  if (typeof error === "object") {
+    if (typeof error.detail === "string") return error.detail;
+
+    if (Array.isArray(error.messages)) {
+      return error.messages
+        .map((msg) => {
+          if (typeof msg === "string") return msg;
+          if (msg && typeof msg === "object") {
+            return msg.message || msg.detail || Object.values(msg).join(" ");
+          }
+          return "";
+        })
+        .filter(Boolean)
+        .join(" ");
+    }
+
+    const fieldErrors = Object.values(error)
+      .map((value) => {
+        if (typeof value === "string") return value;
+        if (Array.isArray(value)) return value.join(", ");
+        return "";
+      })
+      .filter(Boolean);
+
+    if (fieldErrors.length > 0) return fieldErrors.join(" ");
+  }
+
+  return "Login failed";
+}
+
 export default function Login() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -45,14 +83,7 @@ export default function Login() {
           </div>
         </div>
 
-        {/* ✅ Исправленный рендер ошибки */}
-        {error && (
-          <p className="error">
-            {typeof error === "string"
-              ? error
-              : error.detail || error.message || "Login failed"}
-          </p>
-        )}
+        {error && <p className="error">{formatAuthError(error)}</p>}
 
         {loading && <p className="loading">Logging in...</p>}
 

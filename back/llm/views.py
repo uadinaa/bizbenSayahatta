@@ -45,7 +45,7 @@ def _get_top_places_for_city(city: str):
         return []
     return list(
         Place.objects.filter(city__iexact=city)
-        .order_by("-is_must_visit", "-rating", "-user_ratings_total")[:MAX_CHAT_CONTEXT_PLACES]
+        .order_by("-rating", "-user_ratings_total")[:MAX_CHAT_CONTEXT_PLACES]
     )
 
 

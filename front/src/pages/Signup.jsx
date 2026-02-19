@@ -2,7 +2,46 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { signUpUser, loginUser } from "../slices/authSlice";
+import { clearClientUserData } from "../utils/sessionData";
 import "../styles/Login.css"; // используем тот же файл стилей
+
+function formatAuthError(error) {
+  if (!error) return "";
+  if (typeof error === "string") return error;
+
+  if (Array.isArray(error)) {
+    return error.map(formatAuthError).filter(Boolean).join(" ");
+  }
+
+  if (typeof error === "object") {
+    if (typeof error.detail === "string") return error.detail;
+
+    if (Array.isArray(error.messages)) {
+      return error.messages
+        .map((msg) => {
+          if (typeof msg === "string") return msg;
+          if (msg && typeof msg === "object") {
+            return msg.message || msg.detail || Object.values(msg).join(" ");
+          }
+          return "";
+        })
+        .filter(Boolean)
+        .join(" ");
+    }
+
+    const fieldErrors = Object.entries(error)
+      .map(([field, value]) => {
+        if (typeof value === "string") return `${field}: ${value}`;
+        if (Array.isArray(value)) return `${field}: ${value.join(", ")}`;
+        return "";
+      })
+      .filter(Boolean);
+
+    if (fieldErrors.length > 0) return fieldErrors.join(" ");
+  }
+
+  return "Signup failed";
+}
 
 export default function Signup() {
   const dispatch = useDispatch();
@@ -17,6 +56,10 @@ export default function Signup() {
   const handleSignup = async (e) => {
     e.preventDefault();
     if (password !== repeatPassword) return;
+
+    clearClientUserData();
+    localStorage.removeItem("access");
+    localStorage.removeItem("refresh");
 
     const res = await dispatch(
       signUpUser({ email, password, password2: repeatPassword })
@@ -55,7 +98,7 @@ export default function Signup() {
           </div>
         </div>
 
-        {error && <p className="error">{error}</p>}
+        {error && <p className="error">{formatAuthError(error)}</p>}
         {loading && <p className="loading">Signing up...</p>}
 
         <input
