@@ -111,9 +111,15 @@ class VisitedPlace(models.Model):
         related_name="visited_by",
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    visited_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         unique_together = ("user", "place")
+
+    @property
+    def effective_visited_at(self):
+        """Return visited_at if set, otherwise created_at."""
+        return self.visited_at or self.created_at
 
     def __str__(self):
         return f"{self.user} visited {self.place}"

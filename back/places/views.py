@@ -7,7 +7,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from places.models import Place, VisitedPlace, SavedPlace, MustVisitPlace, UserMapPlace
-from places.serializers import PlaceSerializer, PlaceMapSerializer, UserMapPlaceSerializer
+from places.serializers import (
+    PlaceSerializer,
+    PlaceMapSerializer,
+    UserMapPlaceSerializer,
+    VisitedPlaceSerializer,
+)
 from places.services.google_places import get_places
 from places.services.save_place import save_place_for_user
 
@@ -29,6 +34,7 @@ def _get_badges(visited_count):
         for badge in BADGE_LEVELS
         if visited_count >= badge["threshold"]
     ]
+
 
 class PlaceFilter(FilterSet):
     category = filters.CharFilter(field_name="category", lookup_expr='iexact')
@@ -152,6 +158,7 @@ class PlacesListAPIView(APIView):
 
         return Response(serializer.data)
 
+
 class SavePlaceAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -203,17 +210,40 @@ class VisitPlaceAPIView(APIView):
         )
 
 
+class UnvisitPlaceAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, place_id):
+        visited = VisitedPlace.objects.filter(user=request.user, place_id=place_id).first()
+        if not visited:
+            return Response({"detail": "Visit record not found."}, status=status.HTTP_404_NOT_FOUND)
+        visited.delete()
+        visited_count = VisitedPlace.objects.filter(user=request.user).count()
+        badges = _get_badges(visited_count)
+        return Response(
+            {
+                "detail": "Place removed from visited.",
+                "visited_count": visited_count,
+                "badges": badges,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
 class VisitedPlacesAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        places = (
-            Place.objects.filter(visited_by__user=request.user)
-            .order_by("-visited_by__created_at")
-            .distinct()
+        from django.db.models import F
+        from django.db.models.functions import Coalesce
+
+        visited = (
+            VisitedPlace.objects.filter(user=request.user)
+            .select_related("place")
+            .order_by(Coalesce(F("visited_at"), F("created_at")).desc())
         )
-        serializer = PlaceMapSerializer(places, many=True, context={"request": request})
-        visited_count = places.count()
+        serializer = VisitedPlaceSerializer(visited, many=True, context={"request": request})
+        visited_count = visited.count()
         badges = _get_badges(visited_count)
         return Response(
             {

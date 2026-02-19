@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Place, MustVisitPlace, UserMapPlace
+from .models import Place, MustVisitPlace, UserMapPlace, VisitedPlace
+
 
 class PlaceSerializer(serializers.ModelSerializer):
     is_must_visit = serializers.SerializerMethodField()
@@ -76,3 +77,12 @@ class UserMapPlaceSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserMapPlace
         fields = ["id", "city", "country", "date", "lat", "lon", "created_at"]
+
+
+class VisitedPlaceSerializer(serializers.ModelSerializer):
+    place = PlaceMapSerializer(read_only=True)
+
+    class Meta:
+        model = VisitedPlace
+        fields = ["id", "place_id", "place", "created_at"]
+        read_only_fields = ["id", "place_id", "place", "created_at"]
