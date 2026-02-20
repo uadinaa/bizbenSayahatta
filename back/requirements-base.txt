@@ -8,3 +8,4 @@ django-filter
 openai
 django-extensions graphviz
 pydotplus
+django-extensions

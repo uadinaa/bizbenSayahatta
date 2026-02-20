@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from .managers import UserManager
 
-# User = settings.AUTH_USER_MODEL 
+# User = settings.AUTH_USER_MODEL
 
 class User(AbstractBaseUser, PermissionsMixin):
     username = models.CharField(max_length=150, blank=True)
@@ -11,6 +11,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
