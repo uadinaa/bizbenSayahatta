@@ -7,10 +7,29 @@ import { createMapPlace, deleteMapPlace, fetchMapPlaces } from "../api/places";
 
 export default function Map() {
   const navigate = useNavigate();
+
   const [places, setPlaces] = useState([]);
   const [countriesData, setCountriesData] = useState(null);
   const [loadingPlaces, setLoadingPlaces] = useState(true);
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newPlace, setNewPlace] = useState({
+    city: "",
+    country: "",
+    date: "",
+  });
+
+  // ================= LEVEL LIST =================
+  const levelsList = [
+    { name: "Pathfinder", min: 0, next: 5 },
+    { name: "Explorer", min: 5, next: 10 },
+    { name: "Adventurer", min: 10, next: 20 },
+    { name: "Voyager", min: 20, next: 35 },
+    { name: "Globetrotter", min: 35, next: 50 },
+    { name: "Legendary Nomad", min: 50, next: null },
+  ];
+
+  // ================= LOAD PLACES =================
   useEffect(() => {
     const loadPlaces = async () => {
       setLoadingPlaces(true);
@@ -29,24 +48,15 @@ export default function Map() {
     loadPlaces();
   }, [navigate]);
 
+  // ================= LOAD GEOJSON =================
   useEffect(() => {
     fetch("/data/countries.geojson")
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data) setCountriesData(data);
-      })
+      .then((data) => data && setCountriesData(data))
       .catch((err) => console.error("GeoJSON load error:", err));
   }, []);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newPlace, setNewPlace] = useState({
-    city: "",
-    country: "",
-    date: "",
-  });
-
-  const visitedCountries = places.map((p) => p.country.toLowerCase());
-
+  // ================= STATS & LEVEL =================
   const [countriesCount, setCountriesCount] = useState(0);
   const [citiesCount, setCitiesCount] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -60,27 +70,19 @@ export default function Map() {
   useEffect(() => {
     const uniqueCountries = new Set(places.map((p) => p.country));
     setCountriesCount(uniqueCountries.size);
+
     const uniqueCities = new Set(places.map((p) => p.city.toLowerCase()));
     setCitiesCount(uniqueCities.size);
 
     const worldCities = 1000;
     setProgress(Math.min(100, (places.length / worldCities) * 100).toFixed(1));
 
-    const levels = [
-      { name: "Pathfinder", min: 0, next: 5 },
-      { name: "Explorer", min: 5, next: 10 },
-      { name: "Adventurer", min: 10, next: 20 },
-      { name: "Voyager", min: 20, next: 35 },
-      { name: "Globetrotter", min: 35, next: 50 },
-      { name: "Legendary Nomad", min: 50, next: null },
-    ];
-
-    let currentLevel = levels[0];
+    let currentLevel = levelsList[0];
     let currentIndex = 0;
 
-    for (let i = 0; i < levels.length; i += 1) {
-      if (places.length >= levels[i].min) {
-        currentLevel = levels[i];
+    for (let i = 0; i < levelsList.length; i++) {
+      if (places.length >= levelsList[i].min) {
+        currentLevel = levelsList[i];
         currentIndex = i;
       }
     }
@@ -102,50 +104,48 @@ export default function Map() {
     }
   }, [places]);
 
+  // ================= INPUT =================
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewPlace((prev) => ({ ...prev, [name]: value }));
   };
 
+  // ================= ADD PLACE =================
   const addPlace = async (e) => {
     e.preventDefault();
 
-    if (newPlace.city && newPlace.country && newPlace.date) {
-      try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${newPlace.city},${newPlace.country}`
-        );
-        const data = await response.json();
-        if (data.length === 0) {
-          alert("City not found");
-          return;
-        }
+    if (!newPlace.city || !newPlace.country || !newPlace.date) return;
 
-        const lat = parseFloat(data[0].lat);
-        const lon = parseFloat(data[0].lon);
-        const address = data[0].address || {};
-        const normalizedCity =
-          address.city || address.town || address.village || newPlace.city;
-        const normalizedCountry = address.country || newPlace.country;
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${newPlace.city},${newPlace.country}`
+      );
+      const data = await response.json();
 
-        const created = await createMapPlace({
-          city: normalizedCity,
-          country: normalizedCountry,
-          date: newPlace.date,
-          lat,
-          lon,
-        });
-
-        setPlaces((prev) => [created, ...prev]);
-        setNewPlace({ city: "", country: "", date: "" });
-        setIsModalOpen(false);
-      } catch (err) {
-        console.error("Geocoding or save error:", err);
-        alert("Error fetching or saving location");
+      if (!data.length) {
+        alert("City not found");
+        return;
       }
+
+      const lat = parseFloat(data[0].lat);
+      const lon = parseFloat(data[0].lon);
+
+      const created = await createMapPlace({
+        ...newPlace,
+        lat,
+        lon,
+      });
+
+      setPlaces((prev) => [created, ...prev]);
+      setNewPlace({ city: "", country: "", date: "" });
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      alert("Error fetching or saving location");
     }
   };
 
+  // ================= DELETE =================
   const removePlace = async (placeId) => {
     try {
       await deleteMapPlace(placeId);
@@ -155,19 +155,22 @@ export default function Map() {
     }
   };
 
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setNewPlace({ city: "", country: "", date: "" });
-  };
+  const openAddModal = () => setIsModalOpen(true);
+  const closeModal = () => setIsModalOpen(false);
 
-  const openAddModal = () => {
-    setIsModalOpen(true);
-  };
+  const visitedCountries = places.map((p) =>
+    p.country.toLowerCase().trim()
+  );
 
   const countryStyle = (feature) => {
-    const raw = feature.properties?.name ?? feature.properties?.ADMIN ?? "";
-    const name = String(raw).toLowerCase().trim();
-    const isVisited = visitedCountries.some((c) => c.toLowerCase().trim() === name);
+    const name = String(
+      feature.properties?.name || feature.properties?.ADMIN || ""
+    )
+      .toLowerCase()
+      .trim();
+
+    const isVisited = visitedCountries.includes(name);
+
     return {
       fillColor: isVisited ? "#FDD835" : "#E0E0E0",
       weight: 1,
@@ -179,47 +182,82 @@ export default function Map() {
   return (
     <div className="map-page">
       <aside className="map-sidebar">
-        <div className="sidebar-progress-line"></div>
         <h3 className="sidebar-title">Traveler Level</h3>
-        <div className="level-card">
-          <div className="badge-icon">🧭</div>
-          <div className="level-info">
-            <strong>{level.name}</strong>
-            <span className="badge-name">Compass Badge</span>
-            <div className="level-progress-text">
-              {level.current === "MAX"
-                ? "Max level reached"
-                : `${level.current}/${level.needed} to next level`}
-            </div>
-          </div>
+
+        {/* ===== SCROLLABLE BADGES ===== */}
+        <div className="badge-scroll">
+          {levelsList
+            .filter((lvl) => places.length >= lvl.min)
+            .map((lvl, i) => {
+              const isCurrent = lvl.name === level.name;
+              const progressPercent = lvl.next
+                ? ((places.length - lvl.min) / (lvl.next - lvl.min)) * 100
+                : 100;
+
+              return (
+                <div
+                  key={i}
+                  className={`badge-card ${isCurrent ? "current" : "completed"}`}
+                >
+                  <div className="badge-icon">🧭</div>
+                  <strong>{lvl.name}</strong>
+
+                  {lvl.next ? (
+                    <div className="mini-progress">
+                      <div
+                        className="mini-bar"
+                        style={{
+                          width: `${Math.min(progressPercent, 100)}%`,
+                        }}
+                      ></div>
+                    </div>
+                  ) : (
+                    <span className="max-label">MAX</span>
+                  )}
+                </div>
+              );
+            })}
         </div>
+
+        {/* ===== LEVEL DOTS ===== */}
         <div className="level-dots">
-          {[1, 2, 3, 4, 5, 6].map((num, i) => (
-            <div key={num} className={`level-dot ${i <= level.index ? "active" : ""}`}>
-              {num}
+          {[...Array(levelsList.length)].map((_, i) => (
+            <div
+              key={i}
+              className={`level-dot ${i <= level.index ? "active" : ""}`}
+            >
+              {i + 1}
             </div>
           ))}
         </div>
 
+        {/* ===== STATS ===== */}
         <section className="stats">
           <h4>Your Statistics</h4>
           <div className="stats-row">
             <div className="stat-card">
-              🌍 <strong>{countriesCount}</strong> <span>Countries</span>{" "}
+              🌍 <strong>{countriesCount}</strong> Countries
             </div>
             <div className="stat-card">
-              📍 <strong>{citiesCount}</strong> <span>Cities</span>{" "}
+              📍 <strong>{citiesCount}</strong> Cities
             </div>
           </div>
-          <div className="world-progress">{progress}% of the world explored</div>
+          <div className="world-progress">
+            {progress}% of the world explored
+          </div>
         </section>
 
+        {/* ===== VISITED (НЕ ИЗМЕНЕНО) ===== */}
         <section className="visited">
           <div className="visited-header">
             <h4>Visited Places</h4>
-            <button className="add-btn" onClick={openAddModal}>+ Add</button>
+            <button className="add-btn" onClick={openAddModal}>
+              + Add
+            </button>
           </div>
-          {loadingPlaces ? <p>Loading...</p> : null}
+
+          {loadingPlaces && <p>Loading...</p>}
+
           <div className="visited-list">
             {places.map((p) => (
               <div className="place" key={p.id}>
@@ -229,7 +267,11 @@ export default function Map() {
                   <span>{p.country}</span>
                 </div>
                 <span className="date">{p.date}</span>
-                <button type="button" className="add-btn" onClick={() => removePlace(p.id)}>
+                <button
+                  type="button"
+                  className="add-btn"
+                  onClick={() => removePlace(p.id)}
+                >
                   Remove
                 </button>
               </div>
@@ -238,19 +280,20 @@ export default function Map() {
         </section>
       </aside>
 
+      {/* ================= MAP ================= */}
       <main className="map-area">
-        <MapContainer center={[20, 0]} zoom={2} style={{ height: "100%", width: "100%" }}>
+        <MapContainer
+          center={[20, 0]}
+          zoom={2}
+          style={{ height: "100%", width: "100%" }}
+        >
           <TileLayer
             url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png"
-            attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> contributors'
+            attribution="&copy; Stadia Maps"
           />
 
           {countriesData && (
-            <GeoJSON
-              key={places.length + (places[0]?.country ?? "")}
-              data={countriesData}
-              style={countryStyle}
-            />
+            <GeoJSON data={countriesData} style={countryStyle} />
           )}
 
           {places.map((place) => (
@@ -259,56 +302,53 @@ export default function Map() {
               center={[place.lat, place.lon]}
               radius={5}
               color="#1e88e5"
-              pathOptions={{ pane: "markerPane" }}
             >
               <Popup>
-                {place.city}, {place.country} <br /> {place.date}
+                {place.city}, {place.country}
+                <br />
+                {place.date}
               </Popup>
             </CircleMarker>
           ))}
         </MapContainer>
 
-        <div className="legend">
-          <strong>Legend</strong>
-          <div><span className="visited-country"></span> Visited Countries</div>
-          <div><span className="gray"></span> Unexplored</div>
-          <div><span className="dot"></span> City Visited</div>
-        </div>
-
-        <button className="add-place-btn" onClick={openAddModal}>+ Add Place</button>
+        <button className="add-place-btn" onClick={openAddModal}>
+          + Add Place
+        </button>
       </main>
 
+      {/* ================= MODAL ================= */}
       {isModalOpen && (
         <div className="modal-overlay">
           <div className="modal">
             <h3>Add New Place</h3>
-            <label>
-              City
-              <input
-                type="text"
-                name="city"
-                value={newPlace.city}
-                onChange={handleInputChange}
-                placeholder="e.g., Rome"
-              />
-            </label>
-            <label>
-              Country
-              <input
-                type="text"
-                name="country"
-                value={newPlace.country}
-                onChange={handleInputChange}
-                placeholder="e.g., Italy"
-              />
-            </label>
-            <label>
-              Date
-              <input type="month" name="date" value={newPlace.date} onChange={handleInputChange} />
-            </label>
+
+            <input
+              type="text"
+              name="city"
+              placeholder="City"
+              value={newPlace.city}
+              onChange={handleInputChange}
+            />
+
+            <input
+              type="text"
+              name="country"
+              placeholder="Country"
+              value={newPlace.country}
+              onChange={handleInputChange}
+            />
+
+            <input
+              type="month"
+              name="date"
+              value={newPlace.date}
+              onChange={handleInputChange}
+            />
+
             <div className="modal-actions">
-              <button className="submit-btn" onClick={addPlace}>Add</button>
-              <button className="cancel-btn" onClick={closeModal}>Cancel</button>
+              <button onClick={addPlace}>Add</button>
+              <button onClick={closeModal}>Cancel</button>
             </div>
           </div>
         </div>
