@@ -12,6 +12,7 @@ import Inspiration from './pages/Inspiration';
 import PlannerTest from './pages/PlannerTest';
 import Trip from './pages/Trips';
 import Map from './pages/Map';
+import Wishlist from './pages/Wishlist';
 import RequireAuth from "./components/RequireAuth.jsx";
 import { store } from "./store.js";
 
@@ -28,7 +29,8 @@ const router = createBrowserRouter([
       { path: "planner-test", element: <RequireAuth><PlannerTest /></RequireAuth> },
       { path: "trip", element: <RequireAuth><Trip/></RequireAuth> },
       { path: "chat", element: <RequireAuth><PlannerTest /></RequireAuth> },
-      { path: "map", element: <Map /> },
+      { path: "map", element: <RequireAuth><Map /></RequireAuth> },
+      { path: "wishlist", element: <RequireAuth><Wishlist /></RequireAuth> },
 
     ],
   },

@@ -3,142 +3,213 @@
   display: flex;
   height: 100vh;
   overflow: hidden;
-  background: #e9eef3;
+  background: #edf2f7; /* чуть мягче фон */
   font-family: "Inter", sans-serif;
 }
 
 /* ===============================
    SIDEBAR
 ================================ */
-
 .map-sidebar {
   width: 320px;
   min-width: 320px;
-  background: #f7f7f7;
-  padding: 30px 25px 40px 40px;
+  background: #f9f9fa; /* чуть светлее */
+  padding: 25px 25px 20px 25px;
   position: relative;
   border-right: 1px solid #e0e0e0;
-
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  box-shadow: 2px 0 8px rgba(0,0,0,0.03); /* лёгкая тень */
+}
 
-  overflow-y: auto;
+/* Верхняя фиксированная часть */
+.sidebar-top {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px; /* чуть плотнее */
 }
 
 /* аккуратная линия прогресса */
 .sidebar-progress-line {
   position: absolute;
-  left: 16px;
-  top: 40px;
+  left: 18px; /* чуть отступ правее */
+  top: 42px;
   width: 3px;
   height: 140px;
-  background: #000;
+  background: #6c4eff; /* более мягкий цвет линии */
   border-radius: 10px;
 }
 
 /* ===== TITLE ===== */
-
 .sidebar-title {
   font-size: 16px;
   font-weight: 600;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
+  margin-left: 25px;
+  color: #1e1e1e; /* чуть контрастнее */
 }
 
-/* ===== LEVEL CARD ===== */
-
-.level-card {
+/* ===== ГОРИЗОНТАЛЬНЫЕ БЕЙДЖИ ===== */
+.badge-scroll {
   display: flex;
-  gap: 15px;
-  align-items: center;
-  background: white;
-  padding: 15px;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 5px;
+  scroll-behavior: smooth;
+}
+
+.badge-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.badge-scroll::-webkit-scrollbar-thumb {
+  background: #bbb; /* чуть мягче */
+  border-radius: 10px;
+}
+
+.badge-card {
+  min-width: 120px;
+  max-width: 120px;
+  flex-shrink: 0;
+  background: #fff;
   border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  margin-bottom: 20px;
+  padding: 10px 8px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.06); /* мягче и глубже */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  transition: all 0.25s ease; /* чуть плавнее */
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+.badge-card.current {
+  border-color: #6c4eff;
+  background: #f5f2ff; /* мягкий фиолетовый оттенок */
+}
+
+.badge-card.completed {
+  opacity: 0.9; /* чуть ярче */
 }
 
 .badge-icon {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   background: #6c4eff;
-  color: white;
-  border-radius: 14px;
+  color: #fff;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 22px;
+  margin-bottom: 3px;
+  transition: transform 0.2s ease;
 }
 
-.level-info strong {
-  font-size: 15px;
+.badge-card:hover .badge-icon {
+  transform: scale(1.05); /* лёгкий hover эффект */
+}
+
+.badge-card strong {
+  font-size: 12px;
+  line-height: 14px;
   display: block;
+  word-break: break-word;
 }
 
-.badge-name {
-  font-size: 12px;
-  color: #777;
+/* Мини-прогресс бар под бейджем */
+.mini-progress {
+  width: 100%;
+  height: 4px;
+  background: #e6e6e6; /* чуть мягче */
+  border-radius: 10px;
+  overflow: hidden;
 }
 
-.level-progress-text {
-  font-size: 12px;
-  margin-top: 5px;
-  color: #444;
+.mini-bar {
+  height: 100%;
+  background: #6c4eff;
+  border-radius: 10px;
+  transition: width 0.35s ease;
+}
+
+.max-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #6c4eff;
+  margin-top: 3px;
 }
 
 /* ===== LEVEL DOTS ===== */
-
 .level-dots {
   display: flex;
-  gap: 15px;
-  margin-bottom: 30px;
+  gap: 10px;
+  margin: 15px 0 20px;
+  justify-content: space-between;
 }
 
 .level-dot {
-  width: 45px;
-  height: 38px;
+  width: 40px;
+  height: 35px;
   border-radius: 10px;
-  background: #e0e0e0;
+  background: #e8e8e8; /* чуть мягче */
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
   font-weight: 600;
   color: #777;
-  transition: 0.2s ease;
+  transition: all 0.25s ease;
 }
 
 .level-dot.active {
   background: #6c4eff;
-  color: white;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(108,78,255,0.3); /* лёгкая подсветка */
 }
 
 /* ===== STATS ===== */
+.stats {
+  margin-bottom: 20px;
+}
 
 .stats h4 {
-  margin-bottom: 15px;
+  margin-bottom: 12px;
   font-size: 14px;
+  font-weight: 600;
 }
 
 .stats-row {
   display: flex;
-  gap: 12px;
-  margin-bottom: 15px;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
 .stat-card {
   flex: 1;
-  background: white;
-  border-radius: 14px;
-  padding: 10px 1px 3px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 10px 5px;
   text-align: center;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  font-size: 18px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06); /* чуть мягче */
+  font-size: 16px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
 }
 
 .stat-card strong {
   display: block;
   font-size: 18px;
-  margin-top: 6px;
+  margin: 5px 0 2px;
+  color: #1e1e1e;
 }
 
 .stat-card span {
@@ -148,35 +219,28 @@
 
 /* Yellow progress pill */
 .world-progress {
-  background: #ffd84d;
+  background: #ffdf70; /* чуть мягче */
   padding: 10px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
   text-align: center;
+  color: #1e1e1e;
 }
 
-/* ===== VISITED ===== */
-
-.visited {
-  margin-top: 30px;
+/* ===== VISITED PLACES SECTION ===== */
+.places-section {
+  margin-top: 15px;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  height: 100%;
 }
 
-.visited-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-  flex-shrink: 0;
-}
-
-.visited-list {
-  overflow-y: auto;
-  flex: 1;
-  padding-right: 5px;
+.places-section h4 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: inline-block;
 }
 
 .add-btn {
@@ -185,105 +249,99 @@
   font-weight: 600;
   cursor: pointer;
   font-size: 13px;
-  color:#000;
+  color: #6c4eff;
+  padding: 3px 8px;
+  border-radius: 20px;
+  transition: background 0.2s;
+  margin-left: 8px;
+}
+
+.add-btn:hover {
+  background: #f2e9ff;
+}
+
+.visited-list {
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 5px;
+  margin-top: 8px;
+  max-height: calc(100vh - 480px);
 }
 
 .place {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
-  padding: 8px 0;
+  padding: 10px;
+  background: #fff;
+  border-radius: 12px;
+  margin-bottom: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  transition: transform 0.25s, box-shadow 0.25s;
 }
 
-.place-icon {
-  font-size: 14px;
+.place:hover {
+  transform: translateX(2px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.08);
 }
 
-.place-info {
+.place > div:first-child {
   flex: 1;
-  display: flex;
-  flex-direction: column;
 }
 
-.place-info strong {
+.place strong {
   font-size: 13px;
+  color: #1e1e1e;
 }
 
-.place-info span {
+.place div {
   font-size: 11px;
-  color: #777;
+  color: #555;
 }
 
-.date {
-  font-size: 11px;
-  color: #aaa;
+.place small {
+  font-size: 10px;
+  color: #888;
+  display: block;
+  margin-top: 2px;
+}
+
+.delete-btn {
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  font-size: 16px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.delete-btn:hover {
+  background: #ffeaea;
+  color: #e33;
 }
 
 /* ===== MAP AREA ===== */
-
 .map-area {
   flex: 1;
   position: relative;
-  background: #dfe6ee;
+  background: #e3e9f0; /* чуть мягче */
   overflow: hidden;
 }
 
-/* Leaflet карта */
 .leaflet-container {
   width: 100%;
   height: 100%;
-}
-
-/* ===== LEGEND ===== */
-
-.legend {
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  background: #ffffff;
-  padding: 12px;
-  border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
-  font-size: 12px;
-  z-index: 1000;
-}
-
-.legend strong {
-  display: block;
-  margin-bottom: 6px;
-}
-
-.legend div {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 4px;
-}
-
-.legend .green,
-.legend .visited-country {
-  width: 10px;
-  height: 10px;
-  background: #FDD835;
-  border-radius: 3px;
-}
-
-.legend .gray {
-  width: 10px;
-  height: 10px;
-  background: #e0e0e0;
-  border-radius: 3px;
-}
-
-.legend .dot {
-  width: 10px;
-  height: 10px;
-  background: #1e88e5;
-  border-radius: 3px;
+  z-index: 1;
 }
 
 /* ===== ADD PLACE BUTTON ===== */
-
 .add-place-btn {
   position: absolute;
   bottom: 20px;
@@ -291,69 +349,218 @@
   background: #000;
   color: #fff;
   border: none;
-  padding: 10px 14px;
-  border-radius: 14px;
+  padding: 12px 20px;
+  border-radius: 30px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 500;
   z-index: 1000;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+  transition: transform 0.2s, background 0.2s;
+}
+
+.add-place-btn:hover {
+  background: #222;
+  transform: scale(1.03);
 }
 
 /* ===== MODAL ===== */
-
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0,0,0,0.45); /* чуть мягче */
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 2000;
+  backdrop-filter: blur(4px);
 }
 
 .modal {
   background: #fff;
-  padding: 20px;
-  border-radius: 16px;
-  width: 320px;
+  padding: 25px;
+  border-radius: 24px;
+  width: 340px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.2); /* чуть глубже */
 }
 
 .modal h3 {
-  margin-bottom: 12px;
-}
-
-.modal label {
-  display: block;
-  font-size: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 20px;
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .modal input {
   width: 100%;
-  padding: 8px;
-  border-radius: 10px;
+  padding: 12px;
+  border-radius: 12px;
   border: 1px solid #ddd;
-  margin-top: 4px;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.modal input:focus {
+  outline: none;
+  border-color: #6c4eff;
 }
 
 .modal-actions {
   display: flex;
-  justify-content: space-between;
-  margin-top: 14px;
+  gap: 10px;
+  margin-top: 20px;
 }
 
-.submit-btn {
-  background: #1e88e5;
+.modal-actions button {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+
+.modal-actions button:first-child {
+  background: #000;
+  color: white;
+}
+
+.modal-actions button:first-child:hover {
+  background: #222;
+}
+
+.modal-actions button:last-child {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.modal-actions button:last-child:hover {
+  background: #e0e0e0;
+}
+
+.place-info {
+  display: flex;
+  align-items: center;
+  gap: 14px; /* расстояние между городом и страной */
+  flex-wrap: wrap; /* на случай длинных названий */
+}
+
+/* ===== ГОРИЗОНТАЛЬНЫЕ БЕЙДЖИ ===== */
+.badge-scroll {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 5px 0 15px 0;
+  scroll-behavior: smooth;
+  min-height: 115px;
+  align-items: stretch;
+  margin: 0 -5px; /* компенсация для первого/последнего элемента */
+  padding-left: 5px;
+}
+
+.badge-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+.badge-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 10px;
+}
+
+.badge-scroll::-webkit-scrollbar-track {
+  background: #edf2f7;
+  border-radius: 10px;
+}
+
+.badge-card {
+  min-width: 100px;
+  max-width: 100px;
+  width: 100px;
+  flex: 0 0 100px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 10px 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.badge-card.current {
+  border-color: #6c4eff;
+  background: #f0ebff;
+  box-shadow: 0 6px 16px rgba(108,78,255,0.12);
+}
+
+.badge-card.completed {
+  opacity: 0.9;
+}
+
+.badge-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+}
+
+.badge-icon {
+  width: 36px;
+  height: 36px;
+  background: #6c4eff;
   color: #fff;
-  border: none;
-  padding: 8px 14px;
-  border-radius: 10px;
-  cursor: pointer;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 8px rgba(108,78,255,0.2);
 }
 
-.cancel-btn {
-  background: #eee;
-  border: none;
-  padding: 8px 14px;
-  border-radius: 10px;
-  cursor: pointer;
+.badge-card:hover .badge-icon {
+  transform: scale(1.08);
+  background: #5f3dff;
+}
+
+.badge-card strong {
+  font-size: 11px;
+  line-height: 1.3;
+  display: block;
+  word-break: break-word;
+  color: #2d3748;
+  font-weight: 600;
+  max-width: 100%;
+}
+
+/* Мини-прогресс бар под бейджем */
+.mini-progress {
+  width: 100%;
+  height: 4px;
+  background: #e9eef2;
+  border-radius: 20px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+.mini-bar {
+  height: 100%;
+  background: #6c4eff;
+  border-radius: 20px;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.max-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: #6c4eff;
+  margin-top: 3px;
+  letter-spacing: -0.01em;
+  background: rgba(108,78,255,0.1);
+  padding: 2px 6px;
+  border-radius: 30px;
+  display: inline-block;
 }

@@ -54,6 +54,10 @@
   font-size: 14px;
   color: #6b7280; /* применяем серый цвет ко всем ссылкам */
   transition: opacity 0.2s ease;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
 }
 
 .header-link:hover {

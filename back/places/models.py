@@ -123,3 +123,43 @@ class VisitedPlace(models.Model):
 
     def __str__(self):
         return f"{self.user} visited {self.place}"
+
+
+class MustVisitPlace(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="must_visit_places",
+    )
+    place = models.ForeignKey(
+        "Place",
+        on_delete=models.CASCADE,
+        related_name="must_visit_by",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "place")
+
+    def __str__(self):
+        return f"{self.user} marked {self.place} as must visit"
+
+
+class UserMapPlace(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="map_places",
+    )
+    city = models.CharField(max_length=120)
+    country = models.CharField(max_length=120)
+    date = models.CharField(max_length=20)
+    lat = models.FloatField()
+    lon = models.FloatField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return f"{self.user} map place {self.city}, {self.country}"

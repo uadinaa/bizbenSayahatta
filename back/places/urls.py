@@ -7,6 +7,8 @@ from .views import (
     VisitPlaceAPIView,
     VisitedPlacesAPIView,
     PlaceMustVisitAPIView,
+    UserMapPlaceListCreateAPIView,
+    UserMapPlaceDeleteAPIView,
 )
 
 urlpatterns = [
@@ -21,5 +23,7 @@ urlpatterns = [
         PlaceMustVisitAPIView.as_view(),
         name="place-must-visit",
     ),
+    path("map-places/", UserMapPlaceListCreateAPIView.as_view(), name="map-places"),
+    path("map-places/<int:place_id>/", UserMapPlaceDeleteAPIView.as_view(), name="map-place-delete"),
 
 ]

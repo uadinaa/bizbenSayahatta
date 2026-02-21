@@ -1,6 +1,6 @@
 from django.contrib import admin
+from .models import InterestMapping, Place, SavedPlace, PlaceSearchCache, MustVisitPlace, UserMapPlace, VisitedPlace
 
-from .models import InterestMapping, Place, SavedPlace, PlaceSearchCache, VisitedPlace
 
 
 @admin.register(InterestMapping)
@@ -24,6 +24,19 @@ class SavedPlaceAdmin(admin.ModelAdmin):
 @admin.register(PlaceSearchCache)
 class PlaceSearchCacheAdmin(admin.ModelAdmin):
     list_display = ("city", "category", "last_fetched")
+
+
+@admin.register(MustVisitPlace)
+class MustVisitPlaceAdmin(admin.ModelAdmin):
+    list_display = ("user", "place", "created_at")
+    list_filter = ("created_at",)
+
+
+@admin.register(UserMapPlace)
+class UserMapPlaceAdmin(admin.ModelAdmin):
+    list_display = ("user", "city", "country", "date", "created_at")
+    list_filter = ("country", "created_at")
+    search_fields = ("city", "country", "user__email")
 
 @admin.register(VisitedPlace)
 class VisitedPlaceAdmin(admin.ModelAdmin):

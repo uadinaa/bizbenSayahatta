@@ -51,6 +51,21 @@ export const fetchInspirationPlaces = async (
 export const toggleMustVisit = async (placeId, isMustVisit) => {
   const payload =
     typeof isMustVisit === "boolean" ? { is_must_visit: isMustVisit } : {};
-  const response = await api.post(`places/${placeId}/must-visit/`, payload);
+  const response = await api.post(`places/places/${placeId}/must-visit/`, payload);
   return response.data;
+};
+
+
+export const fetchMapPlaces = async () => {
+  const response = await api.get("places/map-places/");
+  return response.data;
+};
+
+export const createMapPlace = async (payload) => {
+  const response = await api.post("places/map-places/", payload);
+  return response.data;
+};
+
+export const deleteMapPlace = async (placeId) => {
+  await api.delete(`places/map-places/${placeId}/`);
 };

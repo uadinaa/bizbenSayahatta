@@ -1,7 +1,20 @@
 from rest_framework import serializers
-from .models import Place, VisitedPlace
+from .models import Place, MustVisitPlace, UserMapPlace, VisitedPlace
+
 
 class PlaceSerializer(serializers.ModelSerializer):
+    is_must_visit = serializers.SerializerMethodField()
+
+    def get_is_must_visit(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+
+        if hasattr(obj, "is_must_visit_for_user"):
+            return bool(obj.is_must_visit_for_user)
+
+        return MustVisitPlace.objects.filter(user=request.user, place=obj).exists()
+
     class Meta:
         model = Place
         fields = [
@@ -24,6 +37,18 @@ class PlaceSerializer(serializers.ModelSerializer):
 
 
 class PlaceMapSerializer(serializers.ModelSerializer):
+    is_must_visit = serializers.SerializerMethodField()
+
+    def get_is_must_visit(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+
+        if hasattr(obj, "is_must_visit_for_user"):
+            return bool(obj.is_must_visit_for_user)
+
+        return MustVisitPlace.objects.filter(user=request.user, place=obj).exists()
+
     class Meta:
         model = Place
         fields = [
@@ -48,17 +73,16 @@ class PlaceMapSerializer(serializers.ModelSerializer):
         ]
 
 
+class UserMapPlaceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserMapPlace
+        fields = ["id", "city", "country", "date", "lat", "lon", "created_at"]
+
+
 class VisitedPlaceSerializer(serializers.ModelSerializer):
     place = PlaceMapSerializer(read_only=True)
 
     class Meta:
         model = VisitedPlace
-        fields = ["id", "place_id", "place", "created_at", "visited_at"]
+        fields = ["id", "place_id", "place", "created_at"]
         read_only_fields = ["id", "place_id", "place", "created_at"]
-
-    def update(self, instance, validated_data):
-        if "visited_at" in validated_data:
-            instance.visited_at = validated_data["visited_at"]
-        instance.save(update_fields=["visited_at"])
-        return instance
-
