@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { fetchInspirationPlaces, toggleMustVisit } from "../api/places";
 import { fetchProfile } from "../slices/authSlice";
 import s from "../styles/Inspiration.module.css";
+import api from "../api/axios";
+
 
 const categories = ["all", "restaurant", "museum", "tourist_attraction"];
 
@@ -106,6 +108,8 @@ const Inspiration = () => {
 
     try {
       const data = await toggleMustVisit(placeId, !currentValue);
+      await api.post(`places/places/${placeId}/save/`);
+      console.log("SERVER RESPONSE:", data);
 
       setPlaces((prev) =>
         prev.map((place) =>
