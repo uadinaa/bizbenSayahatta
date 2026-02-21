@@ -6,7 +6,7 @@ python-dotenv
 requests
 django-filter
 openai
-django-extensions graphviz
 pydotplus
-
 # python3 manage.py graph_models -a -o schema3.png        
+django-extensions
+django-extensions graphviz

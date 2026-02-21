@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'django_filters',
     'llm',
     'django_extensions',
+    'admin_api',
 ]
 
 MIDDLEWARE = [
@@ -167,6 +168,9 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     "PAGE_SIZE": 10,
+    'DEFAULT_THROTTLE_RATES': {
+        'admin_sensitive': '30/hour',
+    },
 }
 
 SIMPLE_JWT = {
