@@ -6,8 +6,8 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('users', '0003_user_cover'),
-        ('users', '0003_user_deleted_at'),
+        ('places', '0011_merge_0010_add_visited_at_0010_merge_20260212_1946'),
+        ('places', '0013_merge_0010_add_visited_at_0012_usermapplace'),
     ]
 
     operations = [
