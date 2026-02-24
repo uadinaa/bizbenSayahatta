@@ -10,3 +10,6 @@ pydotplus
 # python3 manage.py graph_models -a -o schema3.png        
 django-extensions
 django-extensions graphviz
+gunicorn
+dj-database-url
+whitenoise
