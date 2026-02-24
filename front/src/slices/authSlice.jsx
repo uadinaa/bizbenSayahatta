@@ -42,7 +42,10 @@ export const fetchProfile = createAsyncThunk(
       const res = await api.get("users/profile/");
       return res.data; // this will now be JSON
     } catch (err) {
-      return rejectWithValue(err.response?.data || "Cannot fetch profile");
+      return rejectWithValue({
+        status: err.response?.status,
+        data: err.response?.data || "Cannot fetch profile",
+      });
     }
   }
 );
@@ -128,12 +131,16 @@ const authSlice = createSlice({
         state.loading = false;
       })
       .addCase(fetchProfile.rejected, (state, action) => {
-        state.user = null;
         state.loading = false;
-        state.error = action.payload;
-        clearClientUserData();
-        localStorage.removeItem("access");
-        localStorage.removeItem("refresh");
+        state.error = action.payload?.data || action.payload || "Cannot fetch profile";
+
+        const status = action.payload?.status ?? action.error?.status;
+        if (status === 401 || status === 403) {
+          state.user = null;
+          clearClientUserData();
+          localStorage.removeItem("access");
+          localStorage.removeItem("refresh");
+        }
       })
       .addCase(updatePreferences.fulfilled, (state, action) => {
         if (state.user) {

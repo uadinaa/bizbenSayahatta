@@ -21,7 +21,11 @@ class UserProfileView(APIView):
     
     def put(self, request):
         prefs, created = UserPreferences.objects.get_or_create(user=request.user)
-        user_serializer = UserUpdateSerializer(request.user, data=request.data, partial=True)
+        # Only keep fields that belong to the user model to avoid unknown-field errors
+        user_fields = {k: v for k, v in request.data.items() if k in {"username", "avatar", "cover"}}
+        user_serializer = UserUpdateSerializer(
+            request.user, data=user_fields, partial=True
+        )
         user_serializer.is_valid(raise_exception=True)
         user_serializer.save()
 

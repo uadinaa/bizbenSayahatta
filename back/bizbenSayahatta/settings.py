@@ -104,9 +104,8 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'bizbensayahatta_db',
-
-        'USER': 'aisha',
-        'PASSWORD': 'Barakataishuchka5',
+        'USER': 'dinaabitova',
+        'PASSWORD': '',
         'HOST': '127.0.0.1',
         'PORT': '5432',
     }
@@ -155,6 +154,10 @@ STATIC_URL = 'static/'
 MEDIA_URL = '/media/'
 
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Allow typical phone photos for avatar/cover uploads.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
+FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
 
 
 # Default primary key field type

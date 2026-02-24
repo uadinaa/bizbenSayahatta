@@ -26,10 +26,10 @@ export default function ProfileCard() {
   const defaultAvatar = profileIcon;
 
   const [username, setUsername] = useState("Username");
-  const [avatar, setAvatar] = useState(localStorage.getItem("avatar") || defaultAvatar);
-  const [cover, setCover] = useState(localStorage.getItem("cover") || null);
+  const [avatar, setAvatar] = useState(defaultAvatar);
+  const [cover, setCover] = useState(null);
   const [email, setEmail] = useState("user@email.com");
-  const [travelStyle, setTravelStyle] = useState(localStorage.getItem("travelStyle") || "Not set");
+  const [travelStyle, setTravelStyle] = useState("Not set");
 
   // Временные данные для модалки
   const [tempUsername, setTempUsername] = useState(username);
@@ -55,11 +55,9 @@ export default function ProfileCard() {
     const resolvedAvatar = resolveMediaUrl(user.avatar, defaultAvatar);
     setAvatar(resolvedAvatar);
     setTempAvatar(resolvedAvatar);
-    localStorage.setItem("avatar", resolvedAvatar);
 
     const resolvedCover = resolveMediaUrl(user.cover, null);
     setCover(resolvedCover);
-    localStorage.setItem("cover", resolvedCover || "");
   }, [user]);
 
   // Конвертация файла в base64
@@ -105,14 +103,20 @@ export default function ProfileCard() {
       setTravelStyle(updatedUserData.preferences?.travel_style || "Not set");
       setAvatar(resolvedAvatar);
 
-      localStorage.setItem("username", updatedUserData.username || "Username");
-      localStorage.setItem("avatar", resolvedAvatar);
-      localStorage.setItem("travelStyle", updatedUserData.preferences?.travel_style || "Not set");
-
       setAvatarFile(null);
       setIsEditOpen(false);
     } catch (err) {
-      console.error("Failed to save profile", err);
+      const backendError = err?.response?.data;
+      console.error("Failed to save profile", backendError || err);
+      if (backendError) {
+        alert(
+          typeof backendError === "string"
+            ? backendError
+            : JSON.stringify(backendError)
+        );
+      } else {
+        alert("Failed to save profile. Please try again.");
+      }
     }
   };
 
@@ -130,11 +134,6 @@ export default function ProfileCard() {
 
   const handleLogout = () => {
     dispatch(logoutUser());
-    localStorage.removeItem("username");
-    localStorage.removeItem("avatar");
-    localStorage.removeItem("cover");
-    localStorage.removeItem("email");
-    localStorage.removeItem("travelStyle");
     navigate("/login");
   };
 
@@ -149,7 +148,6 @@ export default function ProfileCard() {
       const res = await api.patch("users/profile/", formData);
       const resolvedCover = resolveMediaUrl(res.data.cover, null);
       setCover(resolvedCover);
-      localStorage.setItem("cover", resolvedCover || "");
     } catch (err) {
       console.error("Failed to upload cover", err);
     }
