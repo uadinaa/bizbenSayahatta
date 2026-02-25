@@ -21,6 +21,7 @@ load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -73,7 +74,7 @@ MIDDLEWARE = [
 #CORS_ALLOW_ALL_ORIGINS = True
 
 CORS_ALLOWED_ORIGINS = [
-    "https://bizbensayahatta.vercel.app",
+    "https://bizbensayahatta1.vercel.app",
     "https://bizbensayahatta.onrender.com",
 ]
 
@@ -103,7 +104,6 @@ WSGI_APPLICATION = 'bizbenSayahatta.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-DATABASE_URL = os.getenv("DATABASE_URL")
 DATABASES = {
     'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
 }
