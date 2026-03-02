@@ -1,6 +1,6 @@
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet, filters
 from rest_framework import status
-from rest_framework.filters import OrderingFilter
+from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -65,9 +65,10 @@ def _price_level_to_number(price_level):
 class InspirationListAPIView(ListAPIView):
     queryset = Place.objects.all()
     serializer_class = PlaceSerializer
-    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     filterset_fields = ["category", "status"]
     ordering_fields = ["rating", "saves_count"]
+    search_fields = ["name", "city", "country", "category", "address", "neighborhood"]
     ordering = ["-rating"]
 
     def filter_queryset(self, queryset):
