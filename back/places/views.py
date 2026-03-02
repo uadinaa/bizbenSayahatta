@@ -15,6 +15,7 @@ from places.serializers import (
 )
 from places.services.google_places import get_places
 from places.services.save_place import save_place_for_user
+from users.permissions import IsActiveAndNotBlocked
 
 BADGE_LEVELS = [
     {"code": "starter", "label": "Starter", "threshold": 1},
@@ -160,7 +161,7 @@ class PlacesListAPIView(APIView):
 
 
 class SavePlaceAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
 
     def post(self, request, place_id):
         save_place_for_user(
@@ -174,7 +175,7 @@ class SavePlaceAPIView(APIView):
 
 
 class WishlistAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
 
     def get(self, request):
         category = request.query_params.get("category")
@@ -193,7 +194,7 @@ class WishlistAPIView(APIView):
 
 
 class VisitPlaceAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
 
     def post(self, request, place_id):
         place = Place.objects.get(id=place_id)
@@ -211,7 +212,7 @@ class VisitPlaceAPIView(APIView):
 
 
 class UnvisitPlaceAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
 
     def delete(self, request, place_id):
         visited = VisitedPlace.objects.filter(user=request.user, place_id=place_id).first()
@@ -231,7 +232,7 @@ class UnvisitPlaceAPIView(APIView):
 
 
 class VisitedPlacesAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
 
     def get(self, request):
         from django.db.models import F
@@ -256,7 +257,7 @@ class VisitedPlacesAPIView(APIView):
 
 
 class PlaceMustVisitAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
 
     def post(self, request, place_id):
         place = Place.objects.get(id=place_id)
@@ -281,7 +282,7 @@ class PlaceMustVisitAPIView(APIView):
 
 
 class UserMapPlaceListCreateAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
 
     def get(self, request):
         places = UserMapPlace.objects.filter(user=request.user)
@@ -298,7 +299,7 @@ class UserMapPlaceListCreateAPIView(APIView):
 
 
 class UserMapPlaceDeleteAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
 
     def delete(self, request, place_id):
         place = UserMapPlace.objects.filter(id=place_id, user=request.user).first()

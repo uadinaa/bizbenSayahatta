@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
+from django.db.models import F
 
 from .serializers import (
     ChatRequestSerializer,
@@ -16,9 +17,32 @@ from .models import ChatMessage, ChatThread, ChatEntry
 from .services.openai_service import ask_travel_ai, polish_trip_plan
 from .services.trip_planner import build_trip_plan
 from places.models import Place
+from users.permissions import IsActiveAndNotBlocked
 
 
 MAX_CHAT_CONTEXT_PLACES = 8
+TOKENS_PER_CHAT = 1
+TOKENS_PER_PLAN = 2
+
+
+def _ensure_advanced_ai_access(user):
+    if user.role == "TRIPADVISOR" and user.subscription_status != "ACTIVE":
+        return Response(
+            {"detail": "Active subscription is required for advanced AI planning."},
+            status=status.HTTP_402_PAYMENT_REQUIRED,
+        )
+    return None
+
+
+def _consume_tokens_or_respond(user, amount: int):
+    if user.tokens < amount:
+        return Response(
+            {"detail": "Not enough tokens.", "required": amount, "tokens": user.tokens},
+            status=status.HTTP_402_PAYMENT_REQUIRED,
+        )
+    type(user).objects.filter(id=user.id).update(tokens=F("tokens") - amount)
+    user.refresh_from_db(fields=["tokens"])
+    return None
 
 
 def _detect_city_from_message(message: str, fallback_city: str = "") -> str:
@@ -87,12 +111,15 @@ def _build_places_context_for_city(city: str) -> str:
 
 
 class TravelChatView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
 
     def post(self, request):
         serializer = ChatRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
+        not_enough = _consume_tokens_or_respond(request.user, TOKENS_PER_CHAT)
+        if not_enough:
+            return not_enough
 
         user_message = serializer.validated_data["message"]
 
@@ -114,18 +141,24 @@ class TravelChatView(APIView):
         )
 
         return Response(
-            {"response": final_response, "sources": [place.name for place in source_places]},
+            {"response": final_response, "sources": [place.name for place in source_places], "tokens_left": request.user.tokens},
             status=status.HTTP_200_OK
         )
 
 
 class TravelPlanView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
 
     def post(self, request):
+        blocked = _ensure_advanced_ai_access(request.user)
+        if blocked:
+            return blocked
         serializer = TripPlanRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
+        not_enough = _consume_tokens_or_respond(request.user, TOKENS_PER_PLAN)
+        if not_enough:
+            return not_enough
 
         data = serializer.validated_data
         try:
@@ -148,7 +181,7 @@ class TravelPlanView(APIView):
 
 
 class ChatThreadListCreateView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
 
     def get(self, request):
         threads = ChatThread.objects.filter(user=request.user).order_by("-updated_at")
@@ -187,7 +220,7 @@ class ChatThreadListCreateView(APIView):
 
 
 class ChatThreadDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
 
     def get(self, request, thread_id):
         thread = ChatThread.objects.filter(id=thread_id, user=request.user).first()
@@ -197,7 +230,7 @@ class ChatThreadDetailView(APIView):
 
 
 class ChatEntryListCreateView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
 
     def get(self, request, thread_id):
         thread = ChatThread.objects.filter(id=thread_id, user=request.user).first()
@@ -214,6 +247,9 @@ class ChatEntryListCreateView(APIView):
         serializer = ChatEntryCreateSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
+        not_enough = _consume_tokens_or_respond(request.user, TOKENS_PER_CHAT)
+        if not_enough:
+            return not_enough
 
         user_message = serializer.validated_data["message"]
         ChatEntry.objects.create(thread=thread, role="user", content=user_message)
@@ -241,13 +277,13 @@ class ChatEntryListCreateView(APIView):
         thread.save()
 
         return Response(
-            {"response": final_response, "sources": [place.name for place in source_places]},
+            {"response": final_response, "sources": [place.name for place in source_places], "tokens_left": request.user.tokens},
             status=status.HTTP_200_OK
         )
 
 
 class ChatThreadPlanView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
 
     def post(self, request, thread_id):
         thread = ChatThread.objects.filter(id=thread_id, user=request.user).first()
@@ -257,9 +293,16 @@ class ChatThreadPlanView(APIView):
         if thread.kind != "planner":
             return Response({"detail": "Plan generation is only for planner chats."}, status=400)
 
+        blocked = _ensure_advanced_ai_access(request.user)
+        if blocked:
+            return blocked
+
         serializer = TripPlanRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
+        not_enough = _consume_tokens_or_respond(request.user, TOKENS_PER_PLAN)
+        if not_enough:
+            return not_enough
 
         data = serializer.validated_data
         try:

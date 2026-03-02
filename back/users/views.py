@@ -1,10 +1,17 @@
 from rest_framework import generics
-from .serializers import RegisterSerializer, UserPreferencesSerializer
-from .models import User, UserPreferences
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .serializers import UserSerializer, UserUpdateSerializer
+
+from .models import User, UserPreferences
+from .permissions import IsActiveAndNotBlocked
+from .serializers import (
+    RegisterSerializer,
+    UserPreferencesSerializer,
+    UserSerializer,
+    UserUpdateSerializer,
+)
+
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -12,20 +19,17 @@ class RegisterView(generics.CreateAPIView):
 
 
 class UserProfileView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
 
     def get(self, request):
-        prefs, created = UserPreferences.objects.get_or_create(user=request.user)
-        serializer = UserSerializer(request.user)
-        return Response(serializer.data)
-    
+        UserPreferences.objects.get_or_create(user=request.user)
+        return Response(UserSerializer(request.user).data)
+
     def put(self, request):
-        prefs, created = UserPreferences.objects.get_or_create(user=request.user)
-        # Only keep fields that belong to the user model to avoid unknown-field errors
+        prefs, _ = UserPreferences.objects.get_or_create(user=request.user)
+
         user_fields = {k: v for k, v in request.data.items() if k in {"username", "avatar", "cover"}}
-        user_serializer = UserUpdateSerializer(
-            request.user, data=user_fields, partial=True
-        )
+        user_serializer = UserUpdateSerializer(request.user, data=user_fields, partial=True)
         user_serializer.is_valid(raise_exception=True)
         user_serializer.save()
 
@@ -40,4 +44,3 @@ class UserProfileView(APIView):
 
     def patch(self, request):
         return self.put(request)
-    

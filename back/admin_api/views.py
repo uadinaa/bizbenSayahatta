@@ -79,7 +79,9 @@ class AdminUserBlockAPIView(APIView):
         ser = AdminUserBlockSerializer(data=request.data, partial=True)
         ser.is_valid(raise_exception=True)
         target.is_active = ser.validated_data["is_active"]
-        target.save(update_fields=["is_active"])
+        target.is_blocked = not target.is_active
+        target.block_expires_at = None if target.is_active else target.block_expires_at
+        target.save(update_fields=["is_active", "is_blocked", "block_expires_at"])
         action = "user.unblock" if target.is_active else "user.block"
         log_admin_action(
             request.user,
