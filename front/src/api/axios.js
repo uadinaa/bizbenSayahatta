@@ -20,6 +20,17 @@ function isPublicAuthEndpoint(url = "") {
   return PUBLIC_AUTH_PATHS.some((path) => url.includes(path));
 }
 
+function safeErrorMessage(status) {
+  if (!status) return "Network error. Please check your connection.";
+  if (status === 400) return "Invalid request. Please check your input.";
+  if (status === 401) return "Your session expired. Please log in again.";
+  if (status === 403) return "You do not have permission to perform this action.";
+  if (status === 404) return "Requested resource was not found.";
+  if (status === 429) return "Too many requests. Please try again shortly.";
+  if (status >= 500) return "Server is temporarily unavailable. Please try again later.";
+  return "Request failed. Please try again.";
+}
+
 api.interceptors.request.use((config) => {
   if (isPublicAuthEndpoint(config.url || "")) {
     if (config.headers?.Authorization) {
@@ -41,7 +52,6 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const originalRequest = error.config;
 
-    // Only attempt refresh for protected requests that failed with 401
     if (
       status === 401 &&
       !originalRequest?._retry &&
@@ -74,6 +84,14 @@ api.interceptors.response.use(
         localStorage.removeItem("refresh");
         return Promise.reject(refreshError);
       }
+    }
+
+    error.userMessage = safeErrorMessage(status);
+
+    if ((!status || status >= 500) && !window.location.pathname.startsWith("/error")) {
+      const nextStatus = status || 503;
+      window.location.assign(`/error?status=${nextStatus}`);
+      return Promise.reject(error);
     }
 
     return Promise.reject(error);

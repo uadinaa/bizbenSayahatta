@@ -2,11 +2,31 @@ import "../styles/Map.css";
 import "leaflet/dist/leaflet.css";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapContainer, TileLayer, Popup, CircleMarker, GeoJSON } from "react-leaflet";
+import { MapContainer, TileLayer, Popup, CircleMarker, GeoJSON, Pane } from "react-leaflet";
 import { createMapPlace, deleteMapPlace, fetchMapPlaces } from "../api/places";
 
 export default function Map() {
   const navigate = useNavigate();
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = String(now.getMonth() + 1).padStart(2, "0");
+
+  const monthOptions = [
+    { value: "01", label: "January" },
+    { value: "02", label: "February" },
+    { value: "03", label: "March" },
+    { value: "04", label: "April" },
+    { value: "05", label: "May" },
+    { value: "06", label: "June" },
+    { value: "07", label: "July" },
+    { value: "08", label: "August" },
+    { value: "09", label: "September" },
+    { value: "10", label: "October" },
+    { value: "11", label: "November" },
+    { value: "12", label: "December" },
+  ];
+
+  const yearOptions = Array.from({ length: 81 }, (_, i) => String(currentYear - i));
 
   const [places, setPlaces] = useState([]);
   const [countriesData, setCountriesData] = useState(null);
@@ -16,10 +36,10 @@ export default function Map() {
   const [newPlace, setNewPlace] = useState({
     city: "",
     country: "",
-    date: "",
+    month: currentMonth,
+    year: String(currentYear),
   });
 
-  // ================= LEVEL LIST =================
   const levelsList = [
     { name: "Pathfinder", min: 0, next: 5 },
     { name: "Explorer", min: 5, next: 10 },
@@ -29,7 +49,6 @@ export default function Map() {
     { name: "Legendary Nomad", min: 50, next: null },
   ];
 
-  // ================= LOAD PLACES =================
   useEffect(() => {
     const loadPlaces = async () => {
       setLoadingPlaces(true);
@@ -37,9 +56,7 @@ export default function Map() {
         const data = await fetchMapPlaces();
         setPlaces(Array.isArray(data) ? data : []);
       } catch (err) {
-        if (err?.response?.status === 401) {
-          navigate("/login");
-        }
+        if (err?.response?.status === 401) navigate("/login");
       } finally {
         setLoadingPlaces(false);
       }
@@ -48,7 +65,6 @@ export default function Map() {
     loadPlaces();
   }, [navigate]);
 
-  // ================= LOAD GEOJSON =================
   useEffect(() => {
     fetch("/data/countries.geojson")
       .then((res) => (res.ok ? res.json() : null))
@@ -56,7 +72,6 @@ export default function Map() {
       .catch((err) => console.error("GeoJSON load error:", err));
   }, []);
 
-  // ================= STATS & LEVEL =================
   const [countriesCount, setCountriesCount] = useState(0);
   const [citiesCount, setCitiesCount] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -104,17 +119,15 @@ export default function Map() {
     }
   }, [places]);
 
-  // ================= INPUT =================
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewPlace((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ================= ADD PLACE =================
   const addPlace = async (e) => {
     e.preventDefault();
 
-    if (!newPlace.city || !newPlace.country || !newPlace.date) return;
+    if (!newPlace.city || !newPlace.country || !newPlace.month || !newPlace.year) return;
 
     try {
       const response = await fetch(
@@ -131,13 +144,20 @@ export default function Map() {
       const lon = parseFloat(data[0].lon);
 
       const created = await createMapPlace({
-        ...newPlace,
+        city: newPlace.city,
+        country: newPlace.country,
+        date: `${newPlace.year}-${newPlace.month}`,
         lat,
         lon,
       });
 
       setPlaces((prev) => [created, ...prev]);
-      setNewPlace({ city: "", country: "", date: "" });
+      setNewPlace({
+        city: "",
+        country: "",
+        month: currentMonth,
+        year: String(currentYear),
+      });
       setIsModalOpen(false);
     } catch (err) {
       console.error(err);
@@ -145,7 +165,6 @@ export default function Map() {
     }
   };
 
-  // ================= DELETE =================
   const removePlace = async (placeId) => {
     try {
       await deleteMapPlace(placeId);
@@ -158,14 +177,10 @@ export default function Map() {
   const openAddModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
 
-  const visitedCountries = places.map((p) =>
-    p.country.toLowerCase().trim()
-  );
+  const visitedCountries = places.map((p) => p.country.toLowerCase().trim());
 
   const countryStyle = (feature) => {
-    const name = String(
-      feature.properties?.name || feature.properties?.ADMIN || ""
-    )
+    const name = String(feature.properties?.name || feature.properties?.ADMIN || "")
       .toLowerCase()
       .trim();
 
@@ -173,9 +188,9 @@ export default function Map() {
 
     return {
       fillColor: isVisited ? "#FDD835" : "#E0E0E0",
-      weight: 1,
-      color: "#FFF",
-      fillOpacity: 0.8,
+      weight: 0.8,
+      color: "#FFFFFF",
+      fillOpacity: isVisited ? 0.32 : 0.08,
     };
   };
 
@@ -184,7 +199,6 @@ export default function Map() {
       <aside className="map-sidebar">
         <h3 className="sidebar-title">Traveler Level</h3>
 
-        {/* ===== SCROLLABLE BADGES ===== */}
         <div className="badge-scroll">
           {levelsList
             .filter((lvl) => places.length >= lvl.min)
@@ -195,21 +209,13 @@ export default function Map() {
                 : 100;
 
               return (
-                <div
-                  key={i}
-                  className={`badge-card ${isCurrent ? "current" : "completed"}`}
-                >
+                <div key={i} className={`badge-card ${isCurrent ? "current" : "completed"}`}>
                   <div className="badge-icon">🧭</div>
                   <strong>{lvl.name}</strong>
 
                   {lvl.next ? (
                     <div className="mini-progress">
-                      <div
-                        className="mini-bar"
-                        style={{
-                          width: `${Math.min(progressPercent, 100)}%`,
-                        }}
-                      ></div>
+                      <div className="mini-bar" style={{ width: `${Math.min(progressPercent, 100)}%` }}></div>
                     </div>
                   ) : (
                     <span className="max-label">MAX</span>
@@ -219,41 +225,27 @@ export default function Map() {
             })}
         </div>
 
-        {/* ===== LEVEL DOTS ===== */}
         <div className="level-dots">
           {[...Array(levelsList.length)].map((_, i) => (
-            <div
-              key={i}
-              className={`level-dot ${i <= level.index ? "active" : ""}`}
-            >
+            <div key={i} className={`level-dot ${i <= level.index ? "active" : ""}`}>
               {i + 1}
             </div>
           ))}
         </div>
 
-        {/* ===== STATS ===== */}
         <section className="stats">
           <h4>Your Statistics</h4>
           <div className="stats-row">
-            <div className="stat-card">
-              🌍 <strong>{countriesCount}</strong> Countries
-            </div>
-            <div className="stat-card">
-              📍 <strong>{citiesCount}</strong> Cities
-            </div>
+            <div className="stat-card">🌍 <strong>{countriesCount}</strong> Countries</div>
+            <div className="stat-card">📍 <strong>{citiesCount}</strong> Cities</div>
           </div>
-          <div className="world-progress">
-            {progress}% of the world explored
-          </div>
+          <div className="world-progress">{progress}% of the world explored</div>
         </section>
 
-        {/* ===== VISITED (НЕ ИЗМЕНЕНО) ===== */}
         <section className="visited">
           <div className="visited-header">
             <h4>Visited Places</h4>
-            <button className="add-btn" onClick={openAddModal}>
-              + Add
-            </button>
+            <button className="add-btn" onClick={openAddModal}>+ Add</button>
           </div>
 
           {loadingPlaces && <p>Loading...</p>}
@@ -266,43 +258,37 @@ export default function Map() {
                   <strong>{p.city}</strong>
                   <span>{p.country}</span>
                 </div>
-                <span className="date">{p.date}</span>
-                <button
-                  type="button"
-                  className="add-btn"
-                  onClick={() => removePlace(p.id)}
-                >
-                  Remove
-                </button>
+                <div className="place-side">
+                  <span className="date">{p.date}</span>
+                  <button type="button" className="remove-place-btn" onClick={() => removePlace(p.id)}>
+                    Remove
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         </section>
       </aside>
 
-      {/* ================= MAP ================= */}
       <main className="map-area">
-        <MapContainer
-          center={[20, 0]}
-          zoom={2}
-          style={{ height: "100%", width: "100%" }}
-        >
+        <MapContainer center={[20, 0]} zoom={2} style={{ height: "100%", width: "100%" }}>
           <TileLayer
-            url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png"
-            attribution="&copy; Stadia Maps"
+            url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
+            attribution="&copy; OpenStreetMap &copy; CARTO"
           />
 
-          {countriesData && (
-            <GeoJSON data={countriesData} style={countryStyle} />
-          )}
+          {countriesData && <GeoJSON data={countriesData} style={countryStyle} interactive={false} />}
+
+          <Pane name="labels" style={{ zIndex: 650, pointerEvents: "none" }}>
+            <TileLayer
+              url="https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png"
+              attribution="&copy; OpenStreetMap &copy; CARTO"
+              pane="labels"
+            />
+          </Pane>
 
           {places.map((place) => (
-            <CircleMarker
-              key={place.id}
-              center={[place.lat, place.lon]}
-              radius={5}
-              color="#1e88e5"
-            >
+            <CircleMarker key={place.id} center={[place.lat, place.lon]} radius={5} color="#1e88e5">
               <Popup>
                 {place.city}, {place.country}
                 <br />
@@ -312,39 +298,30 @@ export default function Map() {
           ))}
         </MapContainer>
 
-        <button className="add-place-btn" onClick={openAddModal}>
-          + Add Place
-        </button>
+        <button className="add-place-btn" onClick={openAddModal}>+ Add Place</button>
       </main>
 
-      {/* ================= MODAL ================= */}
       {isModalOpen && (
         <div className="modal-overlay">
           <div className="modal">
             <h3>Add New Place</h3>
 
-            <input
-              type="text"
-              name="city"
-              placeholder="City"
-              value={newPlace.city}
-              onChange={handleInputChange}
-            />
+            <input type="text" name="city" placeholder="City" value={newPlace.city} onChange={handleInputChange} />
+            <input type="text" name="country" placeholder="Country" value={newPlace.country} onChange={handleInputChange} />
 
-            <input
-              type="text"
-              name="country"
-              placeholder="Country"
-              value={newPlace.country}
-              onChange={handleInputChange}
-            />
+            <div className="month-year-row">
+              <select name="month" value={newPlace.month} onChange={handleInputChange}>
+                {monthOptions.map((m) => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+              </select>
 
-            <input
-              type="month"
-              name="date"
-              value={newPlace.date}
-              onChange={handleInputChange}
-            />
+              <select name="year" value={newPlace.year} onChange={handleInputChange}>
+                {yearOptions.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
 
             <div className="modal-actions">
               <button onClick={addPlace}>Add</button>

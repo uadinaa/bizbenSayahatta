@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { fetchInspirationPlaces, toggleMustVisit } from "../api/places";
 import { fetchProfile } from "../slices/authSlice";
 import s from "../styles/Inspiration.module.css";
@@ -9,11 +9,41 @@ import api from "../api/axios";
 
 const categories = ["all", "restaurant", "museum", "tourist_attraction"];
 
+function normalizePriceTier(priceLevel) {
+  if (priceLevel === null || priceLevel === undefined || priceLevel === "") {
+    return "unknown";
+  }
+
+  const value = String(priceLevel).toUpperCase();
+  if (value === "0" || value.includes("FREE")) return "free";
+  if (value === "1" || value.includes("INEXPENSIVE")) return "budget";
+  if (value === "2" || value.includes("MODERATE")) return "moderate";
+  if (
+    value === "3" ||
+    value === "4" ||
+    value.includes("EXPENSIVE") ||
+    value.includes("VERY_EXPENSIVE")
+  ) {
+    return "premium";
+  }
+  return "unknown";
+}
+
+function priceTierLabel(priceLevel) {
+  const tier = normalizePriceTier(priceLevel);
+  if (tier === "free") return "🆓";
+  if (tier === "budget") return "🪙";
+  if (tier === "moderate") return "💸";
+  if (tier === "premium") return "💰";
+  return "🧐";
+}
+
 const Inspiration = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [places, setPlaces] = useState([]);
   const [page, setPage] = useState(1);
   const [next, setNext] = useState(null);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(searchParams.get("q") || "");
   const [category, setCategory] = useState("all");
   const [priceFilter, setPriceFilter] = useState("all");
 
@@ -82,18 +112,7 @@ const Inspiration = () => {
 
   const filterByPrice = (places) => {
     if (priceFilter === "all") return places;
-
-    if (priceFilter === "free") {
-      return places.filter((p) => p.price_level === "PRICE_LEVEL_FREE");
-    }
-
-    if (priceFilter === "paid") {
-      return places.filter(
-        (p) => p.price_level && p.price_level !== "PRICE_LEVEL_FREE"
-      );
-    }
-
-    return places;
+    return places.filter((p) => normalizePriceTier(p.price_level) === priceFilter);
   };
 
   /* ---------------------------
@@ -140,7 +159,7 @@ const Inspiration = () => {
   const loadPlaces = async () => {
     const data = await fetchInspirationPlaces(
       page,
-      search,
+      search.trim(),
       category,
       preferenceFilters
     );
@@ -157,6 +176,14 @@ const Inspiration = () => {
   useEffect(() => {
     setPage(1);
   }, [search, category, priceFilter]);
+
+  useEffect(() => {
+    const q = searchParams.get("q") || "";
+    if (q !== search) {
+      setSearch(q);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   useEffect(() => {
     const token = localStorage.getItem("access");
@@ -182,7 +209,17 @@ const Inspiration = () => {
         className={s.search}
         placeholder="Search destination..."
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        onChange={(e) => {
+          const value = e.target.value;
+          setSearch(value);
+          const nextParams = new URLSearchParams(searchParams);
+          if (value.trim()) {
+            nextParams.set("q", value);
+          } else {
+            nextParams.delete("q");
+          }
+          setSearchParams(nextParams, { replace: true });
+        }}
       />
 
       <div className={s.controls}>
@@ -211,9 +248,12 @@ const Inspiration = () => {
               value={priceFilter}
               onChange={(e) => setPriceFilter(e.target.value)}
             >
-              <option value="all">All prices</option>
+              <option value="all">All price levels</option>
               <option value="free">Free</option>
-              <option value="paid">Paid</option>
+              <option value="budget">Budget</option>
+              <option value="moderate">Moderate</option>
+              <option value="premium">Premium</option>
+              <option value="unknown">Unknown</option>
             </select>
           </div>
         </div>
@@ -250,6 +290,7 @@ const Inspiration = () => {
                     ★ {place.rating}
                   </span>
                 )}
+                <span className={s.priceTag}>{priceTierLabel(place.price_level)}</span>
               </div>
             </div>
 
@@ -299,6 +340,11 @@ const Inspiration = () => {
                   {renderStars(selectedPlace.rating)}
                 </p>
               )}
+
+              <p>
+                <strong>Price level:</strong>{" "}
+                {priceTierLabel(selectedPlace.price_level)}
+              </p>
 
               <p>
                 {selectedPlace.description ||
