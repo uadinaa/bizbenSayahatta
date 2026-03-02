@@ -1,6 +1,8 @@
 import api from "./axios";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
+const API_BASE_RAW = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000/api";
+const API_BASE = API_BASE_RAW.replace(/\/+$/, "");
+const API_PREFIX = API_BASE.endsWith("/api") ? API_BASE : `${API_BASE}/api`;
 
 export const fetchInspirationPlaces = async (
   page = 1,
@@ -28,9 +30,7 @@ export const fetchInspirationPlaces = async (
       params.append("open_now", options.open_now);
     }
 
-    const response = await fetch(
-      `${API_BASE}/api/places/inspiration/?${params.toString()}`
-    );
+    const response = await fetch(`${API_PREFIX}/places/inspiration/?${params.toString()}`);
 
     if (!response.ok) {
       throw new Error("Failed to fetch places");

@@ -4,10 +4,10 @@ import "../styles/Header.css";
 
 export default function Header() {
   const navigate = useNavigate();
-  const isAuth = Boolean(localStorage.getItem("access"));
 
   const navigateProtected = (path) => {
-    if (isAuth) {
+    const hasToken = Boolean(localStorage.getItem("access"));
+    if (hasToken) {
       navigate(path);
       return;
     }

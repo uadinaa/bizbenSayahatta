@@ -14,11 +14,19 @@ from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 import os
+import dj_database_url
+from dj_database_url import UnknownSchemeError
+
 
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
+DATABASE_URL = (os.getenv("DATABASE_URL") or "").strip()
+if (DATABASE_URL.startswith("b'") and DATABASE_URL.endswith("'")) or (
+    DATABASE_URL.startswith('b"') and DATABASE_URL.endswith('"')
+):
+    DATABASE_URL = DATABASE_URL[2:-1]
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -29,12 +37,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-k8%d&_$_l_$ao445g-(o3owpqf*5(38@%1mi64hzm)^tq5b(@q'
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-secret-key")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -54,11 +62,13 @@ INSTALLED_APPS = [
     'llm',
     'django_extensions',
     'admin_api',
+    'marketplace',
 ]
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -67,10 +77,15 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
+#CORS_ALLOW_ALL_ORIGINS = True
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+    "https://bizbensayahatta.vercel.app",
+    "https://bizbensayahatta.onrender.com",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -99,17 +114,33 @@ WSGI_APPLICATION = 'bizbenSayahatta.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'bizbensayahatta_db',
-        'USER': 'dinaabitova',
-        'PASSWORD': '',
-        'HOST': '127.0.0.1',
-        'PORT': '5432',
+if DATABASE_URL:
+    try:
+        DATABASES = {
+            "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+        }
+    except UnknownSchemeError:
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.postgresql",
+                "NAME": "bizbensayahatta_db",
+                "USER": "dinaabitova",
+                "PASSWORD": "",
+                "HOST": "127.0.0.1",
+                "PORT": "5432",
+            }
+        }
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": "bizbensayahatta_db",
+            "USER": "dinaabitova",
+            "PASSWORD": "",
+            "HOST": "127.0.0.1",
+            "PORT": "5432",
+        }
     }
-}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
@@ -150,6 +181,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
 MEDIA_URL = '/media/'
 

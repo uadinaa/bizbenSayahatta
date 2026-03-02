@@ -9,7 +9,7 @@ import editIcon from "../assets/edit.svg";
 import cupIcon from "../assets/cup.svg";
 import cameraIcon from "../assets/camera.svg";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000/api";
 
 function resolveMediaUrl(url, fallback) {
   if (!url) return fallback;
