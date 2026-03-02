@@ -203,6 +203,7 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'EXCEPTION_HANDLER': 'bizbenSayahatta.exceptions.custom_exception_handler',
     "PAGE_SIZE": 10,
     'DEFAULT_THROTTLE_RATES': {
         'admin_sensitive': '30/hour',
