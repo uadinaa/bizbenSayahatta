@@ -1,0 +1,112 @@
+.manager-review {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 30px 20px;
+  color: #5a5450;
+}
+
+.manager-title {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.manager-subtitle {
+  font-size: 16px;
+  color: #9a948f;
+  margin-bottom: 20px;
+}
+
+/* карточка */
+
+.application-card {
+  border: 1px solid #d0d5dd;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 14px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.application-card p {
+  margin: 0;
+  font-size: 15px;
+}
+
+/* ссылка CV */
+
+.cv-link {
+  color: #5a5450;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  width: fit-content;
+  transition: all .25s;
+}
+
+.cv-link:hover {
+  border-bottom: 1px solid #5a5450;
+}
+
+/* input */
+
+.reason-input {
+  width: 100%;
+  padding: 8px 12px;
+  margin-top: 10px;
+  border-radius: 10px;
+  border: 1px solid #d0d5dd;
+  background: #f9fafb;
+  font-size: 14px;
+  color: #5a5450;
+  outline: none;
+}
+
+/* кнопки */
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.actions button {
+  padding: 7px 18px;
+  border-radius: 20px;
+  border: 2px solid #5a5450;
+  background: #f3f2ee;
+  color: #5a5450;
+  cursor: pointer;
+  transition: all .3s;
+  font-size: 14px;
+}
+
+.actions button:hover {
+  background: #5a5450;
+  color: #f3f2ee;
+}
+
+.manager-loading {
+  color: #667085;
+}
+
+.manager-error {
+  color: #b42318;
+}
+
+@media (max-width: 768px) {
+
+  .manager-review {
+    padding: 20px 16px;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .actions button {
+    width: 100%;
+  }
+
+}

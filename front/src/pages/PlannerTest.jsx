@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
 import api from "../api/axios";
 import "../styles/PlannerTest.css";
 
@@ -170,12 +171,12 @@ export default function PlannerTest() {
   return (
     <div className="planner-shell">
       <div className="left-column">
+        {/* Threads and Planner panel (unchanged) */}
         <div className="threads-panel">
           <div className="threads-header">
             <h2>Chats</h2>
             <span className="muted">Planner + AI</span>
           </div>
-
           <div className="new-thread">
             <div className="row">
               <select value={newKind} onChange={(e) => setNewKind(e.target.value)}>
@@ -184,30 +185,13 @@ export default function PlannerTest() {
               </select>
               <button type="button" onClick={handleCreateThread}>New</button>
             </div>
-            <input
-              placeholder="Title (optional)"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-            />
-            <input
-              placeholder="City (optional)"
-              value={newCity}
-              onChange={(e) => setNewCity(e.target.value)}
-            />
+            <input placeholder="Title (optional)" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
+            <input placeholder="City (optional)" value={newCity} onChange={(e) => setNewCity(e.target.value)} />
             <div className="row">
-              <input
-                type="date"
-                value={newStart}
-                onChange={(e) => setNewStart(e.target.value)}
-              />
-              <input
-                type="date"
-                value={newEnd}
-                onChange={(e) => setNewEnd(e.target.value)}
-              />
+              <input type="date" value={newStart} onChange={(e) => setNewStart(e.target.value)} />
+              <input type="date" value={newEnd} onChange={(e) => setNewEnd(e.target.value)} />
             </div>
           </div>
-
           {loadingThreads ? (
             <p className="muted">Loading chats...</p>
           ) : (
@@ -220,8 +204,7 @@ export default function PlannerTest() {
                 >
                   <div className="thread-title">{thread.title || "Untitled"}</div>
                   <div className="thread-meta">
-                    {thread.kind}
-                    {thread.city ? ` · ${thread.city}` : ""}
+                    {thread.kind}{thread.city ? ` · ${thread.city}` : ""}
                   </div>
                 </button>
               ))}
@@ -234,34 +217,12 @@ export default function PlannerTest() {
           {selectedKind === "planner" ? (
             <>
               <form onSubmit={handlePlanSubmit} className="plan-form">
-                <input
-                  placeholder="City (e.g. Milan)"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  required
-                />
+                <input placeholder="City (e.g. Milan)" value={city} onChange={(e) => setCity(e.target.value)} required />
                 <div className="row">
-                  <input
-                    type="number"
-                    min="1"
-                    max="14"
-                    value={days}
-                    onChange={(e) => setDays(e.target.value)}
-                  />
-                  <input
-                    type="number"
-                    min="0"
-                    max="4"
-                    placeholder="Budget (0–4)"
-                    value={budget}
-                    onChange={(e) => setBudget(e.target.value)}
-                  />
+                  <input type="number" min="1" max="14" value={days} onChange={(e) => setDays(e.target.value)} />
+                  <input type="number" min="0" max="4" placeholder="Budget (0–4)" value={budget} onChange={(e) => setBudget(e.target.value)} />
                 </div>
-                <input
-                  placeholder="Interests (shopping, art...)"
-                  value={interests}
-                  onChange={(e) => setInterests(e.target.value)}
-                />
+                <input placeholder="Interests (shopping, art...)" value={interests} onChange={(e) => setInterests(e.target.value)} />
                 <select value={pace} onChange={(e) => setPace(e.target.value)}>
                   <option value="slow">slow</option>
                   <option value="medium">medium</option>
@@ -271,12 +232,9 @@ export default function PlannerTest() {
                   {generatingPlan ? "Planning..." : "Generate Plan"}
                 </button>
               </form>
-
               {planResult && (
                 <div className="plan-result">
-                  <h4>
-                    {planResult.city} · {planResult.days_generated} days
-                  </h4>
+                  <h4>{planResult.city} · {planResult.days_generated} days</h4>
                   {planResult.itinerary?.map((day) => (
                     <div key={day.day} className="day-block">
                       <h5>Day {day.day}</h5>
@@ -284,17 +242,11 @@ export default function PlannerTest() {
                       <div className="stops-list">
                         {day.stops?.map((stop) => (
                           <div key={stop.id} className="stop-card">
-                            {stop.photo_url ? (
-                              <img src={stop.photo_url} alt={stop.name} />
-                            ) : (
-                              <div className="stop-photo-placeholder" />
-                            )}
+                            {stop.photo_url ? <img src={stop.photo_url} alt={stop.name} /> : <div className="stop-photo-placeholder" />}
                             <div className="stop-content">
                               <strong>{stop.name}</strong>
                               <p>{stop.address}</p>
-                              <p>
-                                {stop.rating ? `★ ${stop.rating}` : "★ n/a"} · {stop.category}
-                              </p>
+                              <p>{stop.rating ? `★ ${stop.rating}` : "★ n/a"} · {stop.category}</p>
                             </div>
                           </div>
                         ))}
@@ -310,12 +262,11 @@ export default function PlannerTest() {
         </div>
       </div>
 
+      {/* Chat panel */}
       <div className="chat-panel">
         <div className="chat-header">
           <h2>{selectedThread?.title || "Chat"}</h2>
-          {selectedThread?.city && (
-            <span className="muted">{selectedThread.city}</span>
-          )}
+          {selectedThread?.city && <span className="muted">{selectedThread.city}</span>}
         </div>
 
         <div className="chat-messages">
@@ -325,7 +276,11 @@ export default function PlannerTest() {
             messages.map((msg) => (
               <div key={msg.id} className={`chat-bubble ${msg.role}`}>
                 <div className="chat-role">{msg.role === "user" ? "You" : "AI"}</div>
-                <p>{msg.content}</p>
+                {msg.role === "assistant" ? (
+                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                ) : (
+                  <p>{msg.content}</p>
+                )}
               </div>
             ))
           )}

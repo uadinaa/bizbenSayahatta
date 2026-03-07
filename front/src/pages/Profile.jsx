@@ -242,17 +242,52 @@ export default function ProfileCard() {
           {latestApplication?.review_reason ? <p className="advisor-note">Manager note: {latestApplication.review_reason}</p> : null}
 
           {user?.role !== "TRIPADVISOR" ? (
-            <button className="advisor-cta" disabled={advisorStatus.code === "PENDING"} onClick={() => setAdvisorModalOpen(true)}>
-              {advisorStatus.code === "PENDING" ? "Application pending" : "Become TripAdvisor"}
-            </button>
-          ) : (
-            <div className="advisor-panel">
-              <strong>TripAdvisor tools are active</strong>
-              <Link to="/trip">My trips</Link>
-              <Link to="/chat">Create trip in chat</Link>
-              <p>Now you can create and publish TripAdvisor packages.</p>
-            </div>
-          )}
+  <div className="advisor-block">
+
+    <div className="advisor-status-row">
+      <span className="advisor-label">TripAdvisor</span>
+
+      <span className={`advisor-badge badge-${advisorStatus.code.toLowerCase()}`}>
+        {advisorStatus.label}
+      </span>
+    </div>
+
+    {latestApplication?.review_reason && (
+      <p className="advisor-note">
+        Manager note: {latestApplication.review_reason}
+      </p>
+    )}
+
+    <button
+      className="advisor-button"
+      disabled={advisorStatus.code === "PENDING"}
+      onClick={() => setAdvisorModalOpen(true)}
+    >
+      {advisorStatus.code === "PENDING"
+        ? "Application pending"
+        : "Become TripAdvisor"}
+    </button>
+
+  </div>
+) : (
+  <div className="advisor-tools">
+
+    <div className="advisor-tools-header">
+      <span className="advisor-active-dot" />
+      <strong>TripAdvisor tools active</strong>
+    </div>
+
+    <div className="advisor-links">
+      <Link to="/trip">My trips</Link>
+      <Link to="/chat">Create trip in chat</Link>
+    </div>
+
+    <p className="advisor-tools-text">
+      Now you can create and publish TripAdvisor packages.
+    </p>
+
+  </div>
+)}
 
           {(user?.role === "MANAGER" || user?.role === "ADMIN") ? <Link className="plan-link" to="/manager/advisors">Open manager approvals</Link> : null}
 
