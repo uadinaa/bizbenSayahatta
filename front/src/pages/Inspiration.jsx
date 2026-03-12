@@ -7,7 +7,16 @@ import { fetchProfile } from "../slices/authSlice";
 import s from "../styles/Inspiration.module.css";
 import api from "../api/axios";
 
-const categories = ["all", "restaurant", "museum", "tourist_attraction"];
+const categories = ["all", "restaurant", "museum", "tourist_attraction",
+  "park",
+  "theater",
+  "shopping_mall",
+  "hiking",
+  "beach",
+  "concert"
+ ];
+
+ 
 
 // Функции для работы с ценами
 function normalizePriceTier(priceLevel) {
@@ -46,9 +55,52 @@ const Inspiration = () => {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [priceFilter, setPriceFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isTripModalOpen, setIsTripModalOpen] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState(null);
+
+   const [newTrip, setNewTrip] = useState({
+    title: "",
+    place: "",
+    startDate: "",
+    endDate: "",
+    budget: "",
+    comment: "",
+    image: null,
+  });
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setNewTrip((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddTrip = () => {
+  console.log("Trip data:", newTrip);
+
+  // Получаем существующие трипы из localStorage
+  const savedTrips = JSON.parse(localStorage.getItem("trips") || "[]");
+
+  // Добавляем новый трип с статусом "in-progress"
+  savedTrips.push({ ...newTrip, status: "in-progress", id: Date.now() });
+
+  // Сохраняем обратно
+  localStorage.setItem("trips", JSON.stringify(savedTrips));
+
+  // Сбрасываем форму и закрываем модалку
+  setNewTrip({
+    title: "",
+    place: "",
+    startDate: "",
+    endDate: "",
+    budget: "",
+    comment: "",
+    image: null,
+  });
+  setIsTripModalOpen(false);
+};
 
   /* COMMENTS STATE */
   const [comments, setComments] = useState([]);
@@ -58,6 +110,7 @@ const Inspiration = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
+  const isTripAdvisor = user?.role === "TRIPADVISOR";
   const isAuthed = Boolean(localStorage.getItem("access"));
 
   const preferenceFilters = useMemo(() => {
@@ -121,6 +174,21 @@ const Inspiration = () => {
     return places.filter((p) => normalizePriceTier(p.price_level) === priceFilter);
   };
 
+  const filterByDate = (places) => {
+  if (!dateFrom && !dateTo) return places;
+
+  return places.filter((p) => {
+    if (!p.created_at) return true;
+
+    const placeDate = new Date(p.created_at);
+
+    if (dateFrom && placeDate < new Date(dateFrom)) return false;
+    if (dateTo && placeDate > new Date(dateTo)) return false;
+
+    return true;
+  });
+};
+
   /* ---------------------------
      LOAD PLACES
   --------------------------- */
@@ -133,7 +201,8 @@ const Inspiration = () => {
       preferenceFilters
     );
 
-    const filteredResults = filterByPrice(data.results);
+    let filteredResults = filterByPrice(data.results);
+    filteredResults = filterByDate(filteredResults);
 
     setPlaces((prev) =>
       page === 1 ? filteredResults : [...prev, ...filteredResults]
@@ -223,7 +292,7 @@ const Inspiration = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [search, category, priceFilter]);
+  }, [search, category, priceFilter, dateFrom, dateTo]);
 
   useEffect(() => {
     loadPlaces();
@@ -243,14 +312,26 @@ const Inspiration = () => {
   return (
     <div className={s.page}>
       <h1 className={s.title}>Inspiration</h1>
+          
 
       {/* Search Input */}
-      <input
-        className={s.search}
-        placeholder="Search destination..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
+      <div className={s.searchRow}>
+  <input
+    className={s.search}
+    placeholder="Search destination..."
+    value={search}
+    onChange={(e) => setSearch(e.target.value)}
+  />
+
+  {isTripAdvisor && (
+    <button
+      className={s.addTripBtn}
+      onClick={() => setIsTripModalOpen(true)}
+    >
+      + Add Trip
+    </button>
+  )}
+</div>
 
       {/* Filters */}
       <div className={s.controls}>
@@ -286,6 +367,27 @@ const Inspiration = () => {
               <option value="premium">💰 Premium</option>
             </select>
           </div>
+
+          <div className={s.selectBlock}>
+          <span className={s.selectLabel}>From date</span>
+          <input
+            type="date"
+            className={s.select}
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+          />
+        </div>
+
+        <div className={s.selectBlock}>
+          <span className={s.selectLabel}>To date</span>
+          <input
+            type="date"
+            className={s.select}
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+          />
+        </div>
+
         </div>
       </div>
 
@@ -343,6 +445,8 @@ const Inspiration = () => {
           Load more
         </button>
       )}
+
+      
 
       {/* Modal */}
       {isModalOpen && selectedPlace && (
@@ -519,6 +623,100 @@ const Inspiration = () => {
           </div>
         </div>
       )}
+
+      {isTripModalOpen && (
+  <div className="modal-overlay" onClick={() => setIsTripModalOpen(false)}>
+    <div className="modal" onClick={(e) => e.stopPropagation()}>
+      
+      <div className="modal-header">
+        <h2>Add New Trip</h2>
+        <span
+          className="close-btn"
+          onClick={() => setIsTripModalOpen(false)}
+        >
+          ✕
+        </span>
+      </div>
+
+      <div className="modal-body">
+
+        <input
+          type="file"
+          onChange={(e) =>
+            setNewTrip({ ...newTrip, image: e.target.files[0] })
+          }
+        />
+
+        <input
+          type="text"
+          name="title"
+          placeholder="Trip Name"
+          value={newTrip.title}
+          onChange={handleChange}
+        />
+
+        <input
+          type="text"
+          name="place"
+          placeholder="Place"
+          value={newTrip.place}
+          onChange={handleChange}
+        />
+
+        <div className="date-row">
+          <input
+            type="date"
+            name="startDate"
+            value={newTrip.startDate}
+            onChange={handleChange}
+          />
+
+          <input
+            type="date"
+            name="endDate"
+            value={newTrip.endDate}
+            onChange={handleChange}
+          />
+        </div>
+
+        <input
+          type="text"
+          name="budget"
+          placeholder="Budget"
+          value={newTrip.budget}
+          onChange={handleChange}
+        />
+
+        <textarea
+          name="comment"
+          placeholder="Additional information"
+          rows={3}
+          value={newTrip.comment}
+          onChange={handleChange}
+        />
+
+      </div>
+
+      <div className="modal-actions">
+        <button
+          className="cancel-btn"
+          onClick={() => setIsTripModalOpen(false)}
+        >
+          Cancel
+        </button>
+
+        <button
+          className="save-btn"
+          onClick={handleAddTrip}
+        >
+          Add Trip
+        </button>
+      </div>
+
+    </div>
+  </div>
+)}
+
     </div>
   );
 };

@@ -1,11 +1,18 @@
 import React, { useState } from "react";
 import "../styles/TripStatus.css";
+import { useEffect } from "react";
 
 export default function TripStatus() {
-  const [activeFilter, setActiveFilter] = useState("approved");
+  const [activeFilter, setActiveFilter] = useState("in-progress");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const [trips, setTrips] = useState([]);
+  const [trips, setTrips] = useState(() => {
+  return JSON.parse(localStorage.getItem("trips") || "[]");
+});
+  useEffect(() => {
+  const savedTrips = JSON.parse(localStorage.getItem("trips") || "[]");
+  setTrips(savedTrips);
+}, []);
 
   const [newTrip, setNewTrip] = useState({
     image: "",
@@ -17,12 +24,19 @@ export default function TripStatus() {
     comment: "",
   });
 
+
   const handleChange = (e) => {
     setNewTrip({
       ...newTrip,
       [e.target.name]: e.target.value,
     });
   };
+
+  const handleDeleteTrip = (id) => {
+  const updatedTrips = trips.filter((trip) => trip.id !== id);
+  setTrips(updatedTrips);
+  localStorage.setItem("trips", JSON.stringify(updatedTrips));
+};
 
   const handleAddTrip = () => {
     if (!newTrip.title || !newTrip.place) return;
@@ -34,6 +48,7 @@ export default function TripStatus() {
     };
 
     setTrips([...trips, tripToAdd]);
+    localStorage.setItem("trips", JSON.stringify([...trips, tripToAdd]));
     setActiveFilter("in-progress");
     setIsModalOpen(false);
 
@@ -96,10 +111,19 @@ export default function TripStatus() {
       <div className="trip-grid">
         {filteredTrips.map((trip) => (
           <div key={trip.id} className="trip-card">
+            <button
+    className="delete-btn"
+    onClick={(e) => {
+      e.stopPropagation();
+      handleDeleteTrip(trip.id);
+    }}
+  >
+    ✕
+  </button>
             <div className="trip-image-container">
               <img
-                src={
-                  trip.image
+               src={
+                  trip.image && trip.image instanceof File
                     ? URL.createObjectURL(trip.image)
                     : "https://source.unsplash.com/600x400/?travel"
                 }

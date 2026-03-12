@@ -21,6 +21,18 @@
    SEARCH + FILTERS
 ================================= */
 
+.searchRow {
+  display: flex;
+  gap: 12px; /* расстояние между поиском и кнопкой */
+  margin-bottom: 24px;
+  align-items: center; /* выравнивание по вертикали */
+}
+
+.searchRow .search {
+  flex: 1; /* поле поиска занимает всё доступное место */
+  margin-bottom: 0; /* убираем старый отступ, если есть */
+}
+
 .search {
   width: 100%;
   padding: 14px 18px;
@@ -46,6 +58,8 @@
   display: flex;
   gap: 20px;
 }
+
+
 
 .selectBlock {
   flex: 1;
@@ -599,4 +613,139 @@
   background: #f0f0f0;
   padding: 2px 8px;
   border-radius: 30px;
+}
+
+/* ADD BUTTON */
+.addTripBtn {
+  background: #111827;
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: 0.2s;
+}
+
+.addTripBtn:hover {
+  background: #000;
+}
+
+/* ================= MODAL ================= */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  width: 650px;              /* шире */
+  max-height: 85vh;          /* не длинная */
+  border-radius: 20px;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+/* HEADER */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.modal-header h2 {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.close-btn {
+  font-size: 20px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.close-btn:hover {
+  opacity: 0.6;
+}
+
+/* BODY */
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.modal-body input,
+.modal-body textarea {
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid #ddd;
+  font-size: 14px;
+  width: 100%;
+  box-sizing: border-box;
+  transition: 0.2s;
+}
+
+.modal-body input:focus,
+.modal-body textarea:focus {
+  outline: none;
+  border-color: #111827;
+}
+
+.modal textarea {
+  resize: none;
+}
+
+/* DATE ROW */
+.date-row {
+  display: flex;
+  gap: 12px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.cancel-btn,
+.save-btn {
+  flex: 0 !important;
+  width: auto; 
+  min-width: 100px;
+  max-width: 50%;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s ease;
+}
+
+/* CANCEL */
+.cancel-btn {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.modal-actions .cancel-btn:hover {
+  background: #9ca3af !important;
+}
+
+/* ADD TRIP */
+
+
+.modal-actions .save-btn:hover {
+  background: #9333ea !important;
+  color: white;
 }
