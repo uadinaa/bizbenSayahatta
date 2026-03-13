@@ -39,6 +39,14 @@
 .chip-selected { background:#f3f2ee; border-color:#5a5450; }
 .check-row { display:flex; align-items:center; gap:8px; flex-direction:row !important; }
 .advisor-error { font-size:13px; color:#b42318; margin:0; }
+.advisor-success {
+  font-size: 13px;
+  color: #0c3b2e;
+  margin: 0;
+  background: #e9f6ef;
+  padding: 8px 10px;
+  border-radius: 10px;
+}
 .modal-actions { display:flex; gap:10px; margin-top:10px; }
 .modal-actions button { flex:1; padding:8px; border-radius:10px; background:#f3f2ee; color:#5a5450; cursor:pointer; border:none; transition:all .3s; }
 .modal-actions button:hover { background:#5a5450; color:#f3f2ee; }
@@ -50,4 +58,136 @@
   .logout { margin:20px 0 0; width:fit-content; padding:7px 40px; }
   .level button { margin-left:0; }
   .advisor-modal { width:92vw; }
+}
+
+/* advisor block */
+
+.advisor-block {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid #d0d5dd;
+  background: #fafafa;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 420px;
+}
+
+.advisor-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.advisor-label {
+  font-size: 15px;
+  color: #5a5450;
+}
+
+.advisor-badge {
+  font-size: 13px;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-weight: 500;
+}
+
+/* status colors */
+
+.badge-approved {
+  background: #e8f7ef;
+  color: #067647;
+}
+
+.badge-pending {
+  background: #fff7e8;
+  color: #b54708;
+}
+
+.badge-rejected,
+.badge-more_info {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+/* manager note */
+
+.advisor-note {
+  font-size: 13px;
+  color: #667085;
+  margin: 0;
+}
+
+/* button */
+
+.advisor-button {
+  width: fit-content;
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 2px solid #5a5450;
+  background: #f3f2ee;
+  color: #5a5450;
+  cursor: pointer;
+  transition: all .25s;
+}
+
+.advisor-button:hover {
+  background: #5a5450;
+  color: #f3f2ee;
+}
+
+.advisor-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* advisor tools */
+
+.advisor-tools {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid #d0d5dd;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 420px;
+}
+
+.advisor-tools-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+}
+
+.advisor-active-dot {
+  width: 8px;
+  height: 8px;
+  background: #12b76a;
+  border-radius: 50%;
+}
+
+.advisor-links {
+  display: flex;
+  gap: 12px;
+}
+
+.advisor-links a {
+  font-size: 14px;
+  color: #5a5450;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: all .2s;
+}
+
+.advisor-links a:hover {
+  border-bottom: 1px solid #5a5450;
+}
+
+.advisor-tools-text {
+  font-size: 13px;
+  color: #667085;
+  margin: 0;
 }

@@ -282,3 +282,30 @@
     min-height: 360px;
   }
 }
+
+.chat-bubble.assistant {
+  align-self: flex-start;
+  background: #fffdfa; /* чуть теплее фон */
+  border: 1px solid #e0dbd0;
+  border-radius: 24px; /* чуть более скруглено */
+  padding: 16px 20px; /* больше отступов */
+  max-width: 85%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* мягкая тень */
+  position: relative;
+  font-family: "Inter", system-ui, sans-serif;
+  line-height: 1.6;
+  color: #3f3a36;
+}
+
+/* небольшой "хвостик" у ИИ-сообщений */
+.chat-bubble.assistant::after {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 14px;
+  width: 0;
+  height: 0;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-right: 8px solid #fffdfa;
+}

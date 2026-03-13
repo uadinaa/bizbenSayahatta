@@ -159,6 +159,30 @@ class TripVersion(models.Model):
         ordering = ["-created_at"]
 
 
+class Comment(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="place_comments",
+    )
+    place = models.ForeignKey(
+        Place,
+        on_delete=models.CASCADE,
+        related_name="comments",
+    )
+    comment_text = models.TextField(max_length=1000)
+    is_deleted = models.BooleanField(default=False, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["place", "created_at"]),
+            models.Index(fields=["user", "created_at"]),
+        ]
+
+
 class WishlistFolder(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="wishlist_folders")
     name = models.CharField(max_length=100)

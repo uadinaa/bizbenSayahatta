@@ -14,9 +14,10 @@ from rest_framework.pagination import PageNumberPagination
 
 from django.contrib.auth import get_user_model
 from places.models import SavedPlace, VisitedPlace, InterestMapping
+from marketplace.models import Comment
 from llm.models import ChatThread, ChatMessage
 
-from .permissions import IsAdminUser
+from .permissions import IsAdminUser, IsAdminOrManagerUser
 from .throttling import AdminSensitiveOperationThrottle
 from .utils import log_admin_action
 from .serializers import (
@@ -289,6 +290,37 @@ class AdminChatMessageDeleteAPIView(APIView):
             metadata={"user_id": user_id},
         )
         return Response({"detail": "Chat message deleted."}, status=status.HTTP_200_OK)
+
+
+# ---------------------------------------------------------------------------
+# Content moderation: place comments
+# ---------------------------------------------------------------------------
+
+
+class AdminCommentDeleteAPIView(APIView):
+    """
+    DELETE /api/admin/comments/{comment_id}
+    Managers and admins only. Performs soft delete via Comment.is_deleted.
+    """
+
+    permission_classes = [IsAuthenticated, IsAdminOrManagerUser]
+
+    def delete(self, request, comment_id):
+        comment = Comment.objects.filter(id=comment_id, is_deleted=False).first()
+        if not comment:
+            return Response({"detail": "Comment not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        comment.is_deleted = True
+        comment.save(update_fields=["is_deleted", "updated_at"])
+
+        log_admin_action(
+            request.user,
+            "content.delete_comment",
+            target_type="comment",
+            target_id=comment.id,
+            metadata={"place_id": comment.place_id, "user_id": comment.user_id},
+        )
+        return Response({"detail": "Comment deleted."}, status=status.HTTP_200_OK)
 
 
 # ---------------------------------------------------------------------------

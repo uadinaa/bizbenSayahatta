@@ -218,3 +218,95 @@
     grid-template-columns: 1fr;
   }
 }
+
+.photoWrapper {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.statusBadge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  color: white;
+}
+
+.statusActive {
+  background: #4caf50; /* зеленый */
+}
+
+.statusUpcoming {
+  background: #2196f3; /* синий */
+}
+
+.cardContent {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+}
+
+.tripTitle {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.tripLocation {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+}
+
+.tripInfo {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #666;
+}
+
+.budget {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.budgetBar {
+  width: 100%;
+  height: 6px;
+  background: #eee;
+  border-radius: 4px;
+  margin: 4px 0;
+  overflow: hidden;
+}
+
+.budgetProgress {
+  height: 100%;
+  background: #4caf50;
+}
+
+.chipContainer {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.chip {
+  font-size: 10px;
+  background: #f0f0f0;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.viewTrip {
+  margin-top: auto;
+  font-size: 13px;
+  font-weight: 500;
+  color: #111;
+  text-decoration: none;
+}

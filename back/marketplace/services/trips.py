@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
@@ -8,6 +10,19 @@ from users.models import User
 def assert_tripadvisor_can_submit(user: User):
     if user.role not in {User.Role.TRIPADVISOR, User.Role.ADMIN}:
         raise ValidationError("Only TripAdvisor accounts can submit trips.")
+    if user.role == User.Role.ADMIN:
+        return
+
+    free_window_start = timezone.now() - timedelta(days=7)
+    recent_public_submissions = Trip.objects.filter(
+        advisor=user,
+        visibility=Trip.VISIBILITY_PUBLIC,
+        submitted_at__gte=free_window_start,
+    ).count()
+
+    if recent_public_submissions < 2:
+        return
+
     if user.subscription_status != User.SubscriptionStatus.ACTIVE:
         raise ValidationError("Active subscription is required to submit public trips.")
 

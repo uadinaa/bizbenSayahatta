@@ -2,16 +2,25 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchProfile } from "../slices/authSlice";
 import api from "../api/axios";
+import "../styles/managerReview.css";
 
 export default function ManagerAdvisorReview() {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
+
   const [apps, setApps] = useState([]);
+  const [trips, setTrips] = useState([]);
+  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reasons, setReasons] = useState({});
 
-  const toList = (data) => (Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []);
+  const toList = (data) =>
+    Array.isArray(data)
+      ? data
+      : Array.isArray(data?.results)
+      ? data.results
+      : [];
 
   useEffect(() => {
     if (!user && localStorage.getItem("access")) {
@@ -22,9 +31,16 @@ export default function ManagerAdvisorReview() {
   const loadQueue = async () => {
     setLoading(true);
     setError("");
+
     try {
-      const res = await api.get("marketplace/manager/applications/?status=PENDING");
-      setApps(toList(res.data));
+      const [appsRes, tripsRes] = await Promise.all([
+        api.get("marketplace/manager/applications/?status=PENDING"),
+        api.get("marketplace/manager/trips/queue/"),
+      ]);
+      setApps(toList(appsRes.data));
+      setTrips(toList(tripsRes.data));
+      const logsRes = await api.get("marketplace/manager/logs/");
+      setLogs(toList(logsRes.data));
     } catch (err) {
       setError(err.response?.data?.detail || "Cannot load applications");
     } finally {
@@ -44,9 +60,22 @@ export default function ManagerAdvisorReview() {
         status,
         reason: reasons[id] || "",
       });
+
       await loadQueue();
     } catch (err) {
       alert(err.response?.data?.detail || "Failed moderation action");
+    }
+  };
+
+  const moderateTrip = async (id, status) => {
+    try {
+      await api.post(`marketplace/manager/trips/${id}/moderate/`, {
+        status,
+        reason: reasons[`trip-${id}`] || "",
+      });
+      await loadQueue();
+    } catch (err) {
+      alert(err.response?.data?.detail || "Failed trip moderation");
     }
   };
 
@@ -55,29 +84,119 @@ export default function ManagerAdvisorReview() {
   }
 
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto", padding: 20 }}>
-      <h2>TripAdvisor Applications</h2>
-      <p>Pending requests for manager review.</p>
+    <div className="manager-review">
 
-      {loading && <p>Loading...</p>}
-      {error && <p style={{ color: "#b42318" }}>{error}</p>}
+      <h2 className="manager-title">TripAdvisor Applications</h2>
+      <p className="manager-subtitle">Pending requests for manager review.</p>
+
+      {loading && <p className="manager-loading">Loading...</p>}
+      {error && <p className="manager-error">{error}</p>}
       {!loading && !apps.length && <p>No pending applications.</p>}
 
       {apps.map((app) => (
-        <div key={app.id} style={{ border: "1px solid #ddd", borderRadius: 10, padding: 14, marginBottom: 12, background: "#fff" }}>
+        <div key={app.id} className="application-card">
+
           <p><strong>User:</strong> {app.user_email} (id: {app.user_id})</p>
           <p><strong>Plan:</strong> {app.subscription_plan || "-"}</p>
           <p><strong>Portfolio:</strong> {(app.portfolio_links || []).join(", ") || "-"}</p>
           <p><strong>Notes:</strong> {app.notes || "-"}</p>
-          {app.cv_file ? <p><strong>CV:</strong> <a href={app.cv_file} target="_blank" rel="noreferrer">Open CV</a></p> : null}
 
-          <input type="text" placeholder="Reason (optional)" value={reasons[app.id] || ""} onChange={(e) => setReasons((prev) => ({ ...prev, [app.id]: e.target.value }))} style={{ width: "100%", padding: 8, marginTop: 10 }} />
+          {app.cv_file && (
+            <p>
+              <strong>CV:</strong>{" "}
+              <a
+                className="cv-link"
+                href={app.cv_file}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open CV
+              </a>
+            </p>
+          )}
 
-          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-            <button onClick={() => moderate(app.id, "APPROVED")}>Approve</button>
-            <button onClick={() => moderate(app.id, "REJECTED")}>Reject</button>
-            <button onClick={() => moderate(app.id, "MORE_INFO")}>Need more info</button>
+          <input
+            className="reason-input"
+            type="text"
+            placeholder="Reason (optional)"
+            value={reasons[app.id] || ""}
+            onChange={(e) =>
+              setReasons((prev) => ({
+                ...prev,
+                [app.id]: e.target.value,
+              }))
+            }
+          />
+
+          <div className="actions">
+            <button onClick={() => moderate(app.id, "APPROVED")}>
+              Approve
+            </button>
+
+            <button onClick={() => moderate(app.id, "REJECTED")}>
+              Reject
+            </button>
+
+            <button onClick={() => moderate(app.id, "MORE_INFO")}>
+              Need more info
+            </button>
           </div>
+
+        </div>
+      ))}
+
+      <h2 className="manager-title">Trip Posts</h2>
+      <p className="manager-subtitle">Trips waiting for approval.</p>
+
+      {!loading && !trips.length && <p>No pending trips.</p>}
+
+      {trips.map((trip) => (
+        <div key={trip.id} className="application-card">
+          <p><strong>Title:</strong> {trip.title}</p>
+          <p><strong>Advisor ID:</strong> {trip.advisor_id}</p>
+          <p><strong>Destination:</strong> {trip.destination}</p>
+          <p><strong>Category:</strong> {trip.category?.name || "-"}</p>
+          <p><strong>Price:</strong> {trip.price || 0}</p>
+
+          <input
+            className="reason-input"
+            type="text"
+            placeholder="Reason (optional)"
+            value={reasons[`trip-${trip.id}`] || ""}
+            onChange={(e) =>
+              setReasons((prev) => ({
+                ...prev,
+                [`trip-${trip.id}`]: e.target.value,
+              }))
+            }
+          />
+
+          <div className="actions">
+            <button onClick={() => moderateTrip(trip.id, "APPROVED")}>
+              Approve
+            </button>
+
+            <button onClick={() => moderateTrip(trip.id, "REJECTED")}>
+              Reject
+            </button>
+          </div>
+        </div>
+      ))}
+
+      <h2 className="manager-title">Moderation History</h2>
+      <p className="manager-subtitle">Approved/rejected actions history.</p>
+
+      {!loading && !logs.length && <p>No moderation history yet.</p>}
+
+      {logs.map((log) => (
+        <div key={log.id} className="application-card">
+          <p><strong>Action:</strong> {log.action}</p>
+          <p><strong>Actor ID:</strong> {log.actor_id || "-"}</p>
+          <p><strong>Target User:</strong> {log.target_user_id || "-"}</p>
+          <p><strong>Trip ID:</strong> {log.trip_id || "-"}</p>
+          <p><strong>Application ID:</strong> {log.application_id || "-"}</p>
+          <p><strong>Reason:</strong> {log.reason || "-"}</p>
+          <p><strong>At:</strong> {log.created_at}</p>
         </div>
       ))}
     </div>

@@ -10,6 +10,7 @@ from .models import (
     Trip,
     TripMedia,
     TripVersion,
+    Comment,
     WishlistFolder,
     WishlistItem,
     UserRestriction,
@@ -235,6 +236,51 @@ class TripMediaSerializer(serializers.ModelSerializer):
             return obj.file.url
         except ValueError:
             return ""
+class CommentSerializer(serializers.ModelSerializer):
+    user_id = serializers.IntegerField(read_only=True)
+    place_id = serializers.IntegerField(read_only=True)
+    username = serializers.CharField(source="user.username", read_only=True)
+    is_trip_advisor = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comment
+        fields = (
+            "id",
+            "user_id",
+            "username",
+            "place_id",
+            "comment_text",
+            "is_trip_advisor",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = (
+            "id",
+            "user_id",
+            "username",
+            "place_id",
+            "is_trip_advisor",
+            "created_at",
+            "updated_at",
+        )
+
+    def get_is_trip_advisor(self, obj):
+        from users.models import User as AppUser
+
+        return getattr(obj.user, "role", None) == AppUser.Role.TRIPADVISOR
+
+    def validate_comment_text(self, value: str) -> str:
+        if value is None:
+            raise serializers.ValidationError("Comment cannot be empty.")
+
+        trimmed = value.strip()
+        if not trimmed:
+            raise serializers.ValidationError("Comment cannot be empty or whitespace only.")
+        if len(trimmed) < 3:
+            raise serializers.ValidationError("Comment must be at least 3 characters long.")
+        if len(trimmed) > 1000:
+            raise serializers.ValidationError("Comment cannot exceed 1000 characters.")
+        return trimmed
 
 
 class WishlistItemSerializer(serializers.ModelSerializer):

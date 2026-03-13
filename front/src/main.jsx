@@ -14,6 +14,7 @@ import Trip from "./pages/Trips";
 import Map from "./pages/Map";
 import Wishlist from "./pages/Wishlist";
 import ManagerAdvisorReview from "./pages/ManagerAdvisorReview";
+import TripStatus from "./pages/TripStatus";
 import ErrorPage from "./pages/ErrorPage";
 import RequireAuth from "./components/RequireAuth.jsx";
 import { store } from "./store.js";
@@ -37,6 +38,7 @@ const router = createBrowserRouter([
       { path: "manager/advisors", element: <RequireAuth><ManagerAdvisorReview /></RequireAuth> },
       { path: "error", element: <ErrorPage /> },
       { path: "*", element: <ErrorPage /> },
+      { path: "tripstatus", element: <TripStatus />,}
     ],
   },
 ]);

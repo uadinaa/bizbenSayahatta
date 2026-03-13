@@ -2,12 +2,23 @@ import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { fetchInspirationPlaces, toggleMustVisit } from "../api/places";
+import { fetchPlaceComments, createPlaceComment } from "../api/comments";
 import { fetchProfile } from "../slices/authSlice";
 import s from "../styles/Inspiration.module.css";
 import api from "../api/axios";
 
-
-const categories = ["all", "restaurant", "museum", "tourist_attraction"];
+const categories = [
+  "all",
+  "restaurant",
+  "museum",
+  "tourist_attraction",
+  "park",
+  "theater",
+  "shopping_mall",
+  "hiking",
+  "beach",
+  "concert",
+];
 
 function toList(data) {
   if (Array.isArray(data)) return data;
@@ -52,10 +63,13 @@ const Inspiration = () => {
   const [search, setSearch] = useState(searchParams.get("q") || "");
   const [category, setCategory] = useState("all");
   const [priceFilter, setPriceFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedPlace, setSelectedPlace] = useState(null);
   const [isTripModalOpen, setIsTripModalOpen] = useState(false);
+  const [selectedPlace, setSelectedPlace] = useState(null);
+
   const [tripCategories, setTripCategories] = useState([]);
   const [tripForm, setTripForm] = useState({
     title: "",
@@ -71,6 +85,12 @@ const Inspiration = () => {
   const [tripSubmitting, setTripSubmitting] = useState(false);
   const [tripError, setTripError] = useState("");
   const [tripSuccess, setTripSuccess] = useState("");
+
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState("");
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [publicTrips, setPublicTrips] = useState([]);
+  const [loadingTrips, setLoadingTrips] = useState(false);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -89,13 +109,9 @@ const Inspiration = () => {
     };
   }, [user]);
 
-  /* ---------------------------
-     HELPERS
-  --------------------------- */
-
-  const formatCategory = (category) => {
-    if (!category) return "";
-    return category
+  const formatCategory = (categoryValue) => {
+    if (!categoryValue) return "";
+    return categoryValue
       .replace("_", " ")
       .replace(/\b\w/g, (l) => l.toUpperCase());
   };
@@ -133,14 +149,22 @@ const Inspiration = () => {
     return city || country || "";
   };
 
-  const filterByPrice = (places) => {
-    if (priceFilter === "all") return places;
-    return places.filter((p) => normalizePriceTier(p.price_level) === priceFilter);
+  const filterByPrice = (list) => {
+    if (priceFilter === "all") return list;
+    return list.filter((p) => normalizePriceTier(p.price_level) === priceFilter);
   };
 
-  /* ---------------------------
-     ACTIONS
-  --------------------------- */
+  const filterByDate = (list) => {
+    if (!dateFrom && !dateTo) return list;
+
+    return list.filter((p) => {
+      if (!p.created_at) return true;
+      const placeDate = new Date(p.created_at);
+      if (dateFrom && placeDate < new Date(dateFrom)) return false;
+      if (dateTo && placeDate > new Date(dateTo)) return false;
+      return true;
+    });
+  };
 
   const handleToggleMustVisit = async (placeId, currentValue) => {
     if (!isAuthed) {
@@ -151,7 +175,6 @@ const Inspiration = () => {
     try {
       const data = await toggleMustVisit(placeId, !currentValue);
       await api.post(`places/places/${placeId}/save/`);
-      console.log("SERVER RESPONSE:", data);
 
       setPlaces((prev) =>
         prev.map((place) =>
@@ -177,6 +200,37 @@ const Inspiration = () => {
       return;
     }
     navigate("/trip");
+  };
+
+  const loadComments = async (placeId) => {
+    try {
+      setLoadingComments(true);
+      setComments([]);
+      const data = await fetchPlaceComments(placeId);
+      setComments(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Failed to load comments", err);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!newComment.trim()) return;
+
+    if (!isAuthed) {
+      navigate("/login");
+      return;
+    }
+
+    try {
+      const created = await createPlaceComment(selectedPlace.id, newComment);
+      setComments((prev) => [created, ...prev]);
+      setNewComment("");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to post comment. Please try again.");
+    }
   };
 
   const openTripModal = () => {
@@ -219,7 +273,7 @@ const Inspiration = () => {
   const handleSubmitTrip = async (event) => {
     event.preventDefault();
     if (!tripForm.category_id || !tripForm.title || !tripForm.destination) {
-      setTripError("Please заполните category, trip name, и destination.");
+      setTripError("Please fill category, trip name, and destination.");
       return;
     }
 
@@ -269,11 +323,14 @@ const Inspiration = () => {
       setTripUploadPreview("");
     } catch (err) {
       const responseData = err?.response?.data;
-      const detail = responseData?.detail || err?.userMessage || "Failed to submit trip.";
+      const detail =
+        responseData?.detail || err?.userMessage || "Failed to submit trip.";
       const errorFields = Array.isArray(responseData?.errors)
         ? ` Check: ${responseData.errors.join(", ")}.`
         : "";
-      const errorId = responseData?.error_id ? ` (error_id: ${responseData.error_id})` : "";
+      const errorId = responseData?.error_id
+        ? ` (error_id: ${responseData.error_id})`
+        : "";
       setTripError(`${detail}${errorFields}${errorId}`);
     } finally {
       setTripSubmitting(false);
@@ -288,7 +345,8 @@ const Inspiration = () => {
       preferenceFilters
     );
 
-    const filteredResults = filterByPrice(data.results);
+    let filteredResults = filterByPrice(data.results);
+    filteredResults = filterByDate(filteredResults);
 
     setPlaces((prev) =>
       page === 1 ? filteredResults : [...prev, ...filteredResults]
@@ -297,17 +355,38 @@ const Inspiration = () => {
     setNext(data.next);
   };
 
+  const loadPublicTrips = async () => {
+    setLoadingTrips(true);
+    try {
+      const res = await api.get("marketplace/public/trips/");
+      const list = Array.isArray(res.data) ? res.data : res.data?.results || [];
+      setPublicTrips(list);
+    } catch (err) {
+      console.error("Failed to load trips", err);
+      setPublicTrips([]);
+    } finally {
+      setLoadingTrips(false);
+    }
+  };
+
   useEffect(() => {
     setPage(1);
-  }, [search, category, priceFilter]);
+  }, [search, category, priceFilter, dateFrom, dateTo]);
 
   useEffect(() => {
     const q = searchParams.get("q") || "";
     if (q !== search) {
       setSearch(q);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [searchParams, search]);
+
+  useEffect(() => {
+    loadPlaces();
+  }, [page, search, category, priceFilter, preferenceFilters, dateFrom, dateTo]);
+
+  useEffect(() => {
+    loadPublicTrips();
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem("access");
@@ -315,11 +394,6 @@ const Inspiration = () => {
       dispatch(fetchProfile());
     }
   }, [dispatch, user]);
-
-  useEffect(() => {
-    loadPlaces();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, search, category, priceFilter, preferenceFilters]);
 
   useEffect(() => {
     if (!isTripAdvisor || tripCategories.length > 0) return;
@@ -358,30 +432,34 @@ const Inspiration = () => {
     }
   }, [isTripModalOpen, tripCategories, tripForm.category_id]);
 
-  /* ---------------------------
-     RENDER
-  --------------------------- */
-
   return (
     <div className={s.page}>
       <h1 className={s.title}>Inspiration</h1>
 
-      <input
-        className={s.search}
-        placeholder="Search destination..."
-        value={search}
-        onChange={(e) => {
-          const value = e.target.value;
-          setSearch(value);
-          const nextParams = new URLSearchParams(searchParams);
-          if (value.trim()) {
-            nextParams.set("q", value);
-          } else {
-            nextParams.delete("q");
-          }
-          setSearchParams(nextParams, { replace: true });
-        }}
-      />
+      <div className={s.searchRow}>
+        <input
+          className={s.search}
+          placeholder="Search destination..."
+          value={search}
+          onChange={(e) => {
+            const value = e.target.value;
+            setSearch(value);
+            const nextParams = new URLSearchParams(searchParams);
+            if (value.trim()) {
+              nextParams.set("q", value);
+            } else {
+              nextParams.delete("q");
+            }
+            setSearchParams(nextParams, { replace: true });
+          }}
+        />
+
+        {isTripAdvisor && (
+          <button className={s.addTripBtn} onClick={openTripModal}>
+            + Add Trip
+          </button>
+        )}
+      </div>
 
       <div className={s.controls}>
         <div className={s.selectRowWithShadow}>
@@ -394,9 +472,7 @@ const Inspiration = () => {
             >
               {categories.map((c) => (
                 <option key={c} value={c}>
-                  {c === "all"
-                    ? "All categories"
-                    : formatCategory(c)}
+                  {c === "all" ? "All categories" : formatCategory(c)}
                 </option>
               ))}
             </select>
@@ -409,24 +485,74 @@ const Inspiration = () => {
               value={priceFilter}
               onChange={(e) => setPriceFilter(e.target.value)}
             >
-              <option value="all">All price levels</option>
-              <option value="free">Free</option>
-              <option value="budget">Budget</option>
-              <option value="moderate">Moderate</option>
-              <option value="premium">Premium</option>
-              <option value="unknown">Unknown</option>
+              <option value="all">All prices</option>
+              <option value="free">🆓 Free</option>
+              <option value="budget">🪙 Budget</option>
+              <option value="moderate">💸 Moderate</option>
+              <option value="premium">💰 Premium</option>
             </select>
           </div>
-        </div>
 
-        {isTripAdvisor && (
-          <div className={s.tripActionRow}>
-            <button className={s.primaryActionBtn} onClick={openTripModal}>
-              Add Trip
-            </button>
+          <div className={s.selectBlock}>
+            <span className={s.selectLabel}>From date</span>
+            <input
+              type="date"
+              className={s.select}
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
           </div>
-        )}
+
+          <div className={s.selectBlock}>
+            <span className={s.selectLabel}>To date</span>
+            <input
+              type="date"
+              className={s.select}
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+            />
+          </div>
+        </div>
       </div>
+
+      <div className={s.sectionHeader}>
+        <h2>TripAdvisor Trips</h2>
+        <span>Verified trips from TripAdvisors</span>
+      </div>
+
+      {loadingTrips && <div className={s.sectionNote}>Loading trips...</div>}
+      {!loadingTrips && publicTrips.length === 0 && (
+        <div className={s.sectionNote}>No approved trips yet.</div>
+      )}
+
+      {!loadingTrips && publicTrips.length > 0 && (
+        <div className={s.tripGrid}>
+          {publicTrips.map((trip) => (
+            <div key={trip.id} className={s.tripCard}>
+              {trip.media_urls?.[0] ? (
+                <img
+                  className={s.tripPhoto}
+                  src={trip.media_urls[0]}
+                  alt={trip.title}
+                  loading="lazy"
+                />
+              ) : (
+                <div className={s.tripPhotoPlaceholder} />
+              )}
+              <div className={s.tripMeta}>
+                <span className={s.tripBadge}>TripAdvisor</span>
+                <span className={s.tripCategory}>{trip.category?.name || "Trip"}</span>
+              </div>
+              <h3 className={s.tripTitle}>{trip.title}</h3>
+              <p className={s.tripDestination}>{trip.destination}</p>
+              <div className={s.tripFooter}>
+                <span>{trip.duration_days} days</span>
+                <span>{trip.price ? `$${trip.price}` : "Contact"}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className={s.grid}>
         {places.map((place) => (
@@ -436,6 +562,7 @@ const Inspiration = () => {
             onClick={() => {
               setSelectedPlace(place);
               setIsModalOpen(true);
+              loadComments(place.id);
             }}
           >
             {place.photo_url ? (
@@ -459,7 +586,9 @@ const Inspiration = () => {
                     ★ {place.rating}
                   </span>
                 )}
-                <span className={s.priceTag}>{priceTierLabel(place.price_level)}</span>
+                <span className={s.priceTag}>
+                  {priceTierLabel(place.price_level)}
+                </span>
               </div>
             </div>
 
@@ -479,14 +608,8 @@ const Inspiration = () => {
       )}
 
       {isModalOpen && selectedPlace && (
-        <div
-          className={s.modalOverlay}
-          onClick={() => setIsModalOpen(false)}
-        >
-          <div
-            className={s.modal}
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className={s.modalOverlay} onClick={() => setIsModalOpen(false)}>
+          <div className={s.modal} onClick={(e) => e.stopPropagation()}>
             {selectedPlace.photo_url && (
               <img
                 className={s.modalPhoto}
@@ -515,23 +638,17 @@ const Inspiration = () => {
                 {priceTierLabel(selectedPlace.price_level)}
               </p>
 
-              <p>
-                {selectedPlace.description ||
-                  "No description available"}
-              </p>
+              <p>{selectedPlace.description || "No description available"}</p>
 
               <p>
                 <strong>Location:</strong>{" "}
                 {formatLocation(selectedPlace)}
               </p>
 
-              {selectedPlace.opening_hours?.openNow !==
-                undefined && (
+              {selectedPlace.opening_hours?.openNow !== undefined && (
                 <p>
                   <strong>Status:</strong>{" "}
-                  {selectedPlace.opening_hours.openNow
-                    ? "Open now"
-                    : "Closed"}
+                  {selectedPlace.opening_hours.openNow ? "Open now" : "Closed"}
                 </p>
               )}
 
@@ -550,12 +667,114 @@ const Inspiration = () => {
                     : "❤️ Add to wishlist"}
                 </button>
 
-                <button
-                  className={s.lightActionBtn}
-                  onClick={handleCreateTrip}
-                >
+                <button className={s.lightActionBtn} onClick={handleCreateTrip}>
                   ✈️ Add to trip
                 </button>
+              </div>
+
+              <div className={s.commentsSection}>
+                <h3>
+                  Comments
+                  {comments.length > 0 && (
+                    <span className={s.commentCount}>
+                      {comments.length}
+                    </span>
+                  )}
+                </h3>
+
+                <div className={s.commentsContainer}>
+                  {loadingComments && (
+                    <div className={s.loadingComments}>Loading comments...</div>
+                  )}
+
+                  {!loadingComments && comments.length === 0 && (
+                    <div className={s.emptyComments}>
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <circle
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                        />
+                        <path
+                          d="M8 12h8M8 8h8M8 16h4"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <span>No comments yet</span>
+                      <span style={{ fontSize: "12px", marginTop: "4px" }}>
+                        Be the first to share your thoughts!
+                      </span>
+                    </div>
+                  )}
+
+                  {!loadingComments &&
+                    comments.map((comment) => (
+                      <div key={comment.id} className={s.comment}>
+                        <div className={s.commentHeader}>
+                          <div className={s.userAvatar}>
+                            {comment.username?.charAt(0).toUpperCase() || "U"}
+                          </div>
+                          <strong>{comment.username || "Anonymous"}</strong>
+                          {comment.is_trip_advisor && (
+                            <span className={s.tripAdvisorBadge}>
+                              ✓ TripAdvisor
+                            </span>
+                          )}
+                        </div>
+                        <p>{comment.comment_text}</p>
+                        {comment.created_at && (
+                          <small className={s.commentDate}>
+                            {new Date(comment.created_at).toLocaleDateString(
+                              "en-US",
+                              {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }
+                            )}
+                          </small>
+                        )}
+                      </div>
+                    ))}
+                </div>
+
+                {isAuthed ? (
+                  <div className={s.addComment}>
+                    <textarea
+                      placeholder="Share your experience... 💭"
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      rows="3"
+                    />
+                    <button
+                      className={s.commentBtn}
+                      onClick={handleAddComment}
+                      disabled={!newComment.trim()}
+                    >
+                      Post Comment
+                    </button>
+                  </div>
+                ) : (
+                  <div className={s.loginHint}>
+                    <button
+                      className={s.loginLink}
+                      onClick={() => navigate("/login")}
+                    >
+                      Sign in
+                    </button>{" "}
+                    to join the conversation
+                  </div>
+                )}
               </div>
             </div>
 
@@ -571,10 +790,7 @@ const Inspiration = () => {
 
       {isTripModalOpen && (
         <div className={s.modalOverlay} onClick={closeTripModal}>
-          <div
-            className={s.tripModal}
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className={s.tripModal} onClick={(e) => e.stopPropagation()}>
             <div className={s.tripModalHeader}>
               <h2>Add New Trip</h2>
               <p>Fill in the details and submit for manager review.</p>
@@ -585,7 +801,9 @@ const Inspiration = () => {
                 <span>Category</span>
                 <select
                   value={tripForm.category_id}
-                  onChange={(e) => updateTripForm({ category_id: e.target.value })}
+                  onChange={(e) =>
+                    updateTripForm({ category_id: e.target.value })
+                  }
                   required
                 >
                   <option value="">Select category</option>
@@ -613,7 +831,9 @@ const Inspiration = () => {
                 <input
                   type="text"
                   value={tripForm.destination}
-                  onChange={(e) => updateTripForm({ destination: e.target.value })}
+                  onChange={(e) =>
+                    updateTripForm({ destination: e.target.value })
+                  }
                   placeholder="Big Almaty Lake, Kok-Tobe"
                   required
                 />
@@ -625,7 +845,9 @@ const Inspiration = () => {
                   <input
                     type="date"
                     value={tripForm.start_date}
-                    onChange={(e) => updateTripForm({ start_date: e.target.value })}
+                    onChange={(e) =>
+                      updateTripForm({ start_date: e.target.value })
+                    }
                   />
                 </label>
 
@@ -635,7 +857,9 @@ const Inspiration = () => {
                     type="number"
                     min="1"
                     value={tripForm.duration_days}
-                    onChange={(e) => updateTripForm({ duration_days: e.target.value })}
+                    onChange={(e) =>
+                      updateTripForm({ duration_days: e.target.value })
+                    }
                   />
                 </label>
               </div>
@@ -664,7 +888,11 @@ const Inspiration = () => {
 
               <label className={s.tripField}>
                 <span>Upload photo (optional)</span>
-                <input type="file" accept="image/*" onChange={handleTripFileUpload} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleTripFileUpload}
+                />
                 {tripUploadPreview && (
                   <img
                     className={s.tripPreview}
@@ -679,7 +907,9 @@ const Inspiration = () => {
                 <textarea
                   rows="4"
                   value={tripForm.additional_info}
-                  onChange={(e) => updateTripForm({ additional_info: e.target.value })}
+                  onChange={(e) =>
+                    updateTripForm({ additional_info: e.target.value })
+                  }
                   placeholder="Describe your plan, what is included, and any notes."
                 />
               </label>

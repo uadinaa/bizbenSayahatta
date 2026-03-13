@@ -21,6 +21,18 @@
    SEARCH + FILTERS
 ================================= */
 
+.searchRow {
+  display: flex;
+  gap: 12px; /* расстояние между поиском и кнопкой */
+  margin-bottom: 24px;
+  align-items: center; /* выравнивание по вертикали */
+}
+
+.searchRow .search {
+  flex: 1; /* поле поиска занимает всё доступное место */
+  margin-bottom: 0; /* убираем старый отступ, если есть */
+}
+
 .search {
   width: 100%;
   padding: 14px 18px;
@@ -118,6 +130,113 @@
   outline: none;
   border-color: #0c3b2e;
   box-shadow: 0 0 0 3px rgba(12, 59, 46, 0.08);
+}
+
+/* ===============================
+   TRIPS SECTION
+================================= */
+
+.sectionHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 12px 0 18px;
+}
+
+.sectionHeader h2 {
+  margin: 0;
+  font-size: 22px;
+  color: #1f1f1f;
+}
+
+.sectionHeader span {
+  font-size: 13px;
+  color: #6b6b6b;
+}
+
+.sectionNote {
+  font-size: 14px;
+  color: #6b6b6b;
+  margin-bottom: 12px;
+}
+
+.tripGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 22px;
+  margin-bottom: 32px;
+}
+
+.tripCard {
+  background: white;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 14px;
+}
+
+.tripPhoto,
+.tripPhotoPlaceholder {
+  width: 100%;
+  height: 160px;
+}
+
+.tripPhoto {
+  object-fit: cover;
+}
+
+.tripPhotoPlaceholder {
+  background: linear-gradient(135deg, #f5f5f2, #e9e8e4);
+}
+
+.tripMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px 0;
+}
+
+.tripBadge {
+  background: #0c3b2e;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.tripCategory {
+  background: #eef2f6;
+  color: #344054;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.tripTitle {
+  padding: 8px 16px 0;
+  margin: 0;
+  font-size: 18px;
+  color: #222;
+}
+
+.tripDestination {
+  padding: 4px 16px 0;
+  margin: 0;
+  color: #777;
+  font-size: 14px;
+}
+
+.tripFooter {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 16px 0;
+  font-size: 13px;
+  color: #444;
+  font-weight: 600;
 }
 
 /* ===============================
@@ -452,4 +571,305 @@
   color: white;
   border-color: #0c3b2e;
   transform: translateY(-2px);
+}
+
+/* ===============================
+   COMMENTS — СТИЛЬНОЕ ОБНОВЛЕНИЕ
+================================= */
+
+.commentsSection {
+  margin-top: 32px;
+  border-top: 1px solid #edede9;
+  padding-top: 20px;
+}
+
+.commentsSection h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #1e2b2c;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.commentsSection h3::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, #d4d4d4 0%, transparent 100%);
+}
+
+/* Контейнер комментариев с фиксированной высотой */
+.commentsContainer {
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 8px;
+  margin-bottom: 20px;
+  scrollbar-width: thin;
+  scrollbar-color: #b8b8b8 #f0f0f0;
+}
+
+/* Стилизация скроллбара для Chrome/Safari */
+.commentsContainer::-webkit-scrollbar {
+  width: 5px;
+}
+
+.commentsContainer::-webkit-scrollbar-track {
+  background: #f0f0f0;
+  border-radius: 10px;
+}
+
+.commentsContainer::-webkit-scrollbar-thumb {
+  background: #b8b8b8;
+  border-radius: 10px;
+}
+
+.commentsContainer::-webkit-scrollbar-thumb:hover {
+  background: #0c3b2e;
+}
+
+/* Индикатор загрузки */
+.loadingComments {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 30px 0;
+  color: #888;
+  font-size: 14px;
+}
+
+.loadingComments::after {
+  content: '';
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e0e0e0;
+  border-top-color: #0c3b2e;
+  border-radius: 50%;
+  animation: spinner 0.8s linear infinite;
+}
+
+@keyframes spinner {
+  to { transform: rotate(360deg); }
+}
+
+/* Пустое состояние */
+.emptyComments {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+  color: #aaa;
+  font-size: 14px;
+}
+
+.emptyComments svg {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.emptyComments svg circle {
+  fill: #ddd;
+}
+
+/* Карточка комментария */
+.comment {
+  background: #fafaf8;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+  border: 1px solid #f0efea;
+  transition: all 0.2s ease;
+}
+
+.comment:hover {
+  background: #f5f5f2;
+  border-color: #d4d4d4;
+  transform: translateX(2px);
+}
+
+.commentHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+/* Аватар пользователя */
+.userAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0c3b2e, #1a5a47);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  box-shadow: 0 2px 6px rgba(12, 59, 46, 0.2);
+}
+
+.commentHeader strong {
+  font-size: 15px;
+  color: #2a3c3b;
+  font-weight: 600;
+}
+
+.tripAdvisorBadge {
+  font-size: 10px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #00aa6c, #00875a);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 20px;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 4px rgba(0, 170, 108, 0.2);
+}
+
+.comment p {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #4a4a48;
+  margin: 0 0 8px 0;
+  word-break: break-word;
+}
+
+.commentDate {
+  font-size: 11px;
+  color: #999;
+  display: block;
+  text-align: right;
+  margin-top: 4px;
+}
+
+/* Форма добавления комментария */
+.addComment {
+  background: #f8f8f6;
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid #e8e7e2;
+  margin-top: 16px;
+}
+
+.addComment textarea {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #e0dfd9;
+  border-radius: 12px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 80px;
+  background: white;
+  transition: all 0.2s ease;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+}
+
+.addComment textarea:focus {
+  outline: none;
+  border-color: #0c3b2e;
+  box-shadow: 0 0 0 3px rgba(12, 59, 46, 0.08);
+}
+
+.addComment textarea::placeholder {
+  color: #aaa;
+  font-style: italic;
+}
+
+/* Кнопка отправки */
+.commentBtn {
+  background: #0c3b2e;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 30px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  float: right;
+  box-shadow: 0 4px 8px rgba(12, 59, 46, 0.15);
+}
+
+.commentBtn:hover:not(:disabled) {
+  background: #1a5a47;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(12, 59, 46, 0.2);
+}
+
+.commentBtn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 0.7;
+}
+
+/* Очистка float */
+.addComment::after {
+  content: '';
+  display: table;
+  clear: both;
+}
+
+/* Подсказка для входа */
+.loginHint {
+  background: #f8f8f6;
+  border-radius: 30px;
+  padding: 14px 20px;
+  text-align: center;
+  font-size: 14px;
+  color: #666;
+  margin-top: 16px;
+  border: 1px dashed #ccc;
+}
+
+.loginLink {
+  background: none;
+  border: none;
+  color: #0c3b2e;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: inherit;
+  padding: 0;
+  transition: color 0.2s ease;
+}
+
+.loginLink:hover {
+  color: #1a5a47;
+}
+
+/* Счетчик комментариев */
+.commentCount {
+  font-size: 13px;
+  color: #888;
+  font-weight: normal;
+  margin-left: 8px;
+  background: #f0f0f0;
+  padding: 2px 8px;
+  border-radius: 30px;
+}
+
+/* ADD BUTTON */
+.addTripBtn {
+  background: #111827;
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: 0.2s;
+}
+
+.addTripBtn:hover {
+  background: #000;
 }

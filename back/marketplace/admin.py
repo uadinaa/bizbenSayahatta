@@ -4,6 +4,7 @@ from .models import (
     AdvisorCategory,
     TripAdvisorApplication,
     TripAdvisorProfile,
+    Comment,
     UserRestriction,
     Trip,
     TripMedia,
@@ -19,6 +20,7 @@ from .models import (
 admin.site.register(AdvisorCategory)
 admin.site.register(TripAdvisorApplication)
 admin.site.register(TripAdvisorProfile)
+admin.site.register(Comment)
 admin.site.register(UserRestriction)
 admin.site.register(Trip)
 admin.site.register(TripMedia)

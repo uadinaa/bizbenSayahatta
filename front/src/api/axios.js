@@ -1,8 +1,12 @@
 import axios from "axios";
 import { clearClientUserData } from "../utils/sessionData";
 
-const API_BASE =
+const RAW_API_BASE =
   import.meta.env?.VITE_API_BASE || "http://127.0.0.1:8000/api/";
+const NORMALIZED_BASE = RAW_API_BASE.replace(/\/+$/, "");
+const API_BASE = NORMALIZED_BASE.endsWith("/api")
+  ? `${NORMALIZED_BASE}/`
+  : `${NORMALIZED_BASE}/api/`;
 
 const api = axios.create({
   baseURL: API_BASE,

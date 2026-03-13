@@ -54,6 +54,7 @@ export default function ProfileCard() {
   const [advisorModalOpen, setAdvisorModalOpen] = useState(false);
   const [advisorLoading, setAdvisorLoading] = useState(false);
   const [advisorError, setAdvisorError] = useState("");
+  const [advisorSuccess, setAdvisorSuccess] = useState("");
   const [advisorForm, setAdvisorForm] = useState({
     subscriptionPlan: "monthly",
     paymentReference: "",
@@ -181,6 +182,7 @@ export default function ProfileCard() {
 
   const submitAdvisorApplication = async () => {
     setAdvisorError("");
+    setAdvisorSuccess("");
     setAdvisorLoading(true);
     try {
       const links = advisorForm.portfolioText
@@ -202,8 +204,7 @@ export default function ProfileCard() {
       await api.post("marketplace/advisor/apply/", formData);
       const applicationsRes = await api.get("marketplace/advisor/applications/");
       setApplications(toList(applicationsRes.data));
-      setAdvisorModalOpen(false);
-      alert("Application sent. Status is now Pending review.");
+      setAdvisorSuccess("Application sent. Status is now Pending review.");
     } catch (err) {
       const backend = err?.response?.data;
       setAdvisorError(typeof backend === "string" ? backend : JSON.stringify(backend || "Failed to send application"));
@@ -248,6 +249,12 @@ export default function ProfileCard() {
           ) : (
             <div className="advisor-panel">
               <strong>TripAdvisor tools are active</strong>
+              <div className="level">
+                <span>Check Trip status</span>
+                <Link to="/tripstatus">
+                  <button>check status</button>
+                </Link>
+              </div>
               <p>Now you can create and publish TripAdvisor packages.</p>
             </div>
           )}
@@ -326,6 +333,7 @@ export default function ProfileCard() {
             <label className="check-row"><input type="checkbox" checked={advisorForm.termsAccepted} onChange={(e) => setAdvisorForm((prev) => ({ ...prev, termsAccepted: e.target.checked }))} />I accept terms</label>
 
             {advisorError ? <p className="advisor-error">{advisorError}</p> : null}
+            {advisorSuccess ? <p className="advisor-success">{advisorSuccess}</p> : null}
 
             <div className="modal-actions">
               <button onClick={submitAdvisorApplication} disabled={advisorLoading || !advisorForm.contractAccepted || !advisorForm.termsAccepted}>

@@ -49,6 +49,16 @@ export default function Map() {
     { name: "Legendary Nomad", min: 50, next: null },
   ];
 
+  const [countriesCount, setCountriesCount] = useState(0);
+  const [citiesCount, setCitiesCount] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [level, setLevel] = useState({
+    name: "Pathfinder",
+    current: 0,
+    needed: 5,
+    index: 0,
+  });
+
   useEffect(() => {
     const loadPlaces = async () => {
       setLoadingPlaces(true);
@@ -71,16 +81,6 @@ export default function Map() {
       .then((data) => data && setCountriesData(data))
       .catch((err) => console.error("GeoJSON load error:", err));
   }, []);
-
-  const [countriesCount, setCountriesCount] = useState(0);
-  const [citiesCount, setCitiesCount] = useState(0);
-  const [progress, setProgress] = useState(0);
-  const [level, setLevel] = useState({
-    name: "Pathfinder",
-    current: 0,
-    needed: 5,
-    index: 0,
-  });
 
   useEffect(() => {
     const uniqueCountries = new Set(places.map((p) => p.country));
@@ -126,7 +126,6 @@ export default function Map() {
 
   const addPlace = async (e) => {
     e.preventDefault();
-
     if (!newPlace.city || !newPlace.country || !newPlace.month || !newPlace.year) return;
 
     try {
@@ -134,7 +133,6 @@ export default function Map() {
         `https://nominatim.openstreetmap.org/search?format=json&q=${newPlace.city},${newPlace.country}`
       );
       const data = await response.json();
-
       if (!data.length) {
         alert("City not found");
         return;
@@ -161,7 +159,12 @@ export default function Map() {
       setIsModalOpen(false);
     } catch (err) {
       console.error(err);
-      alert("Error fetching or saving location");
+      if (err?.response?.status === 401) {
+        navigate("/login");
+        return;
+      }
+      const errorId = err?.response?.data?.error_id ? ` (error_id: ${err.response.data.error_id})` : "";
+      alert(`Error fetching or saving location${errorId}`);
     }
   };
 
@@ -200,29 +203,34 @@ export default function Map() {
         <h3 className="sidebar-title">Traveler Level</h3>
 
         <div className="badge-scroll">
-          {levelsList
-            .filter((lvl) => places.length >= lvl.min)
-            .map((lvl, i) => {
-              const isCurrent = lvl.name === level.name;
-              const progressPercent = lvl.next
-                ? ((places.length - lvl.min) / (lvl.next - lvl.min)) * 100
-                : 100;
+          {levelsList.map((lvl, i) => {
+            const isCurrent = lvl.name === level.name;
+            const isCompleted = places.length >= lvl.next || (lvl.next === null && places.length >= lvl.min);
+            const progressPercent = lvl.next
+              ? ((places.length - lvl.min) / (lvl.next - lvl.min)) * 100
+              : 100;
 
-              return (
-                <div key={i} className={`badge-card ${isCurrent ? "current" : "completed"}`}>
-                  <div className="badge-icon">🧭</div>
-                  <strong>{lvl.name}</strong>
+            return (
+              <div
+                key={i}
+                className={`badge-card ${isCurrent ? "current" : isCompleted ? "completed" : "locked"}`}
+              >
+                <div className="badge-icon">🧭</div>
+                <strong>{lvl.name}</strong>
 
-                  {lvl.next ? (
-                    <div className="mini-progress">
-                      <div className="mini-bar" style={{ width: `${Math.min(progressPercent, 100)}%` }}></div>
-                    </div>
-                  ) : (
-                    <span className="max-label">MAX</span>
-                  )}
-                </div>
-              );
-            })}
+                {lvl.next ? (
+                  <div className="mini-progress">
+                    <div
+                      className="mini-bar"
+                      style={{ width: `${Math.min(progressPercent, 100)}%` }}
+                    ></div>
+                  </div>
+                ) : (
+                  <span className="max-label">MAX</span>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <div className="level-dots">

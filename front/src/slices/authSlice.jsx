@@ -29,7 +29,12 @@ export const loginUser = createAsyncThunk(
       clearClientUserData();
       localStorage.removeItem("access");
       localStorage.removeItem("refresh");
-      return rejectWithValue(err.response?.data?.detail || "Invalid credentials");
+      const contentType = err?.response?.headers?.["content-type"] || "";
+      const detail =
+        err?.response?.data?.detail ||
+        err?.userMessage ||
+        (contentType.includes("application/json") ? "Invalid credentials" : "Login failed");
+      return rejectWithValue(detail);
     }
   }
 );

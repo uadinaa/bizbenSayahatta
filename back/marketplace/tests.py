@@ -63,18 +63,30 @@ class MarketplaceRBACAndWorkflowTests(APITestCase):
         self.trip_advisor.subscription_status = User.SubscriptionStatus.INACTIVE
         self.trip_advisor.save(update_fields=["subscription_status"])
 
-        trip = Trip.objects.create(
+        self.client.force_authenticate(user=self.trip_advisor)
+        for idx in range(2):
+            trip = Trip.objects.create(
+                advisor=self.trip_advisor,
+                category=self.category,
+                title=f"Tokyo Food Tour {idx}",
+                destination="Tokyo",
+                duration_days=3,
+                visibility=Trip.VISIBILITY_PUBLIC,
+                status=Trip.STATUS_DRAFT,
+            )
+            response = self.client.post(f"/api/marketplace/advisor/trips/{trip.id}/submit/", {}, format="json")
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        third = Trip.objects.create(
             advisor=self.trip_advisor,
             category=self.category,
-            title="Tokyo Food Tour",
+            title="Tokyo Food Tour 3",
             destination="Tokyo",
             duration_days=3,
             visibility=Trip.VISIBILITY_PUBLIC,
             status=Trip.STATUS_DRAFT,
         )
-
-        self.client.force_authenticate(user=self.trip_advisor)
-        response = self.client.post(f"/api/marketplace/advisor/trips/{trip.id}/submit/", {}, format="json")
+        response = self.client.post(f"/api/marketplace/advisor/trips/{third.id}/submit/", {}, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_manager_can_moderate_trip(self):

@@ -20,6 +20,8 @@ urlpatterns = [
     # Chat messages
     path("chat-messages/", views.AdminChatMessageListAPIView.as_view(), name="admin-chat-message-list"),
     path("chat-messages/<int:pk>/", views.AdminChatMessageDeleteAPIView.as_view(), name="admin-chat-message-delete"),
+    # Trip comments
+    path("comments/<int:comment_id>/", views.AdminCommentDeleteAPIView.as_view(), name="admin-comment-delete"),
     # Reference: InterestMapping
     path("interests/", views.AdminInterestMappingListCreateAPIView.as_view(), name="admin-interest-list-create"),
     path("interests/<int:pk>/", views.AdminInterestMappingDetailAPIView.as_view(), name="admin-interest-detail"),
