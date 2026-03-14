@@ -9,7 +9,7 @@ The project is split into two main folders:
 - **`back/`** — backend (Django REST API)
 - **`front/`** — frontend (React + Vite)
 
----
+
 
 ## Backend (Django)
 
@@ -77,7 +77,7 @@ Backend runs at **http://127.0.0.1:8000/**.
 
 ## Database Schema
 ![Database Schema](back/graphs/schema4.png)
----
+
 
 ## Frontend (React)
 
@@ -114,7 +114,6 @@ Backend runs at **http://127.0.0.1:8000/**.
 
 Frontend runs at **http://localhost:5174/** (or the port Vite prints).
 
----
 
 ## Environment variables
 
@@ -124,7 +123,6 @@ Frontend runs at **http://localhost:5174/** (or the port Vite prints).
 - **Frontend (`front/.env`):**  
   e.g. `VITE_API_BASE` for the API base URL.
 
----
 
 ## Authors
 
