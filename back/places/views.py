@@ -6,12 +6,18 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from django.contrib.auth import get_user_model
+from users.models import UserPreferences
+
 from places.models import Place, VisitedPlace, SavedPlace, MustVisitPlace, UserMapPlace
 from places.serializers import (
     PlaceSerializer,
     PlaceMapSerializer,
     UserMapPlaceSerializer,
     VisitedPlaceSerializer,
+    PublicUserMapPlaceSerializer,
+    PublicVisitedPlaceSerializer,
+    PublicMapUserListSerializer,
 )
 from places.services.google_places import get_places
 from places.services.save_place import save_place_for_user
@@ -308,3 +314,96 @@ class UserMapPlaceDeleteAPIView(APIView):
             return Response({"detail": "Map place not found"}, status=status.HTTP_404_NOT_FOUND)
         place.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class UserPublicMapAPIView(APIView):
+    """
+    GET /api/places/users/<user_id>/map/
+    Returns map places, visited places, and badges for the given user.
+    - If requester is the owner: full data (including dates).
+    - If requester is another user (or anonymous): only data allowed by target's privacy
+      (share_map, share_visited_places, share_badges). No dates or time-related fields.
+    If nothing is shared, returns 403.
+    """
+
+    permission_classes = []  # public endpoint; visibility enforced inside
+
+    def get(self, request, user_id):
+        User = get_user_model()
+        target = User.objects.filter(id=user_id).first()
+        if not target:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        is_owner = request.user.is_authenticated and request.user.id == target.id
+
+        if is_owner:
+            map_places = UserMapPlace.objects.filter(user=target)
+            visited = VisitedPlace.objects.filter(user=target).select_related("place").order_by("-created_at")
+            visited_count = visited.count()
+            badges = _get_badges(visited_count)
+            return Response(
+                {
+                    "user": {"id": target.id, "username": target.username or target.email},
+                    "map_places": UserMapPlaceSerializer(map_places, many=True).data,
+                    "visited_places": VisitedPlaceSerializer(visited, many=True, context={"request": request}).data,
+                    "badges": badges,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        prefs = UserPreferences.objects.filter(user=target).first()
+        if not prefs:
+            return Response(
+                {"detail": "This user has not shared their travel map."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if not (prefs.share_map or prefs.share_visited_places or prefs.share_badges):
+            return Response(
+                {"detail": "This user has not shared their travel map."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        payload = {
+            "user": {"id": target.id, "username": target.username or target.email},
+        }
+        if prefs.share_map:
+            map_places = UserMapPlace.objects.filter(user=target)
+            payload["map_places"] = PublicUserMapPlaceSerializer(map_places, many=True).data
+        else:
+            payload["map_places"] = []
+        if prefs.share_visited_places:
+            visited = VisitedPlace.objects.filter(user=target).select_related("place")
+            payload["visited_places"] = PublicVisitedPlaceSerializer(visited, many=True).data
+        else:
+            payload["visited_places"] = []
+        if prefs.share_badges:
+            visited_count = VisitedPlace.objects.filter(user=target).count()
+            payload["badges"] = _get_badges(visited_count)
+        else:
+            payload["badges"] = []
+
+        return Response(payload, status=status.HTTP_200_OK)
+
+
+class UsersWithPublicMapListAPIView(ListAPIView):
+    """
+    GET /api/places/users/shared-maps/
+    Returns list of users who have enabled public map visibility (share_map=True).
+    Each item: id, username, avatar. When a user turns off share_map, they disappear from this list.
+    Public endpoint (no auth required).
+    """
+
+    permission_classes = []
+    serializer_class = PublicMapUserListSerializer
+
+    def get_queryset(self):
+        User = get_user_model()
+        return (
+            User.objects.filter(
+                preferences__share_map=True,
+                is_active=True,
+                deleted_at__isnull=True,
+            )
+            .order_by("username", "id")
+            .distinct()
+        )

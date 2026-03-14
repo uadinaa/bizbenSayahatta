@@ -47,6 +47,10 @@ class UserPreferences(models.Model):
     travel_style = models.CharField(max_length=50, null=True, blank=True)
     open_now = models.BooleanField(null=True, blank=True)
     interests = models.JSONField(default=list, blank=True)
+    # Map/profile visibility for other users (default: private)
+    share_map = models.BooleanField(default=False)
+    share_visited_places = models.BooleanField(default=False)
+    share_badges = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
