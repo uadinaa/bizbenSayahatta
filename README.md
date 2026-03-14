@@ -151,8 +151,8 @@ Example endpoints:
 
 The React frontend communicates with the Django backend through these REST API endpoints.
 
-
-
+## Database Schema
+![Database Schema](back/graphs/schema4.png)
 ## 🗺 Map Integration
 
 The project uses **Leaflet** and **React Leaflet** to display travel locations on an interactive map, letting users visually explore destinations.
