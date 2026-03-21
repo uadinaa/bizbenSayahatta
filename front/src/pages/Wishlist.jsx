@@ -14,7 +14,12 @@ export default function Wishlist() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState(null);
 
-  const categories = ["All", "restaurant", "museum", "tourist_attraction"];
+  const categories = ["All", "restaurant", "museum", "tourist_attraction", "park",
+  "theater",
+  "shopping_mall",
+  "hiking",
+  "beach",
+  "concert",];
 
   const loadWishlist = async () => {
     setLoading(true);

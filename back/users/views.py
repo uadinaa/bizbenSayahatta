@@ -9,6 +9,7 @@ from marketplace.models import TripAdvisorApplication, TripAdvisorProfile
 from .permissions import IsActiveAndNotBlocked
 from .serializers import (
     CustomTokenObtainPairSerializer,
+    PrivacySettingsSerializer,
     RegisterSerializer,
     UserPreferencesSerializer,
     UserSerializer,
@@ -61,3 +62,16 @@ class UserProfileView(APIView):
 
     def patch(self, request):
         return self.put(request)
+
+
+class PrivacySettingsView(APIView):
+    """PATCH /users/profile/privacy/ — only the profile owner can update map/visited/badges visibility."""
+
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
+
+    def patch(self, request):
+        prefs, _ = UserPreferences.objects.get_or_create(user=request.user)
+        serializer = PrivacySettingsSerializer(prefs, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(PrivacySettingsSerializer(prefs).data)

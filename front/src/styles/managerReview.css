@@ -1,14 +1,27 @@
+/* Основной контейнер */
 .manager-review {
-  max-width: 900px;
+  width: 100%;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 30px 20px;
+  padding: 30px 40px;
   color: #5a5450;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.manager-main-title {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  color: #333;
 }
 
 .manager-title {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 600;
   margin-bottom: 6px;
+  text-align: left;
 }
 
 .manager-subtitle {
@@ -17,54 +30,84 @@
   margin-bottom: 20px;
 }
 
-/* карточка */
+/* Tabs */
+.tabs-container {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 32px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 15px;
+  width: 100%;
+}
 
-.application-card {
+.tab-button {
+  background: #f3f2ee;
   border: 1px solid #d0d5dd;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #5a5450;
+  cursor: pointer;
+  padding: 10px 24px;
+  transition: all 0.2s ease;
+  border-radius: 50px;
+}
+
+.tab-button:hover {
+  background: #e8e6e1;
+  color: #333;
+}
+
+.tab-button.active {
+  color: #fff;
+  background: #5a5450;
+  border-color: #5a5450;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Content */
+.tab-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* Application cards */
+.application-card {
+  width: 100%;
+  max-width: 800px;
+  border: 1px solid #d0d5dd;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
   background: #fff;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.02);
 }
 
 .application-card p {
   margin: 0;
   font-size: 15px;
+  text-align: left;
 }
 
-/* ссылка CV */
-
-.cv-link {
-  color: #5a5450;
-  text-decoration: none;
-  border-bottom: 1px solid transparent;
-  width: fit-content;
-  transition: all .25s;
-}
-
-.cv-link:hover {
-  border-bottom: 1px solid #5a5450;
-}
-
-/* input */
-
+/* Input */
 .reason-input {
   width: 100%;
-  padding: 8px 12px;
+  padding: 10px 14px;
   margin-top: 10px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid #d0d5dd;
   background: #f9fafb;
   font-size: 14px;
   color: #5a5450;
   outline: none;
+  box-sizing: border-box;
 }
 
-/* кнопки */
-
+/* Buttons */
 .actions {
   display: flex;
   gap: 10px;
@@ -72,33 +115,103 @@
 }
 
 .actions button {
-  padding: 7px 18px;
-  border-radius: 20px;
+  padding: 8px 22px;
+  border-radius: 50px;
   border: 2px solid #5a5450;
-  background: #f3f2ee;
+  background: transparent;
   color: #5a5450;
   cursor: pointer;
   transition: all .3s;
   font-size: 14px;
+  font-weight: 500;
 }
 
 .actions button:hover {
   background: #5a5450;
-  color: #f3f2ee;
+  color: #fff;
 }
 
-.manager-loading {
-  color: #667085;
+/* Messages */
+.manager-loading, .manager-error {
+  text-align: left;
+  margin: 20px 0;
 }
 
-.manager-error {
-  color: #b42318;
+.manager-error { 
+  color: #b42318; 
+}
+
+/* Animation */
+.fade-in {
+  animation: fadeIn 0.3s ease-in;
+  width: 100%;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===================== */
+/* HISTORY (FIXED NORMAL) */
+/* ===================== */
+
+.history-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 18px;
+  width: 100%;
+  margin-top: 16px;
+}
+
+.history-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 18px;
+  background: #ffffff;
+  font-size: 14px;
+  color: #5a5450;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.2s ease;
+  min-height: 130px;
+}
+
+.history-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+}
+
+/* Typography inside */
+.history-card p {
+  margin: 0;
+}
+
+.history-card p:first-child {
+  font-weight: 600;
+  color: #333;
+}
+
+.history-card p:nth-child(2) {
+  font-size: 12px;
+  color: #9a948f;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .history-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 @media (max-width: 768px) {
-
   .manager-review {
     padding: 20px 16px;
+  }
+
+  .tabs-container {
+    flex-wrap: wrap;
   }
 
   .actions {
@@ -109,4 +222,13 @@
     width: 100%;
   }
 
+  .history-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .history-grid {
+    grid-template-columns: 1fr;
+  }
 }

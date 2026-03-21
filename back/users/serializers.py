@@ -58,7 +58,15 @@ class RegisterSerializer(serializers.ModelSerializer):
 class UserPreferencesSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserPreferences
-        fields = ("budget", "travel_style", "open_now", "interests")
+        fields = ("budget", "travel_style", "open_now", "interests", "share_map", "share_visited_places", "share_badges")
+
+
+class PrivacySettingsSerializer(serializers.ModelSerializer):
+    """For PATCH profile/privacy/ — only these three fields, owner only."""
+
+    class Meta:
+        model = UserPreferences
+        fields = ("share_map", "share_visited_places", "share_badges")
 
 
 class UserSerializer(serializers.ModelSerializer):
