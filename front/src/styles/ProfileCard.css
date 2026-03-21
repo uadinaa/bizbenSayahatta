@@ -2,27 +2,56 @@
 .cover { height: 140px; background: #e5e5e5; position: relative; display: flex; justify-content: center; align-items: center; border-radius: 12px; overflow: hidden; }
 .cover-bg { position: absolute; inset: 0; background: #e5e5e5; z-index: 0; }
 .cover img.cover-img, .cover img.cover-placeholder { width: 100%; height: 100%; object-fit: cover; }
-.cover-edit-icon { position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; cursor: pointer; z-index: 10; background: rgba(255,255,255,.7); border-radius: 50%; padding: 4px; transition: all .3s; }
-.cover-edit-icon:hover { background: rgba(255,255,255,1); transform: scale(1.1); }
-.profile-content { position: relative; padding: 40px; margin-left: 50px; }
+.cover-edit-icon { position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; cursor: pointer; z-index: 10;   padding: 4px; transition: all .3s; }
+.cover-edit-icon:hover { transform: scale(1.1); }
+.profile-content { position: relative; padding: 40px; margin-left: 50px;  }
 .avatar { width: 120px; height: 120px; background: #9ccbd3; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 48px; margin-top: -100px; overflow: hidden; }
 .avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-.info { margin-top: 20px; color:#5a5450; font-size: 24px; display:flex; flex-direction:column; gap:6px; }
+.info {
+  flex: 1;
+  margin-left: 170px; 
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: #5a5450;
+  
+}
+
 .email { font-size: 16px; color:#9a948f; }
 .username { font-size:26px; font-weight:600; }
 .style { font-size:18px; }
 .style strong { margin-left: 6px; }
-.advisor-status { border-radius: 999px; padding: 2px 10px; }
-.status-approved { background:#e8f7ef; color:#067647; }
-.status-pending { background:#fff7e8; color:#b54708; }
-.status-rejected,.status-more_info { background:#fef3f2; color:#b42318; }
+
+.advisor-status {
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-approved {
+  background: #e8f7ef;
+  color: #067647;
+}
+
+.status-pending {
+  background: #fff7e8;
+  color: #b54708;
+}
+
+.status-rejected,
+.status-more_info {
+  background: #fef3f2;
+  color: #b42318;
+}
+
 .advisor-note { font-size:14px; color:#475467; }
-.advisor-cta { width: fit-content; margin-top: 8px; border-radius:20px; border:2px solid #5a5450; background:#f3f2ee; color:#5a5450; padding:8px 16px; cursor:pointer; }
+.advisor-cta { width: fit-content; margin-top: 2px; border-radius:20px; border:2px solid #5a5450; background:#f3f2ee; color:#5a5450; padding:7px 20px; cursor:pointer; }
 .advisor-cta:disabled { opacity:.6; cursor:not-allowed; }
 .advisor-panel { margin-top:10px; border:1px solid #d0d5dd; border-radius:10px; padding:10px; font-size:14px; display:flex; flex-direction:column; gap:4px; max-width:420px; }
-.level { display:flex; align-items:center; gap:12px; margin:12px 0; color:#5a5450; font-size:20px; }
-.level button { padding:7px 30px; border-radius:20px; border:none; background:#f3f2ee; cursor:pointer; color:#5a5450; margin-left:100px; }
-.logout { display:block; margin:30px auto 0 500px; padding:7px 100px; border-radius:20px; border:none; background:#f3f2ee; color:#5a5450; cursor:pointer; text-align:center; }
+.level { display:flex; align-items:center; gap:12px; margin:1px 0; color:#5a5450; font-size:17px; }
+.level button { padding:5px 20px; border-radius:20px; border:none; background:#f3f2ee; cursor:pointer; color:#5a5450; margin-left:100px; }
+.logout { display:block; margin:30px auto 0 350px; padding:5px 70px; border-radius:20px; border:none; background:#f3f2ee; color:#5a5450; cursor:pointer; text-align:center; }
 .edit { position:absolute; right:500px; top:70px; cursor:pointer; }
 .level button,.logout { border:2px solid #5a5450; background:#f3f2ee; border-radius:20px; cursor:pointer; color:#5a5450; transition:all .3s; }
 .level button:hover,.logout:hover { background:#5a5450; color:#f3f2ee; }
@@ -37,7 +66,14 @@
 .chips-wrap { display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
 .chip { border:1px solid #d0d5dd; background:#fff; border-radius:999px; padding:6px 10px; cursor:pointer; }
 .chip-selected { background:#f3f2ee; border-color:#5a5450; }
-.check-row { display:flex; align-items:center; gap:8px; flex-direction:row !important; }
+.check-row {
+  display: inline-grid;
+  grid-auto-flow: column;
+  align-items: center;
+  gap: 8px;
+}
+
+
 .advisor-error { font-size:13px; color:#b42318; margin:0; }
 .advisor-success {
   font-size: 13px;
@@ -47,11 +83,69 @@
   padding: 8px 10px;
   border-radius: 10px;
 }
-.modal-actions { display:flex; gap:10px; margin-top:10px; }
-.modal-actions button { flex:1; padding:8px; border-radius:10px; background:#f3f2ee; color:#5a5450; cursor:pointer; border:none; transition:all .3s; }
-.modal-actions button:hover { background:#5a5450; color:#f3f2ee; }
-.remove-avatar { padding:6px 12px; margin:0 80px; border-radius:10px; background:#f3f2ee; color:#5a5450; cursor:pointer; border:none; transition:all .3s; }
-.remove-avatar:hover { background:#5a5450; color:#f3f2ee; }
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.cancel-btn,
+.save-btn {
+  flex: 0 !important;
+  width: auto; 
+  min-width: 100px;
+  max-width: 50%;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s ease;
+}
+
+/* CANCEL */
+.cancel-btn {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.modal-actions .cancel-btn:hover {
+  background: #9ca3af !important;
+}
+
+/* ADD TRIP */
+
+
+.modal-actions .save-btn:hover {
+  background: #9333ea !important;
+  color: white;
+}
+
+.remove-avatar {
+  min-width: 120px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.25s ease;
+  font-size: 14px;
+  border: none;
+  margin: 0 auto ;
+}
+
+/* вариант как Cancel */
+.remove-avatar {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.remove-avatar:hover {
+  background: #9ca3af;
+  color: #fff;
+}
+
 @media (max-width:900px) {
   .profile-content { margin-left:0; padding:20px; }
   .edit { right:16px; top:20px; }

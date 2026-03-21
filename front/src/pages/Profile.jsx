@@ -269,7 +269,12 @@ export default function ProfileCard() {
 
           {(user?.role === "MANAGER" || user?.role === "ADMIN") ? <Link className="plan-link" to="/manager/advisors">Open manager approvals</Link> : null}
 
-          <div className="level"><span>Level of the user</span><button>Upgrade Level</button><img src={cupIcon} alt="Cup" /></div>
+          <div className="advisor-panel">
+          <div className="level"><span>Level of the user</span>
+          <Link to="/map">
+          <button>upgrade level <img src={cupIcon} alt="Cup"  width="15" height="15"/></button>
+          </Link></div>
+          </div>
           <Link className="plan-link" to="/chat">plan your trip</Link>
           <button className="logout" onClick={handleLogout}>Logout</button>
         </div>
@@ -290,8 +295,11 @@ export default function ProfileCard() {
               setTempAvatar(preview);
               setAvatarFile(file);
             }} /></label>
-            <button type="button" className="remove-avatar" onClick={() => setTempAvatar(defaultAvatar)}>Remove avatar</button>
-            <div className="modal-actions"><button onClick={saveChanges}>Save</button><button className="cancel" onClick={() => setIsEditOpen(false)}>Cancel</button></div>
+             <button type="button" className="remove-avatar" onClick={() => setTempAvatar(defaultAvatar)}>Remove avatar</button>
+            <div className="modal-actions">
+            
+             <button className="cancel-btn" onClick={() => setIsEditOpen(false)}>Cancel</button>
+             <button className="save-btn" onClick={saveChanges}>Save</button></div>
           </div>
         </div>
       )}
@@ -344,10 +352,10 @@ export default function ProfileCard() {
             {advisorSuccess ? <p className="advisor-success">{advisorSuccess}</p> : null}
 
             <div className="modal-actions">
-              <button onClick={submitAdvisorApplication} disabled={advisorLoading || !advisorForm.contractAccepted || !advisorForm.termsAccepted}>
-                {advisorLoading ? "Sending..." : "Submit for review"}
+              <button className="cancel-btn" onClick={() => setAdvisorModalOpen(false)}>Cancel</button>
+              <button  className="save-btn" onClick={submitAdvisorApplication} disabled={advisorLoading || !advisorForm.contractAccepted || !advisorForm.termsAccepted}>
+                {advisorLoading ? "Sending..." : "Submit"}
               </button>
-              <button className="cancel" onClick={() => setAdvisorModalOpen(false)}>Cancel</button>
             </div>
           </div>
         </div>
