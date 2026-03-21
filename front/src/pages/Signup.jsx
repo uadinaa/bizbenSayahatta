@@ -15,10 +15,6 @@ function formatAuthError(error) {
 
   if (typeof error === "object") {
     if (typeof error.detail === "string") return error.detail;
-    if (error.field_errors && typeof error.field_errors === "object") {
-      const parts = Object.entries(error.field_errors).map(([k, v]) => `${k}: ${v}`);
-      return parts.join(" ");
-    }
 
     if (Array.isArray(error.messages)) {
       return error.messages
@@ -66,7 +62,7 @@ export default function Signup() {
     localStorage.removeItem("refresh");
 
     const res = await dispatch(
-      signUpUser({ email, password, password2: repeatPassword })
+      signUpUser({ email, username: "", password, password2: repeatPassword })
     );
 
     if (res.meta.requestStatus === "fulfilled") {
