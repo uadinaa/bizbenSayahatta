@@ -1,5 +1,7 @@
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet, filters
+from django.shortcuts import get_object_or_404
 from rest_framework import status
+from rest_framework.exceptions import NotFound
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
@@ -21,6 +23,7 @@ from places.serializers import (
 )
 from places.services.google_places import get_places
 from places.services.save_place import save_place_for_user
+from bizbenSayahatta.api_exceptions import MapPlaceAlreadyExistsError
 from users.permissions import IsActiveAndNotBlocked
 
 BADGE_LEVELS = [
@@ -204,7 +207,7 @@ class VisitPlaceAPIView(APIView):
     permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
 
     def post(self, request, place_id):
-        place = Place.objects.get(id=place_id)
+        place = get_object_or_404(Place, id=place_id)
         VisitedPlace.objects.get_or_create(user=request.user, place=place)
         visited_count = VisitedPlace.objects.filter(user=request.user).count()
         badges = _get_badges(visited_count)
@@ -267,7 +270,7 @@ class PlaceMustVisitAPIView(APIView):
     permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
 
     def post(self, request, place_id):
-        place = Place.objects.get(id=place_id)
+        place = get_object_or_404(Place, id=place_id)
 
         if "is_must_visit" in request.data:
             next_value = bool(request.data.get("is_must_visit"))
@@ -298,8 +301,18 @@ class UserMapPlaceListCreateAPIView(APIView):
 
     def post(self, request):
         serializer = UserMapPlaceSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+
+        duplicate_exists = UserMapPlace.objects.filter(
+            user=request.user,
+            city__iexact=serializer.validated_data["city"],
+            country__iexact=serializer.validated_data["country"],
+            date=serializer.validated_data["date"],
+            lat=serializer.validated_data["lat"],
+            lon=serializer.validated_data["lon"],
+        ).exists()
+        if duplicate_exists:
+            raise MapPlaceAlreadyExistsError()
 
         place = serializer.save(user=request.user)
         return Response(UserMapPlaceSerializer(place).data, status=status.HTTP_201_CREATED)
@@ -311,7 +324,7 @@ class UserMapPlaceDeleteAPIView(APIView):
     def delete(self, request, place_id):
         place = UserMapPlace.objects.filter(id=place_id, user=request.user).first()
         if not place:
-            return Response({"detail": "Map place not found"}, status=status.HTTP_404_NOT_FOUND)
+            raise NotFound("Map place not found.")
         place.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
