@@ -12,7 +12,7 @@ SYSTEM_PROMPT = """
 """
 
 
-def ask_travel_ai(user_message: str, context: str = "") -> str:
+def ask_travel_ai(user_message: str, context: str = "", history=None) -> str:
     input_parts = [
         {
             "role": "system",
@@ -30,6 +30,19 @@ def ask_travel_ai(user_message: str, context: str = "") -> str:
                     {
                         "type": "input_text",
                         "text": f"Контекст пользователя:\n{context}",
+                    }
+                ],
+            }
+        )
+
+    if history:
+        input_parts.append(
+            {
+                "role": "system",
+                "content": [
+                    {
+                        "type": "input_text",
+                        "text": f"Recent conversation history:\n{history}",
                     }
                 ],
             }

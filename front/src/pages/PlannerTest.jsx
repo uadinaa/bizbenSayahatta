@@ -1,10 +1,32 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import ReactMarkdown from "react-markdown";
 import api from "../api/axios";
+import TravelPlannerMap from "../components/TravelPlannerMap";
+import { fetchProfile } from "../slices/authSlice";
 import "../styles/PlannerTest.css";
 
+const DAY_COLORS = ["#d92d20", "#f79009", "#facc15", "#16a34a", "#2563eb", "#9333ea"];
+
+function decoratePlan(plan) {
+  if (!plan?.itinerary) return plan;
+  return {
+    ...plan,
+    itinerary: plan.itinerary.map((day, index) => ({
+      ...day,
+      color: day.color || DAY_COLORS[index % DAY_COLORS.length],
+    })),
+  };
+}
+
+function profileHasHistory(user) {
+  return Boolean(user?.history_summary?.trip_count);
+}
+
 export default function PlannerTest() {
+  const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.auth);
   const [searchParams] = useSearchParams();
   const threadFromUrl = searchParams.get("thread");
   const [threads, setThreads] = useState([]);
@@ -15,6 +37,8 @@ export default function PlannerTest() {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [generatingPlan, setGeneratingPlan] = useState(false);
+  const [showSlowMessage, setShowSlowMessage] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
   const [error, setError] = useState("");
 
   const [newKind, setNewKind] = useState("planner");
@@ -33,8 +57,29 @@ export default function PlannerTest() {
   const [chatMessage, setChatMessage] = useState("");
 
   const selectedKind = useMemo(() => selectedThread?.kind, [selectedThread]);
+  const hasHistory = useMemo(() => profileHasHistory(user), [user]);
+  const visibleBadges = useMemo(() => user?.badges || [], [user]);
 
-  const loadThreads = async () => {
+  useEffect(() => {
+    if (localStorage.getItem("access") && !user) {
+      dispatch(fetchProfile());
+    }
+  }, [dispatch, user]);
+
+  useEffect(() => {
+    if (!sendingMessage && !generatingPlan) {
+      setShowSlowMessage(false);
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      setShowSlowMessage(true);
+    }, 6000);
+
+    return () => window.clearTimeout(timer);
+  }, [sendingMessage, generatingPlan]);
+
+  const loadThreads = useCallback(async () => {
     setLoadingThreads(true);
     try {
       const res = await api.get("llm/threads/");
@@ -55,9 +100,9 @@ export default function PlannerTest() {
     } finally {
       setLoadingThreads(false);
     }
-  };
+  }, [selectedId, threadFromUrl]);
 
-  const loadThreadDetail = async (threadId) => {
+  const loadThreadDetail = useCallback(async (threadId) => {
     if (!threadId) return;
     setLoadingMessages(true);
     try {
@@ -66,7 +111,7 @@ export default function PlannerTest() {
         api.get(`llm/threads/${threadId}/messages/`),
       ]);
       setSelectedThread(detailRes.data);
-      setPlanResult(detailRes.data.plan_json || null);
+      setPlanResult(decoratePlan(detailRes.data.plan_json || null));
       setMessages(messagesRes.data);
       setError("");
     } catch (err) {
@@ -74,17 +119,21 @@ export default function PlannerTest() {
     } finally {
       setLoadingMessages(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadThreads();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [threadFromUrl]);
+  }, [loadThreads]);
 
   useEffect(() => {
     loadThreadDetail(selectedId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId]);
+  }, [loadThreadDetail, selectedId]);
+
+  useEffect(() => {
+    if (!planResult?.itinerary?.length) {
+      setMapOpen(false);
+    }
+  }, [planResult]);
 
   const handleCreateThread = async () => {
     setError("");
@@ -113,6 +162,7 @@ export default function PlannerTest() {
     const content = chatMessage.trim();
     setChatMessage("");
     setSendingMessage(true);
+    setError("");
 
     const tempUserMsg = {
       id: `temp-${Date.now()}`,
@@ -135,6 +185,14 @@ export default function PlannerTest() {
           created_at: new Date().toISOString(),
         },
       ]);
+      if (res.data.plan) {
+        const decorated = decoratePlan(res.data.plan);
+        setPlanResult(decorated);
+        setSelectedThread((prev) => (
+          prev ? { ...prev, plan_json: decorated } : prev
+        ));
+      }
+      await loadThreads();
     } catch (err) {
       setError(err.response?.data?.detail || "Message failed");
     } finally {
@@ -154,12 +212,16 @@ export default function PlannerTest() {
         budget: budget === "" ? null : Number(budget),
         interests: interests
           .split(",")
-          .map((i) => i.trim())
+          .map((item) => item.trim())
           .filter(Boolean),
         pace,
       };
       const res = await api.post(`llm/threads/${selectedId}/plan/`, payload);
-      setPlanResult(res.data);
+      const decorated = decoratePlan(res.data);
+      setPlanResult(decorated);
+      setSelectedThread((prev) => (
+        prev ? { ...prev, plan_json: decorated, city: decorated.city } : prev
+      ));
       await loadThreads();
     } catch (err) {
       setError(err.response?.data?.detail || "Plan failed");
@@ -170,13 +232,34 @@ export default function PlannerTest() {
 
   return (
     <div className="planner-shell">
-      <div className="left-column">
-        {/* Threads and Planner panel (unchanged) */}
-        <div className="threads-panel">
+      <aside className="planner-sidebar">
+        <div className="sidebar-card">
           <div className="threads-header">
-            <h2>Chats</h2>
+            <h2>Travel Chat</h2>
             <span className="muted">Planner + AI</span>
           </div>
+
+          {hasHistory ? (
+            <div className="profile-level">
+              <div className="level-pill">
+                <span>{user.traveler_level?.icon}</span>
+                <strong>{user.traveler_level?.name}</strong>
+              </div>
+              <p className="muted">
+                {user.history_summary?.trip_count} trips across {user.history_summary?.country_count} countries
+              </p>
+              {visibleBadges.length ? (
+                <div className="badge-row">
+                  {visibleBadges.map((badge) => (
+                    <span key={badge.code} className="badge-chip">
+                      {badge.icon} {badge.label}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="new-thread">
             <div className="row">
               <select value={newKind} onChange={(e) => setNewKind(e.target.value)}>
@@ -185,13 +268,22 @@ export default function PlannerTest() {
               </select>
               <button type="button" onClick={handleCreateThread}>New</button>
             </div>
-            <input placeholder="Title (optional)" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
-            <input placeholder="City (optional)" value={newCity} onChange={(e) => setNewCity(e.target.value)} />
+            <input
+              placeholder="Title (optional)"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+            />
+            <input
+              placeholder="City (optional)"
+              value={newCity}
+              onChange={(e) => setNewCity(e.target.value)}
+            />
             <div className="row">
               <input type="date" value={newStart} onChange={(e) => setNewStart(e.target.value)} />
               <input type="date" value={newEnd} onChange={(e) => setNewEnd(e.target.value)} />
             </div>
           </div>
+
           {loadingThreads ? (
             <p className="muted">Loading chats...</p>
           ) : (
@@ -204,7 +296,8 @@ export default function PlannerTest() {
                 >
                   <div className="thread-title">{thread.title || "Untitled"}</div>
                   <div className="thread-meta">
-                    {thread.kind}{thread.city ? ` · ${thread.city}` : ""}
+                    {thread.kind}
+                    {thread.city ? ` · ${thread.city}` : ""}
                   </div>
                 </button>
               ))}
@@ -212,61 +305,37 @@ export default function PlannerTest() {
           )}
         </div>
 
-        <div className="plan-panel">
-          <h3>Trip Plan</h3>
+        <div className="sidebar-card">
+          <h3>Quick Planner</h3>
           {selectedKind === "planner" ? (
-            <>
-              <form onSubmit={handlePlanSubmit} className="plan-form">
-                <input placeholder="City (e.g. Milan)" value={city} onChange={(e) => setCity(e.target.value)} required />
-                <div className="row">
-                  <input type="number" min="1" max="14" value={days} onChange={(e) => setDays(e.target.value)} />
-                  <input type="number" min="0" max="4" placeholder="Budget (0–4)" value={budget} onChange={(e) => setBudget(e.target.value)} />
-                </div>
-                <input placeholder="Interests (shopping, art...)" value={interests} onChange={(e) => setInterests(e.target.value)} />
-                <select value={pace} onChange={(e) => setPace(e.target.value)}>
-                  <option value="slow">slow</option>
-                  <option value="medium">medium</option>
-                  <option value="fast">fast</option>
-                </select>
-                <button type="submit" disabled={generatingPlan}>
-                  {generatingPlan ? "Planning..." : "Generate Plan"}
-                </button>
-              </form>
-              {planResult && (
-                <div className="plan-result">
-                  <h4>{planResult.city} · {planResult.days_generated} days</h4>
-                  {planResult.itinerary?.map((day) => (
-                    <div key={day.day} className="day-block">
-                      <h5>Day {day.day}</h5>
-                      {day.summary && <p className="summary">{day.summary}</p>}
-                      <div className="stops-list">
-                        {day.stops?.map((stop) => (
-                          <div key={stop.id} className="stop-card">
-                            {stop.photo_url ? <img src={stop.photo_url} alt={stop.name} /> : <div className="stop-photo-placeholder" />}
-                            <div className="stop-content">
-                              <strong>{stop.name}</strong>
-                              <p>{stop.address}</p>
-                              <p>{stop.rating ? `★ ${stop.rating}` : "★ n/a"} · {stop.category}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
+            <form onSubmit={handlePlanSubmit} className="plan-form">
+              <input placeholder="City (e.g. Milan)" value={city} onChange={(e) => setCity(e.target.value)} required />
+              <div className="row">
+                <input type="number" min="1" max="14" value={days} onChange={(e) => setDays(e.target.value)} />
+                <input type="number" min="0" placeholder="Budget" value={budget} onChange={(e) => setBudget(e.target.value)} />
+              </div>
+              <input placeholder="Interests (shopping, art...)" value={interests} onChange={(e) => setInterests(e.target.value)} />
+              <select value={pace} onChange={(e) => setPace(e.target.value)}>
+                <option value="slow">slow</option>
+                <option value="medium">medium</option>
+                <option value="fast">fast</option>
+              </select>
+              <button type="submit" disabled={generatingPlan}>
+                {generatingPlan ? "Planning..." : "Generate Plan"}
+              </button>
+            </form>
           ) : (
-            <p className="muted">Planner output appears here for planner chats.</p>
+            <p className="muted">Switch to a planner chat to use the quick plan form.</p>
           )}
         </div>
-      </div>
+      </aside>
 
-      {/* Chat panel */}
-      <div className="chat-panel">
+      <section className="chat-panel">
         <div className="chat-header">
-          <h2>{selectedThread?.title || "Chat"}</h2>
-          {selectedThread?.city && <span className="muted">{selectedThread.city}</span>}
+          <div>
+            <h2>{selectedThread?.title || "Chat"}</h2>
+            {selectedThread?.city ? <span className="muted">{selectedThread.city}</span> : null}
+          </div>
         </div>
 
         <div className="chat-messages">
@@ -299,8 +368,140 @@ export default function PlannerTest() {
           </button>
         </form>
 
-        {error && <p className="error">{error}</p>}
-      </div>
+        {showSlowMessage ? (
+          <p className="slow-message">Taking longer than usual... still working on your trip 🔄</p>
+        ) : null}
+        {error ? <p className="error">{error}</p> : null}
+      </section>
+
+      <aside className="right-panel">
+        <div className="right-panel-controls">
+          <button
+            type="button"
+            className="map-toggle"
+            disabled={!planResult?.itinerary?.length}
+            onClick={() => setMapOpen((prev) => !prev)}
+          >
+            {mapOpen ? "Map" : "Map"}
+          </button>
+          {mapOpen ? (
+            <button type="button" className="map-close" onClick={() => setMapOpen(false)}>
+              X
+            </button>
+          ) : (
+            <span className="muted panel-hint">Final trip stays visible below</span>
+          )}
+        </div>
+
+        <div className={`map-overlay ${mapOpen ? "open" : ""}`}>
+          {mapOpen ? <TravelPlannerMap plan={planResult} isOpen={mapOpen} /> : null}
+        </div>
+
+        <div className={`final-trip-card ${mapOpen ? "with-map" : ""}`}>
+          <h3>Final Trip</h3>
+          {!planResult?.itinerary?.length ? (
+            <div className="trip-placeholder">Your trip will appear here</div>
+          ) : (
+            <>
+              {planResult.family_note ? (
+                <div className="family-note">{planResult.family_note}</div>
+              ) : null}
+
+              <div className="final-trip-days">
+                {planResult.itinerary.map((day) => (
+                  <div key={day.day} className="final-day-card">
+                    <div className="final-day-header">
+                      <span className="day-dot" style={{ backgroundColor: day.color }} />
+                      <strong>Day {day.day}</strong>
+                    </div>
+                    <p>{day.summary}</p>
+                    <div className="day-stop-list">
+                      {(day.stops || []).map((stop) => (
+                        <span key={`${day.day}-${stop.id || stop.name}`} className="day-stop-chip">
+                          {stop.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {planResult.sources ? (
+                <div className="sources-card">
+                  <h4>📚 Sources & Useful Links</h4>
+                  <div className="sources-divider" />
+                  {(planResult.sources.items || []).map((item) => (
+                    <a
+                      key={`${item.label}-${item.url}`}
+                      href={item.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="source-link"
+                    >
+                      📍 {item.label} — {item.provider}
+                    </a>
+                  ))}
+
+                  {planResult.sources.visa?.status === "required" ? (
+                    <a
+                      href={planResult.sources.visa.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="source-link"
+                    >
+                      🛂 {planResult.sources.visa.label} → link
+                    </a>
+                  ) : null}
+
+                  {planResult.sources.visa?.status === "not_required" ? (
+                    <div className="source-link static-link">
+                      ✅ {planResult.sources.visa.label}
+                    </div>
+                  ) : null}
+
+                  {planResult.sources.visa?.status === "citizenship_needed" ? (
+                    <div className="source-link static-link">
+                      🛂 {planResult.sources.visa.label}
+                    </div>
+                  ) : null}
+
+                  {planResult.sources.visa?.status === "unknown" ? (
+                    <a
+                      href={planResult.sources.visa.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="source-link"
+                    >
+                      🛂 {planResult.sources.visa.label} → link
+                    </a>
+                  ) : null}
+
+                  {planResult.sources.advisory ? (
+                    <a
+                      href={planResult.sources.advisory.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="source-link"
+                    >
+                      📋 {planResult.sources.advisory.label}
+                    </a>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {planResult.safety_tips?.length ? (
+                <div className="safety-card">
+                  <h4>⚠️ Safety Tips for {planResult.city}</h4>
+                  <div className="sources-divider" />
+                  {planResult.safety_tips.map((tip) => (
+                    <p key={tip} className="safety-tip">• {tip}</p>
+                  ))}
+                </div>
+              ) : null}
+            </>
+          )}
+        </div>
+      </aside>
     </div>
   );
 }

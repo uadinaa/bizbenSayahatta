@@ -6,7 +6,9 @@ import { fetchPlaceComments, createPlaceComment } from "../api/comments";
 import { fetchProfile } from "../slices/authSlice";
 import s from "../styles/Inspiration.module.css";
 import api from "../api/axios";
+import AddTripModal from "../components/AddTripModal";
 
+// категории для фильтрации
 const categories = [
   "all",
   "restaurant",
@@ -19,13 +21,13 @@ const categories = [
   "beach",
   "concert",
 ];
-
+// функция что б сделать лист 
 function toList(data) {
   if (Array.isArray(data)) return data;
   if (Array.isArray(data?.results)) return data.results;
   return [];
 }
-
+// нормализирует для фильтрации цены
 function normalizePriceTier(priceLevel) {
   if (priceLevel === null || priceLevel === undefined || priceLevel === "") {
     return "unknown";
@@ -45,7 +47,7 @@ function normalizePriceTier(priceLevel) {
   }
   return "unknown";
 }
-
+// наименование для цен
 function priceTierLabel(priceLevel) {
   const tier = normalizePriceTier(priceLevel);
   if (tier === "free") return "🆓";
@@ -65,11 +67,9 @@ const Inspiration = () => {
   const [priceFilter, setPriceFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTripModalOpen, setIsTripModalOpen] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState(null);
-
   const [tripCategories, setTripCategories] = useState([]);
   const [tripForm, setTripForm] = useState({
     title: "",
@@ -93,12 +93,24 @@ const Inspiration = () => {
   const [publicTrips, setPublicTrips] = useState([]);
   const [loadingTrips, setLoadingTrips] = useState(false);
 
+  const handleTripCreated = async () => {
+    // await loadTrips(); ориг
+    // await loadingTrips();
+    await loadPublicTrips();
+    setActiveFilter("PENDING");
+  };
+
+    const closeModal = () => {
+    setIsModalOpen(false);
+  };
+
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
   const isAuthed = Boolean(localStorage.getItem("access"));
   const isTripAdvisor = user?.role === "TRIPADVISOR" || user?.role === "ADMIN";
 
+  // фильтр
   const preferenceFilters = useMemo(() => {
     const prefs = user?.preferences || {};
     return {
@@ -109,14 +121,14 @@ const Inspiration = () => {
           : prefs.open_now,
     };
   }, [user]);
-
+  // форматирование категории 
   const formatCategory = (categoryValue) => {
     if (!categoryValue) return "";
     return categoryValue
       .replace("_", " ")
       .replace(/\b\w/g, (l) => l.toUpperCase());
   };
-
+  // оценочные звезды 
   const renderStars = (rating) => {
     if (!rating) return null;
     const fullStars = Math.floor(rating);
@@ -132,7 +144,7 @@ const Inspiration = () => {
       </span>
     );
   };
-
+  // форматирование локации 
   const formatLocation = (place) => {
     const city = (place.city || "").trim();
     let country = (place.country || "").trim();
@@ -149,12 +161,12 @@ const Inspiration = () => {
     if (city && country) return `${city}, ${country}`;
     return city || country || "";
   };
-
+  // фильтрация по ценам
   const filterByPrice = (list) => {
     if (priceFilter === "all") return list;
     return list.filter((p) => normalizePriceTier(p.price_level) === priceFilter);
   };
-
+  // фильтрация по датам
   const filterByDate = (list) => {
     if (!dateFrom && !dateTo) return list;
 
@@ -166,7 +178,7 @@ const Inspiration = () => {
       return true;
     });
   };
-
+  // 
   const handleToggleMustVisit = async (placeId, currentValue) => {
     if (!isAuthed) {
       navigate("/login");
@@ -194,7 +206,7 @@ const Inspiration = () => {
       console.error(err);
     }
   };
-
+  // пока дизейблд, но в будущем должен направлять в чат  
   const handleCreateTrip = () => {
     if (!isAuthed) {
       navigate("/login");
@@ -202,7 +214,7 @@ const Inspiration = () => {
     }
     navigate("/trip");
   };
-
+  // коменты грузят
   const loadComments = async (placeId) => {
     try {
       setLoadingComments(true);
@@ -215,7 +227,7 @@ const Inspiration = () => {
       setLoadingComments(false);
     }
   };
-
+  // добавление коментов 
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
 
@@ -233,23 +245,22 @@ const Inspiration = () => {
       alert("Failed to post comment. Please try again.");
     }
   };
-
+  // от
   const openTripModal = () => {
     if (!isAuthed) {
       navigate("/login");
       return;
     }
     if (!isTripAdvisor) return;
-
-    setTripError("");
-    setTripSuccess("");
+    // setTripError("");
+    // setTripSuccess("");
     setIsTripModalOpen(true);
   };
 
   const closeTripModal = () => {
     setIsTripModalOpen(false);
-    setTripError("");
-    setTripSuccess("");
+    // setTripError("");
+    // setTripSuccess("");
     setTripSubmitting(false);
   };
 
@@ -478,8 +489,11 @@ const Inspiration = () => {
         />
 
         {isTripAdvisor && (
-          <button className={s.addTripBtn} onClick={openTripModal}>
-            + Add Trip
+          // <button className={s.addTripBtn} onClick={openTripModal}>
+          //   + Add Trip
+          // </button>
+          <button className="add-trip-btn" onClick={openTripModal}>
+            + Add New Trip
           </button>
         )}
       </div>
@@ -811,7 +825,20 @@ const Inspiration = () => {
         </div>
       )}
 
-      {isTripModalOpen && (
+      <AddTripModal
+        isOpen={isTripModalOpen}
+        onClose={closeTripModal}
+        tripCategories={tripCategories}
+        onTripCreated={handleTripCreated}
+      />
+    </div>
+  );
+};
+
+export default Inspiration;
+
+
+      {/* {isTripModalOpen && (
         <div className={s.modalOverlay} onClick={closeTripModal}>
           <div className={s.tripModal} onClick={(e) => e.stopPropagation()}>
             <div className={s.tripModalHeader}>
@@ -959,9 +986,4 @@ const Inspiration = () => {
             </form>
           </div>
         </div>
-      )}
-    </div>
-  );
-};
-
-export default Inspiration;
+      )} */}

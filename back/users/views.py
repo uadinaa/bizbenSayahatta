@@ -15,6 +15,7 @@ from .serializers import (
     UserSerializer,
     UserUpdateSerializer,
 )
+from .services import sync_user_travel_profile
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -32,6 +33,7 @@ class UserProfileView(APIView):
 
     def get(self, request):
         UserPreferences.objects.get_or_create(user=request.user)
+        traveler_profile = sync_user_travel_profile(request.user)
         if request.user.role == User.Role.USER:
             approved_exists = TripAdvisorApplication.objects.filter(
                 user=request.user,
@@ -41,7 +43,7 @@ class UserProfileView(APIView):
                 request.user.role = User.Role.TRIPADVISOR
                 request.user.save(update_fields=["role"])
                 TripAdvisorProfile.objects.get_or_create(user=request.user)
-        return Response(UserSerializer(request.user).data)
+        return Response(UserSerializer(request.user, context={"traveler_profile": traveler_profile}).data)
 
     def put(self, request):
         prefs, _ = UserPreferences.objects.get_or_create(user=request.user)
@@ -51,14 +53,15 @@ class UserProfileView(APIView):
         user_serializer.is_valid(raise_exception=True)
         user_serializer.save()
 
-        pref_fields = {"budget", "travel_style", "open_now", "interests"}
+        pref_fields = {"budget", "travel_style", "citizenship", "open_now", "interests"}
         pref_data = {key: value for key, value in request.data.items() if key in pref_fields}
         if pref_data:
             pref_serializer = UserPreferencesSerializer(prefs, data=pref_data, partial=True)
             pref_serializer.is_valid(raise_exception=True)
             pref_serializer.save()
 
-        return Response(UserSerializer(request.user).data)
+        traveler_profile = sync_user_travel_profile(request.user)
+        return Response(UserSerializer(request.user, context={"traveler_profile": traveler_profile}).data)
 
     def patch(self, request):
         return self.put(request)

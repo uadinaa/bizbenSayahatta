@@ -98,6 +98,31 @@ def _score_place(place: Place, interests: List[str]) -> float:
     return score
 
 
+def _is_family_safe_place(place: Place, kids_age_band: Optional[str]) -> bool:
+    types = _place_type_set(place)
+    banned = {"bar", "night_club", "casino", "liquor_store", "adult"}
+    if any(keyword in types for keyword in banned):
+        return False
+
+    if kids_age_band in {"toddler", "child", "young"}:
+        physically_demanding = {"hiking_area", "mountain", "campground"}
+        if any(keyword in types for keyword in physically_demanding):
+            return False
+
+    return True
+
+
+def _family_score_bonus(place: Place, kids_age_band: Optional[str]) -> float:
+    types = _place_type_set(place)
+    family_keywords = {"park", "aquarium", "zoo", "museum", "amusement_park", "cafe"}
+    bonus = 0.0
+    if any(keyword in types for keyword in family_keywords):
+        bonus += 1.8
+    if kids_age_band in {"toddler", "child", "young"} and "park" in types:
+        bonus += 1.0
+    return bonus
+
+
 def _place_type_set(place: Place) -> set:
     types = set(value.lower() for value in (place.types or []))
     category = (place.category or "").lower()
@@ -345,6 +370,9 @@ def build_trip_plan(
     pace: Optional[str] = None,
     travel_style: Optional[str] = None,
     use_preferences: bool = True,
+    traveler_type: Optional[str] = None,
+    has_kids: bool = False,
+    kids_age_band: Optional[str] = None,
 ):
     normalized_interests = _normalize_interests(interests)
     budget, normalized_interests, travel_style = _apply_preferences(
@@ -375,13 +403,22 @@ def build_trip_plan(
             if place_price is not None and place_price > budget:
                 continue
 
+        if has_kids and not _is_family_safe_place(place, kids_age_band):
+            continue
+
         filtered_places.append(place)
 
     if filtered_places:
         places = filtered_places
 
     scored_places = [
-        ScoredPlace(place=place, score=_score_place(place, normalized_interests))
+        ScoredPlace(
+            place=place,
+            score=(
+                _score_place(place, normalized_interests)
+                + (_family_score_bonus(place, kids_age_band) if has_kids else 0.0)
+            ),
+        )
         for place in places
     ]
     scored_places.sort(key=lambda item: item.score, reverse=True)
@@ -412,6 +449,8 @@ def build_trip_plan(
                     "category": place.category,
                     "rating": place.rating,
                     "address": place.address,
+                    "city": place.city,
+                    "country": place.country,
                     "google_place_id": place.google_place_id,
                     "lat": place.lat,
                     "lng": place.lng,
@@ -450,6 +489,9 @@ def build_trip_plan(
         "interests": normalized_interests,
         "pace": pace_value,
         "travel_style": travel_style,
+        "traveler_type": traveler_type,
+        "has_kids": has_kids,
+        "kids_age_band": kids_age_band,
         "itinerary": day_plans,
         "tips": tips,
     }

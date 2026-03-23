@@ -58,7 +58,18 @@ class RegisterSerializer(serializers.ModelSerializer):
 class UserPreferencesSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserPreferences
-        fields = ("budget", "travel_style", "open_now", "interests", "share_map", "share_visited_places", "share_badges")
+        fields = (
+            "budget",
+            "travel_style",
+            "citizenship",
+            "traveler_level",
+            "badges",
+            "open_now",
+            "interests",
+            "share_map",
+            "share_visited_places",
+            "share_badges",
+        )
 
 
 class PrivacySettingsSerializer(serializers.ModelSerializer):
@@ -71,6 +82,9 @@ class PrivacySettingsSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     preferences = UserPreferencesSerializer(read_only=True)
+    traveler_level = serializers.SerializerMethodField()
+    badges = serializers.SerializerMethodField()
+    history_summary = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -87,11 +101,25 @@ class UserSerializer(serializers.ModelSerializer):
             "status_level",
             "is_blocked",
             "preferences",
+            "traveler_level",
+            "badges",
+            "history_summary",
         )
+
+    def _profile(self, obj):
+        return self.context.get("traveler_profile") or {}
+
+    def get_traveler_level(self, obj):
+        return self._profile(obj).get("traveler_level")
+
+    def get_badges(self, obj):
+        return self._profile(obj).get("badges", [])
+
+    def get_history_summary(self, obj):
+        return self._profile(obj).get("history_summary", {})
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("username", "avatar", "cover")
-

@@ -15,9 +15,17 @@ from .serializers import (
 )
 from .models import ChatMessage, ChatThread, ChatEntry
 from .services.openai_service import ask_travel_ai, polish_trip_plan
+from .services.travel_chat import (
+    build_missing_details_response,
+    collect_trip_requirements,
+    generate_trip_payload,
+    get_missing_requirements,
+)
 from .services.trip_planner import build_trip_plan
 from places.models import Place
 from users.permissions import IsActiveAndNotBlocked
+from users.models import UserPreferences
+from users.services import sync_user_travel_profile
 
 
 MAX_CHAT_CONTEXT_PLACES = 8
@@ -110,10 +118,76 @@ def _build_places_context_for_city(city: str) -> str:
     return "\n".join(lines)
 
 
+def _recent_history_text(thread) -> str:
+    entries = list(ChatEntry.objects.filter(thread=thread).order_by("created_at")[:10])
+    return "\n".join(f"{entry.role}: {entry.content}" for entry in entries[-6:])
+
+
+def _generate_thread_trip_response(thread, user, message: str):
+    UserPreferences.objects.get_or_create(user=user)
+    sync_user_travel_profile(user)
+
+    previous_user_count = ChatEntry.objects.filter(thread=thread, role="user").count() - 1
+    all_user_text = "\n".join(
+        ChatEntry.objects.filter(thread=thread, role="user")
+        .order_by("created_at")
+        .values_list("content", flat=True)
+    )
+    requirements = collect_trip_requirements(
+        text=all_user_text,
+        fallback_city=thread.city or "",
+        fallback_style=(user.preferences.travel_style or ""),
+        fallback_citizenship=(user.preferences.citizenship or ""),
+    )
+    missing = get_missing_requirements(requirements)
+
+    should_generate_trip = (
+        not thread.plan_json
+        and not missing
+    ) or (
+        not missing
+        and any(keyword in message.lower() for keyword in {"regenerate", "rebuild", "update trip", "new trip"})
+    )
+
+    if missing and (previous_user_count == 0 or not thread.plan_json):
+        return {
+            "response": build_missing_details_response(missing),
+            "plan": thread.plan_json,
+            "sources": [],
+        }
+
+    if should_generate_trip:
+        try:
+            payload = generate_trip_payload(user=user, requirements=requirements)
+        except ValueError as exc:
+            if str(exc) == "no_places_for_city":
+                return {
+                    "response": (
+                        f"I couldn't find cached places for {requirements.destination or 'that destination'} yet. "
+                        "Try another city or refresh the place cache first."
+                    ),
+                    "plan": thread.plan_json,
+                    "sources": [],
+                }
+            raise
+        thread.plan_json = payload
+        thread.city = payload.get("city") or thread.city
+        thread.save(update_fields=["plan_json", "city", "updated_at"])
+        return {
+            "response": payload["response_markdown"],
+            "plan": payload,
+            "sources": [item["label"] for item in payload["sources"]["items"]],
+        }
+
+    return None
+
+
 class TravelChatView(APIView):
     permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
 
     def post(self, request):
+        UserPreferences.objects.get_or_create(user=request.user)
+        sync_user_travel_profile(request.user)
         serializer = ChatRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
@@ -129,7 +203,7 @@ class TravelChatView(APIView):
 
         ai_response = ask_travel_ai(
             user_message=user_message,
-            context=context
+            context=context,
         )
         sources_block = _build_sources_block(source_places)
         final_response = f"{ai_response}\n\n{sources_block}"
@@ -254,6 +328,23 @@ class ChatEntryListCreateView(APIView):
         user_message = serializer.validated_data["message"]
         ChatEntry.objects.create(thread=thread, role="user", content=user_message)
 
+        trip_result = _generate_thread_trip_response(thread, request.user, user_message)
+        if trip_result is not None:
+            ChatEntry.objects.create(
+                thread=thread,
+                role="assistant",
+                content=trip_result["response"],
+            )
+            return Response(
+                {
+                    "response": trip_result["response"],
+                    "sources": trip_result["sources"],
+                    "tokens_left": request.user.tokens,
+                    "plan": trip_result["plan"],
+                },
+                status=status.HTTP_200_OK,
+            )
+
         selected_city = _detect_city_from_message(user_message, fallback_city=thread.city or "")
         source_places = _get_top_places_for_city(selected_city)
         places_context = _build_places_context_for_city(selected_city)
@@ -268,16 +359,22 @@ class ChatEntryListCreateView(APIView):
 
         ai_response = ask_travel_ai(
             user_message=user_message,
-            context=context
+            context=context,
+            history=_recent_history_text(thread),
         )
         sources_block = _build_sources_block(source_places)
         final_response = f"{ai_response}\n\n{sources_block}"
 
         ChatEntry.objects.create(thread=thread, role="assistant", content=final_response)
-        thread.save()
+        thread.save(update_fields=["updated_at"])
 
         return Response(
-            {"response": final_response, "sources": [place.name for place in source_places], "tokens_left": request.user.tokens},
+            {
+                "response": final_response,
+                "sources": [place.name for place in source_places],
+                "tokens_left": request.user.tokens,
+                "plan": thread.plan_json,
+            },
             status=status.HTTP_200_OK
         )
 
