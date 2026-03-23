@@ -1,132 +1,141 @@
 import logging
 import uuid
 
+from django.conf import settings
 from rest_framework import status
+from rest_framework.exceptions import (
+    AuthenticationFailed,
+    NotAuthenticated,
+    PermissionDenied,
+    ValidationError,
+)
 from rest_framework.response import Response
 from rest_framework.views import exception_handler
+
 
 logger = logging.getLogger("bizbenSayahatta.errors")
 
 
+def _context_extra(context, status_code, error_id=None):
+    request = context.get("request")
+    user = getattr(request, "user", None) if request else None
+    return {
+        "request_id": getattr(request, "request_id", None) if request else None,
+        "path": getattr(request, "path", None) if request else None,
+        "method": getattr(request, "method", None) if request else None,
+        "user_id": getattr(user, "id", None) if user else None,
+        "role": getattr(user, "role", None) if user else None,
+        "status_code": status_code,
+        "error_id": error_id,
+        "remote_addr": request.META.get("REMOTE_ADDR") if request else None,
+    }
+
+
+def _extract_message(response, fallback):
+    data = response.data
+    if isinstance(data, dict):
+        detail = data.get("detail")
+        if isinstance(detail, list):
+            return " ".join(str(item) for item in detail)
+        if detail:
+            return str(detail)
+    if isinstance(data, list):
+        return " ".join(str(item) for item in data)
+    return fallback
+
+
+def _extract_validation_details(response):
+    data = response.data
+    if isinstance(data, dict):
+        return data
+    if isinstance(data, list):
+        return {"non_field_errors": data}
+    return {"detail": str(data)}
+
+
+def _error_response(status_code, code, message, details=None):
+    payload = {
+        "success": False,
+        "error": {
+            "code": code,
+            "message": message,
+        },
+    }
+    if details is not None:
+        payload["error"]["details"] = details
+    return Response(payload, status=status_code)
+
+
 def custom_exception_handler(exc, context):
     response = exception_handler(exc, context)
-    request = context.get("request")
-    request_id = getattr(request, "request_id", None)
-    user = getattr(request, "user", None) if request else None
-    user_id = getattr(user, "id", None)
-    role = getattr(user, "role", None)
-    path = getattr(request, "path", None) if request else None
-    method = getattr(request, "method", None) if request else None
-    remote_addr = request.META.get("REMOTE_ADDR") if request else None
 
+    # Unhandled exceptions become secure 500 with error id.
     if response is None:
         error_id = uuid.uuid4().hex
-        logger.error(
-            "Unhandled exception",
-            exc_info=exc,
-            extra={
-                "request_id": request_id,
-                "path": path,
-                "method": method,
-                "user_id": user_id,
-                "role": role,
-                "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "error_id": error_id,
-                "remote_addr": remote_addr,
-            },
-        )
-        return Response(
-            {
-                "detail": "Internal server error. Please try again later.",
-                "code": "internal_server_error",
-                "error_id": error_id,
-                "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
-            },
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        logger.exception("Unhandled exception", extra=_context_extra(context, status.HTTP_500_INTERNAL_SERVER_ERROR, error_id))
+        details = {"error_id": error_id}
+        if settings.DEBUG:
+            details["exception"] = exc.__class__.__name__
+        return _error_response(
+            status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Internal server error. Please try again later.",
+            details=details,
         )
 
-    detail = response.data.get("detail") if isinstance(response.data, dict) else None
-    if not detail:
-        if response.status_code >= 500:
-            detail = "Internal server error. Please try again later."
-        elif response.status_code == 404:
-            detail = "Resource not found."
-        elif response.status_code == 403:
-            detail = "You do not have permission to perform this action."
-        elif response.status_code == 401:
-            detail = "Authentication credentials were not provided or are invalid."
-        elif response.status_code == 400:
-            detail = "Invalid request payload."
-        else:
-            detail = "Request failed."
+    status_code = response.status_code
 
-    if response.status_code == 400:
-        error_id = uuid.uuid4().hex
-        error_fields = []
-        field_errors = {}
-        if isinstance(response.data, dict):
-            error_fields = [key for key in response.data.keys() if key != "detail"]
-            for key, value in response.data.items():
-                if key == "detail":
-                    continue
-                if isinstance(value, list):
-                    field_errors[key] = " ".join([str(item) for item in value])
-                elif isinstance(value, str):
-                    field_errors[key] = value
-
-        logger.warning(
-            "Validation error",
-            extra={
-                "request_id": request_id,
-                "path": path,
-                "method": method,
-                "user_id": user_id,
-                "role": role,
-                "status_code": response.status_code,
-                "error_id": error_id,
-                "remote_addr": remote_addr,
-            },
+    # Validation errors (serializer/model/input)
+    if isinstance(exc, ValidationError) or status_code == status.HTTP_400_BAD_REQUEST:
+        return _error_response(
+            status.HTTP_400_BAD_REQUEST,
+            "validation_error",
+            "Validation failed.",
+            details=_extract_validation_details(response),
         )
 
-        # Keep validation errors visible to the client (e.g. signup password rules)
-        detail_msg = "Invalid request payload."
-        if field_errors:
-            parts = [f"{k}: {v}" for k, v in field_errors.items()]
-            detail_msg = " ".join(parts)
-        response.data = {
-            "detail": detail_msg,
-            "status_code": response.status_code,
-            "error_id": error_id,
-            "errors": error_fields,
-            "field_errors": field_errors,
-        }
-        return response
-
-    if response.status_code >= 500:
-        error_id = uuid.uuid4().hex
-        logger.error(
-            "Server error response",
-            exc_info=exc,
-            extra={
-                "request_id": request_id,
-                "path": path,
-                "method": method,
-                "user_id": user_id,
-                "role": role,
-                "status_code": response.status_code,
-                "error_id": error_id,
-                "remote_addr": remote_addr,
-            },
+    # Authentication errors
+    if isinstance(exc, (NotAuthenticated, AuthenticationFailed)) or status_code == status.HTTP_401_UNAUTHORIZED:
+        return _error_response(
+            status.HTTP_401_UNAUTHORIZED,
+            "authentication_error",
+            "Authentication credentials were not provided or are invalid.",
         )
-        response.data = {
-            "detail": detail,
-            "error_id": error_id,
-            "status_code": response.status_code,
-        }
-        return response
 
-    response.data = {
-        "detail": detail,
-        "status_code": response.status_code,
-    }
-    return response
+    # Permission denied
+    if isinstance(exc, PermissionDenied) or status_code == status.HTTP_403_FORBIDDEN:
+        return _error_response(
+            status.HTTP_403_FORBIDDEN,
+            "permission_denied",
+            "You do not have permission to perform this action.",
+        )
+
+    # Not found
+    if status_code == status.HTTP_404_NOT_FOUND:
+        return _error_response(
+            status.HTTP_404_NOT_FOUND,
+            "not_found",
+            "Resource not found.",
+        )
+
+    # Custom business logic errors: use DRF exception code if set.
+    if 400 <= status_code < 500:
+        code = getattr(exc, "default_code", "business_error")
+        return _error_response(
+            status_code,
+            str(code),
+            _extract_message(response, "Request failed."),
+        )
+
+    # All server errors with traceback logging.
+    error_id = uuid.uuid4().hex
+    logger.exception("Server error response", extra=_context_extra(context, status_code, error_id))
+    details = {"error_id": error_id}
+    if settings.DEBUG:
+        details["exception"] = exc.__class__.__name__
+    return _error_response(
+        status_code,
+        "internal_server_error",
+        "Internal server error. Please try again later.",
+        details=details,
+    )
