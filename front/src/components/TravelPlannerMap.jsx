@@ -1,163 +1,114 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo } from "react";
+import { MapContainer, Marker, Popup, Polyline, TileLayer, useMap } from "react-leaflet";
+import L from "leaflet";
 
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+const fallbackCenter = [48.8566, 2.3522];
 
-let googleMapsPromise = null;
+const defaultMarker = new L.Icon({
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
 
-function loadGoogleMapsScript() {
-  if (window.google?.maps) {
-    return Promise.resolve(window.google.maps);
-  }
+function FitRouteBounds({ points }) {
+  const map = useMap();
 
-  if (googleMapsPromise) {
-    return googleMapsPromise;
-  }
-
-  googleMapsPromise = new Promise((resolve, reject) => {
-    if (!GOOGLE_MAPS_API_KEY) {
-      reject(new Error("Missing Google Maps API key"));
-      return;
+  useEffect(() => {
+    if (points.length) {
+      const bounds = L.latLngBounds(points.map(([lat, lng]) => L.latLng(lat, lng)));
+      map.fitBounds(bounds, { padding: [28, 28] });
+    } else {
+      map.setView(fallbackCenter, 12);
     }
+  }, [map, points]);
 
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => resolve(window.google.maps);
-    script.onerror = () => reject(new Error("Google Maps failed to load"));
-    document.head.appendChild(script);
-  });
-
-  return googleMapsPromise;
-}
-
-function getValidStops(plan) {
-  return (plan?.itinerary || []).flatMap((day) =>
-    (day.stops || []).filter(
-      (stop) => Number.isFinite(stop.lat) && Number.isFinite(stop.lng)
-    )
-  );
+  return null;
 }
 
 export default function TravelPlannerMap({ plan, isOpen }) {
-  const mapRef = useRef(null);
-  const [error, setError] = useState("");
-  const missingPlanError = !plan?.itinerary?.length
-    ? "Map unavailable, but your route is listed below."
-    : "";
+  const route = useMemo(() => plan?.route || [], [plan]);
 
-  const validStops = useMemo(() => getValidStops(plan), [plan]);
-  const textDirections = useMemo(
+  const hasRoute = route.some((day) => (day.places || []).length > 0);
+
+  const preparedRoute = useMemo(() => {
+    try {
+      return route.map((day) => ({
+        ...day,
+        places: (day.places || []).filter((place) => {
+          const valid = Number.isFinite(place.lat) && Number.isFinite(place.lng);
+          if (!valid) {
+            console.error("MAP ERROR:", new Error(`Invalid coordinates for ${place.name || "unknown place"}`));
+          }
+          return valid;
+        }),
+      }));
+    } catch (e) {
+      console.error("MAP ERROR:", e);
+      return [];
+    }
+  }, [route]);
+
+  const allPoints = useMemo(
     () =>
-      (plan?.itinerary || []).map((day) => ({
-        day: day.day,
-        color: day.color,
-        stops: (day.stops || []).map((stop) => stop.name),
-      })),
-    [plan]
+      preparedRoute.flatMap((day) =>
+        (day.places || []).map((place) => [place.lat, place.lng])
+      ),
+    [preparedRoute]
   );
 
-  useEffect(() => {
-    if (!isOpen) return undefined;
-    if (!plan?.itinerary?.length) {
-      return undefined;
+  if (!isOpen || !hasRoute) {
+    if (isOpen && !hasRoute) {
+      console.error("MAP ERROR:", new Error("Route array is empty or has no valid points"));
     }
-
-    let markers = [];
-    let polylines = [];
-    let cancelled = false;
-
-    loadGoogleMapsScript()
-      .then((maps) => {
-        if (cancelled || !mapRef.current) return;
-
-        if (!validStops.length) {
-          setError("Map unavailable, but your route is listed below.");
-          return;
-        }
-
-        setError("");
-
-        const map = new maps.Map(mapRef.current, {
-          center: { lat: validStops[0].lat, lng: validStops[0].lng },
-          zoom: 12,
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: false,
-        });
-
-        const bounds = new maps.LatLngBounds();
-
-        (plan.itinerary || []).forEach((day) => {
-          const dayStops = (day.stops || []).filter(
-            (stop) => Number.isFinite(stop.lat) && Number.isFinite(stop.lng)
-          );
-
-          if (!dayStops.length) {
-            return;
-          }
-
-          const path = dayStops.map((stop) => {
-            const point = { lat: stop.lat, lng: stop.lng };
-            bounds.extend(point);
-            const marker = new maps.Marker({
-              position: point,
-              map,
-              title: `${stop.name} (Day ${day.day})`,
-              label: `${day.day}`,
-            });
-            markers.push(marker);
-            return point;
-          });
-
-          const polyline = new maps.Polyline({
-            path,
-            geodesic: true,
-            strokeColor: day.color || "#d92d20",
-            strokeOpacity: 0.92,
-            strokeWeight: 5,
-            map,
-          });
-          polylines.push(polyline);
-        });
-
-        if (!bounds.isEmpty()) {
-          map.fitBounds(bounds, 40);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setError("Map unavailable, but your route is listed below.");
-        }
-      });
-
-    return () => {
-      cancelled = true;
-      markers.forEach((marker) => marker.setMap(null));
-      polylines.forEach((polyline) => polyline.setMap(null));
-      markers = [];
-      polylines = [];
-    };
-  }, [isOpen, plan, validStops]);
-
-  return (
-    <div className="trip-map-shell">
-      {!error && !missingPlanError ? <div ref={mapRef} className="trip-map-canvas" /> : null}
-      {error || missingPlanError ? <p className="map-fallback">{error || missingPlanError}</p> : null}
-      {error || missingPlanError ? (
+    return (
+      <div className="trip-map-shell">
+        <p className="map-fallback">Map unavailable, but your route is listed below.</p>
         <div className="text-directions">
-          {textDirections.map((day) => (
+          {(plan?.itinerary || []).map((day) => (
             <div key={day.day} className="text-direction-day">
-              <span
-                className="day-dot"
-                style={{ backgroundColor: day.color || "#d92d20" }}
-              />
+              <span className="day-dot" style={{ backgroundColor: day.color || "#E53E3E" }} />
               <strong>Day {day.day}</strong>
-              <span>{day.stops.join(" -> ")}</span>
+              <span>{(day.stops || []).map((stop) => stop.name).join(" -> ")}</span>
             </div>
           ))}
         </div>
-      ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="trip-map-shell">
+      <MapContainer
+        center={allPoints[0] || fallbackCenter}
+        zoom={13}
+        scrollWheelZoom={false}
+        className="trip-map-canvas"
+      >
+        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <FitRouteBounds points={allPoints} />
+
+        {preparedRoute.map((day) => {
+          const positions = day.places.map((place) => [place.lat, place.lng]);
+          return (
+            <Fragment key={`day-${day.day}`}>
+              <Polyline positions={positions} pathOptions={{ color: day.color, weight: 4 }} />
+              {day.places.map((place, index) => (
+                <Marker
+                  key={`${day.day}-${index}-${place.name}`}
+                  position={[place.lat, place.lng]}
+                  icon={defaultMarker}
+                >
+                  <Popup>{place.name}</Popup>
+                </Marker>
+              ))}
+            </Fragment>
+          );
+        })}
+      </MapContainer>
     </div>
   );
 }

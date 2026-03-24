@@ -9,10 +9,11 @@ from urllib.parse import quote_plus
 from places.models import Place
 from users.services import calculate_level_and_badges
 
+from .geocoding import geocode_place
 from .trip_planner import build_trip_plan
 
 
-DAY_COLORS = ["#d92d20", "#f79009", "#facc15", "#16a34a", "#2563eb", "#9333ea"]
+DAY_COLORS = ["#E53E3E", "#DD6B20", "#D69E2E", "#38A169", "#3182CE", "#805AD5"]
 DAY_EMOJIS = ["🔴", "🟠", "🟡", "🟢", "🔵", "🟣"]
 STYLE_KEYWORDS = {
     "adventure": {"adventure", "hiking", "active", "outdoor", "explore"},
@@ -426,6 +427,47 @@ def _build_sources(plan: Dict[str, object], country: str, citizenship: str) -> D
     }
 
 
+def _route_places_for_day(day: Dict[str, object]) -> List[Dict[str, object]]:
+    places = []
+    for stop in day.get("stops", []):
+        lat = stop.get("lat")
+        lng = stop.get("lng")
+        if lat is None or lng is None:
+            geocoded = geocode_place(
+                stop.get("name", ""),
+                city=stop.get("city", ""),
+                country=stop.get("country", ""),
+            )
+            if not geocoded:
+                continue
+            lat = geocoded["lat"]
+            lng = geocoded["lng"]
+
+        places.append(
+            {
+                "name": stop.get("name"),
+                "lat": float(lat),
+                "lng": float(lng),
+                "address": stop.get("address", ""),
+            }
+        )
+    return places
+
+
+def _build_route(plan: Dict[str, object]) -> List[Dict[str, object]]:
+    route = []
+    for index, day in enumerate(plan.get("itinerary", [])):
+        route_places = _route_places_for_day(day)
+        route.append(
+            {
+                "day": day["day"],
+                "color": DAY_COLORS[index % len(DAY_COLORS)],
+                "places": route_places,
+            }
+        )
+    return route
+
+
 def _format_trip_response(plan: Dict[str, object]) -> str:
     lines = []
     history_line = plan.get("history_line")
@@ -537,6 +579,7 @@ def generate_trip_payload(*, user, requirements: TripRequirements) -> Dict[str, 
     safety_tips = _safety_tips(requirements.destination, country, requirements.has_kids)
     sources = _build_sources(plan, country, requirements.citizenship)
     needs_citizenship = sources["visa"]["status"] == "citizenship_needed"
+    route = _build_route(plan)
 
     payload = {
         **plan,
@@ -548,6 +591,7 @@ def generate_trip_payload(*, user, requirements: TripRequirements) -> Dict[str, 
         "family_note": family_note,
         "history_line": history_line,
         "safety_tips": safety_tips,
+        "route": route,
         "sources": sources,
         "needs_citizenship": needs_citizenship,
         "partial_note": partial_note,

@@ -7,7 +7,7 @@ import TravelPlannerMap from "../components/TravelPlannerMap";
 import { fetchProfile } from "../slices/authSlice";
 import "../styles/PlannerTest.css";
 
-const DAY_COLORS = ["#d92d20", "#f79009", "#facc15", "#16a34a", "#2563eb", "#9333ea"];
+const DAY_COLORS = ["#E53E3E", "#DD6B20", "#D69E2E", "#38A169", "#3182CE", "#805AD5"];
 
 function decoratePlan(plan) {
   if (!plan?.itinerary) return plan;
@@ -16,6 +16,18 @@ function decoratePlan(plan) {
     itinerary: plan.itinerary.map((day, index) => ({
       ...day,
       color: day.color || DAY_COLORS[index % DAY_COLORS.length],
+    })),
+    route: plan.route || plan.itinerary.map((day, index) => ({
+      day: day.day,
+      color: day.color || DAY_COLORS[index % DAY_COLORS.length],
+      places: (day.stops || [])
+        .filter((stop) => Number.isFinite(stop.lat) && Number.isFinite(stop.lng))
+        .map((stop) => ({
+          name: stop.name,
+          lat: stop.lat,
+          lng: stop.lng,
+          address: stop.address,
+        })),
     })),
   };
 }

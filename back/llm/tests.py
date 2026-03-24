@@ -71,6 +71,7 @@ class TravelChatFlowTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("Family-friendly filters applied", response.data["response"])
         self.assertEqual(response.data["plan"]["traveler_type"], "family")
+        self.assertTrue(response.data["plan"]["route"][0]["places"])
 
     def test_sources_include_visa_requirement(self):
         response = self.client.post(
