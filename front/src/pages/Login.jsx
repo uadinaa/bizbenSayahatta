@@ -3,48 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { loginUser } from "../slices/authSlice";
 import "../styles/Login.css";
-
-function formatAuthError(error) {
-  if (!error) return "";
-  if (typeof error === "string") return error;
-
-  if (Array.isArray(error)) {
-    return error.map(formatAuthError).filter(Boolean).join(" ");
-  }
-
-  if (typeof error === "object") {
-    if (typeof error.detail === "string") return error.detail;
-    if (error.field_errors && typeof error.field_errors === "object") {
-      const parts = Object.entries(error.field_errors).map(([k, v]) => `${k}: ${v}`);
-      return parts.join(" ");
-    }
-
-    if (Array.isArray(error.messages)) {
-      return error.messages
-        .map((msg) => {
-          if (typeof msg === "string") return msg;
-          if (msg && typeof msg === "object") {
-            return msg.message || msg.detail || Object.values(msg).join(" ");
-          }
-          return "";
-        })
-        .filter(Boolean)
-        .join(" ");
-    }
-
-    const fieldErrors = Object.values(error)
-      .map((value) => {
-        if (typeof value === "string") return value;
-        if (Array.isArray(value)) return value.join(", ");
-        return "";
-      })
-      .filter(Boolean);
-
-    if (fieldErrors.length > 0) return fieldErrors.join(" ");
-  }
-
-  return "Login failed";
-}
+import { formatAuthError } from "../utils/formatAuthError";
 
 export default function Login() {
   const dispatch = useDispatch();
@@ -101,7 +60,7 @@ export default function Login() {
 
         <input
           type="password"
-          placeholder="password"
+          placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -113,11 +72,6 @@ export default function Login() {
           Login
         </button>
 
-        {activeTab === "signup" && (
-          <p className="signup-text">
-            Already have an account? <Link to="/login">Login</Link>
-          </p>
-        )}
       </form>
     </div>
   );

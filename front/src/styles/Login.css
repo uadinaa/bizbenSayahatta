@@ -108,11 +108,13 @@ input:focus {
 }
 
 .forgot-password {
-  font-size: 12px;
+  font-size: 14px;
   color: #172CAF;
   text-decoration: none;
+  margin-top: 8px;
   margin-bottom: 16px;
   display: inline-block;
+  /* display: inline; */
 }
 
 .login-btn {

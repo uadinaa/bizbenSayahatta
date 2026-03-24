@@ -7,10 +7,8 @@ import "../styles/managerReview.css";
 export default function ManagerAdvisorReview() {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
-
   // Состояние для управления вкладками
   const [activeTab, setActiveTab] = useState("applications"); 
-
   const [apps, setApps] = useState([]);
   const [trips, setTrips] = useState([]);
   const [logs, setLogs] = useState([]);
@@ -167,21 +165,21 @@ export default function ManagerAdvisorReview() {
 
         {/* Секция Истории */}
         {activeTab === "history" && !loading && (
-  <div className="fade-in">
-    <h2 className="manager-title">Moderation History</h2>
-    {!logs.length && <p>No moderation history yet.</p>}
+          <div className="fade-in">
+            <h2 className="manager-title">Moderation History</h2>
+            {!logs.length && <p>No moderation history yet.</p>}
 
-    <div className="history-grid">
-      {logs.map((log) => (
-        <div key={log.id} className="history-card">
-          <p><strong>Action:</strong> {log.action}</p>
-          <p><strong>At:</strong> {new Date(log.created_at).toLocaleString()}</p>
-          <p><strong>Reason:</strong> {log.reason || "-"}</p>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
+            <div className="history-grid">
+              {logs.map((log) => (
+                <div key={log.id} className="history-card">
+                  <p><strong>Action:</strong> {log.action}</p>
+                  <p><strong>At:</strong> {new Date(log.created_at).toLocaleString()}</p>
+                  <p><strong>Reason:</strong> {log.reason || "-"}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -2,63 +2,31 @@ import "../styles/Map.css";
 import "leaflet/dist/leaflet.css";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapContainer, TileLayer, Popup, CircleMarker, GeoJSON, Pane } from "react-leaflet";
 import { createMapPlace, deleteMapPlace, fetchMapPlaces } from "../api/places";
+import { LEVELS_LIST } from "../constants/mapConstants";
+import MapSidebar from "../components/map/MapSidebar";
+import MapView from "../components/map/MapView";
+import AddPlaceModal from "../components/map/AddPlaceModal";
+
+const now = new Date();
+const currentYear = now.getFullYear();
+const currentMonth = String(now.getMonth() + 1).padStart(2, "0");
+const yearOptions = Array.from({ length: 81 }, (_, i) => String(currentYear - i));
 
 export default function Map() {
   const navigate = useNavigate();
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = String(now.getMonth() + 1).padStart(2, "0");
-
-  const monthOptions = [
-    { value: "01", label: "January" },
-    { value: "02", label: "February" },
-    { value: "03", label: "March" },
-    { value: "04", label: "April" },
-    { value: "05", label: "May" },
-    { value: "06", label: "June" },
-    { value: "07", label: "July" },
-    { value: "08", label: "August" },
-    { value: "09", label: "September" },
-    { value: "10", label: "October" },
-    { value: "11", label: "November" },
-    { value: "12", label: "December" },
-  ];
-
-  const yearOptions = Array.from({ length: 81 }, (_, i) => String(currentYear - i));
-
   const [places, setPlaces] = useState([]);
   const [countriesData, setCountriesData] = useState(null);
   const [loadingPlaces, setLoadingPlaces] = useState(true);
-
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newPlace, setNewPlace] = useState({
-    city: "",
-    country: "",
-    month: currentMonth,
-    year: String(currentYear),
-  });
-
-  const levelsList = [
-    { name: "Pathfinder", min: 0, next: 5 },
-    { name: "Explorer", min: 5, next: 10 },
-    { name: "Adventurer", min: 10, next: 20 },
-    { name: "Voyager", min: 20, next: 35 },
-    { name: "Globetrotter", min: 35, next: 50 },
-    { name: "Legendary Nomad", min: 50, next: null },
-  ];
-
+  const [newPlace, setNewPlace] = useState({ city: "", country: "", month: currentMonth, year: String(currentYear) });
   const [countriesCount, setCountriesCount] = useState(0);
   const [citiesCount, setCitiesCount] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [level, setLevel] = useState({
-    name: "Pathfinder",
-    current: 0,
-    needed: 5,
-    index: 0,
-  });
-
+  const [level, setLevel] = useState({ name: "Pathfinder", current: 0, needed: 5, index: 0 });
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingPlace, setEditingPlace] = useState(null); 
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   useEffect(() => {
     const loadPlaces = async () => {
       setLoadingPlaces(true);
@@ -71,7 +39,6 @@ export default function Map() {
         setLoadingPlaces(false);
       }
     };
-
     loadPlaces();
   }, [navigate]);
 
@@ -83,40 +50,19 @@ export default function Map() {
   }, []);
 
   useEffect(() => {
-    const uniqueCountries = new Set(places.map((p) => p.country));
-    setCountriesCount(uniqueCountries.size);
+    setCountriesCount(new Set(places.map((p) => p.country)).size);
+    setCitiesCount(new Set(places.map((p) => p.city.toLowerCase())).size);
+    setProgress(Math.min(100, (places.length / 1000) * 100).toFixed(1));
 
-    const uniqueCities = new Set(places.map((p) => p.city.toLowerCase()));
-    setCitiesCount(uniqueCities.size);
-
-    const worldCities = 1000;
-    setProgress(Math.min(100, (places.length / worldCities) * 100).toFixed(1));
-
-    let currentLevel = levelsList[0];
     let currentIndex = 0;
-
-    for (let i = 0; i < levelsList.length; i++) {
-      if (places.length >= levelsList[i].min) {
-        currentLevel = levelsList[i];
-        currentIndex = i;
-      }
+    let currentLevel = LEVELS_LIST[0];
+    for (let i = 0; i < LEVELS_LIST.length; i++) {
+      if (places.length >= LEVELS_LIST[i].min) { currentLevel = LEVELS_LIST[i]; currentIndex = i; }
     }
-
-    if (currentLevel.next) {
-      setLevel({
-        name: currentLevel.name,
-        current: places.length - currentLevel.min,
-        needed: currentLevel.next - currentLevel.min,
-        index: currentIndex,
-      });
-    } else {
-      setLevel({
-        name: currentLevel.name,
-        current: "MAX",
-        needed: "",
-        index: currentIndex,
-      });
-    }
+    setLevel(currentLevel.next
+      ? { name: currentLevel.name, current: places.length - currentLevel.min, needed: currentLevel.next - currentLevel.min, index: currentIndex }
+      : { name: currentLevel.name, current: "MAX", needed: "", index: currentIndex }
+    );
   }, [places]);
 
   const handleInputChange = (e) => {
@@ -124,219 +70,123 @@ export default function Map() {
     setNewPlace((prev) => ({ ...prev, [name]: value }));
   };
 
+  const openEditPlace = (place) => {
+    setEditingPlace({
+      id: place.id,
+      city: place.city,
+      country: place.country,
+      month: place.date?.split("-")[1] || currentMonth,
+      year: place.date?.split("-")[0] || String(currentYear),
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const saveEditPlace = async (e) => {
+    e.preventDefault();
+    if (!editingPlace.city || !editingPlace.country) return;
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${editingPlace.city},${editingPlace.country}`
+      );
+      const data = await res.json();
+      if (!data.length) { alert("City not found"); return; }
+
+      const updated = await updateMapPlace(editingPlace.id, {
+        city: editingPlace.city,
+        country: editingPlace.country,
+        date: `${editingPlace.year}-${editingPlace.month}`,
+        lat: parseFloat(data[0].lat),
+        lon: parseFloat(data[0].lon),
+      });
+
+      setPlaces((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+      setIsEditModalOpen(false);
+      setEditingPlace(null);
+    } catch (err) {
+      if (err?.response?.status === 401) { navigate("/login"); return; }
+      alert("Error updating location");
+    }
+  };
+
   const addPlace = async (e) => {
     e.preventDefault();
-    if (!newPlace.city || !newPlace.country || !newPlace.month || !newPlace.year) return;
-
+    if (!newPlace.city || !newPlace.country) return;
     try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${newPlace.city},${newPlace.country}`
-      );
-      const data = await response.json();
-      if (!data.length) {
-        alert("City not found");
-        return;
-      }
-
-      const lat = parseFloat(data[0].lat);
-      const lon = parseFloat(data[0].lon);
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${newPlace.city},${newPlace.country}`);
+      const data = await res.json();
+      if (!data.length) { alert("City not found"); return; }
 
       const created = await createMapPlace({
-        city: newPlace.city,
-        country: newPlace.country,
+        city: newPlace.city, country: newPlace.country,
         date: `${newPlace.year}-${newPlace.month}`,
-        lat,
-        lon,
+        lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon),
       });
 
       setPlaces((prev) => [created, ...prev]);
-      setNewPlace({
-        city: "",
-        country: "",
-        month: currentMonth,
-        year: String(currentYear),
-      });
+      setNewPlace({ city: "", country: "", month: currentMonth, year: String(currentYear) });
       setIsModalOpen(false);
     } catch (err) {
-      console.error(err);
-      if (err?.response?.status === 401) {
-        navigate("/login");
-        return;
-      }
-      const errorId = err?.response?.data?.error_id ? ` (error_id: ${err.response.data.error_id})` : "";
-      alert(`Error fetching or saving location${errorId}`);
+      if (err?.response?.status === 401) { navigate("/login"); return; }
+      alert("Error fetching or saving location");
     }
   };
 
   const removePlace = async (placeId) => {
     try {
       await deleteMapPlace(placeId);
-      setPlaces((prev) => prev.filter((place) => place.id !== placeId));
+      setPlaces((prev) => prev.filter((p) => p.id !== placeId));
     } catch (err) {
       console.error("Delete place error:", err);
     }
   };
 
-  const openAddModal = () => setIsModalOpen(true);
-  const closeModal = () => setIsModalOpen(false);
-
-  const visitedCountries = places.map((p) => p.country.toLowerCase().trim());
-
-  const countryStyle = (feature) => {
-    const name = String(feature.properties?.name || feature.properties?.ADMIN || "")
-      .toLowerCase()
-      .trim();
-
-    const isVisited = visitedCountries.includes(name);
-
-    return {
-      fillColor: isVisited ? "#FDD835" : "#E0E0E0",
-      weight: 0.8,
-      color: "#FFFFFF",
-      fillOpacity: isVisited ? 0.32 : 0.08,
-    };
-  };
-
   return (
     <div className="map-page">
-      <aside className="map-sidebar">
-        <h3 className="sidebar-title">Traveler Level</h3>
-
-        <div className="badge-scroll">
-          {levelsList.map((lvl, i) => {
-            const isCurrent = lvl.name === level.name;
-            const isCompleted = places.length >= lvl.next || (lvl.next === null && places.length >= lvl.min);
-            const progressPercent = lvl.next
-              ? ((places.length - lvl.min) / (lvl.next - lvl.min)) * 100
-              : 100;
-
-            return (
-              <div
-                key={i}
-                className={`badge-card ${isCurrent ? "current" : isCompleted ? "completed" : "locked"}`}
-              >
-                <div className="badge-icon">🧭</div>
-                <strong>{lvl.name}</strong>
-
-                {lvl.next ? (
-                  <div className="mini-progress">
-                    <div
-                      className="mini-bar"
-                      style={{ width: `${Math.min(progressPercent, 100)}%` }}
-                    ></div>
-                  </div>
-                ) : (
-                  <span className="max-label">MAX</span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="level-dots">
-          {[...Array(levelsList.length)].map((_, i) => (
-            <div key={i} className={`level-dot ${i <= level.index ? "active" : ""}`}>
-              {i + 1}
-            </div>
-          ))}
-        </div>
-
-        <section className="stats">
-          <h4>Your Statistics</h4>
-          <div className="stats-row">
-            <div className="stat-card">🌍 <strong>{countriesCount}</strong> Countries</div>
-            <div className="stat-card">📍 <strong>{citiesCount}</strong> Cities</div>
-          </div>
-          <div className="world-progress">{progress}% of the world explored</div>
-        </section>
-
-        <section className="visited">
-          <div className="visited-header">
-            <h4>Visited Places</h4>
-            <button className="add-btn" onClick={openAddModal}>+ Add</button>
-          </div>
-
-          {loadingPlaces && <p>Loading...</p>}
-
-          <div className="visited-list">
-            {places.map((p) => (
-              <div className="place" key={p.id}>
-                <div className="place-icon">📍</div>
-                <div className="place-info">
-                  <strong>{p.city}</strong>
-                  <span>{p.country}</span>
-                </div>
-                <div className="place-side">
-                  <span className="date">{p.date}</span>
-                  <button type="button" className="remove-place-btn" onClick={() => removePlace(p.id)}>
-                    Remove
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      </aside>
-
-      <main className="map-area">
-        <MapContainer center={[20, 0]} zoom={2} style={{ height: "100%", width: "100%" }}>
-          <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
-            attribution="&copy; OpenStreetMap &copy; CARTO"
-          />
-
-          {countriesData && <GeoJSON data={countriesData} style={countryStyle} interactive={false} />}
-
-          <Pane name="labels" style={{ zIndex: 650, pointerEvents: "none" }}>
-            <TileLayer
-              url="https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png"
-              attribution="&copy; OpenStreetMap &copy; CARTO"
-              pane="labels"
-            />
-          </Pane>
-
-          {places.map((place) => (
-            <CircleMarker key={place.id} center={[place.lat, place.lon]} radius={5} color="#1e88e5">
-              <Popup>
-                {place.city}, {place.country}
-                <br />
-                {place.date}
-              </Popup>
-            </CircleMarker>
-          ))}
-        </MapContainer>
-
-        <button className="add-place-btn" onClick={openAddModal}>+ Add Place</button>
-      </main>
+      {/* <MapSidebar
+        places={places} level={level}
+        countriesCount={countriesCount} citiesCount={citiesCount}
+        progress={progress} loadingPlaces={loadingPlaces}
+        onOpenModal={() => setIsModalOpen(true)} onRemovePlace={removePlace}
+        // isEditMode={isEditMode}
+        onToggleEditMode={() => setIsEditMode((prev) => !prev)}
+        // onRemovePlace={removePlace}
+        onEditPlace={openEditPlace}
+      /> */}
+      <MapSidebar
+        places={places} level={level}
+        countriesCount={countriesCount} citiesCount={citiesCount}
+        progress={progress} loadingPlaces={loadingPlaces}
+        onOpenModal={() => setIsModalOpen(true)}
+        onRemovePlace={removePlace}
+        isEditMode={isEditMode}                              
+        onToggleEditMode={() => setIsEditMode((prev) => !prev)}
+        onEditPlace={openEditPlace}
+      />
+      <MapView places={places} countriesData={countriesData} onOpenModal={() => setIsModalOpen(true)} />
 
       {isModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h3>Add New Place</h3>
+        <AddPlaceModal
+          newPlace={newPlace}
+          yearOptions={yearOptions}
+          onInputChange={handleInputChange}
+          onAdd={addPlace}
+          onClose={() => setIsModalOpen(false)}
+        />
+      )}
 
-            <input type="text" name="city" placeholder="City" value={newPlace.city} onChange={handleInputChange} />
-            <input type="text" name="country" placeholder="Country" value={newPlace.country} onChange={handleInputChange} />
-
-            <div className="month-year-row">
-              <select name="month" value={newPlace.month} onChange={handleInputChange}>
-                {monthOptions.map((m) => (
-                  <option key={m.value} value={m.value}>{m.label}</option>
-                ))}
-              </select>
-
-              <select name="year" value={newPlace.year} onChange={handleInputChange}>
-                {yearOptions.map((y) => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="modal-actions">
-              <button onClick={addPlace}>Add</button>
-              <button onClick={closeModal}>Cancel</button>
-            </div>
-          </div>
-        </div>
+      {isEditModalOpen && editingPlace && (
+        <AddPlaceModal
+          newPlace={editingPlace}
+          yearOptions={yearOptions}
+          onInputChange={(e) => {
+            const { name, value } = e.target;
+            setEditingPlace((prev) => ({ ...prev, [name]: value }));
+          }}
+          onAdd={saveEditPlace}
+          onClose={() => { setIsEditModalOpen(false); setEditingPlace(null); }}
+          title="Edit Place"      // add a title prop to AddPlaceModal
+          submitLabel="Save"      // and a submit label prop
+        />
       )}
     </div>
   );

@@ -167,9 +167,9 @@
 }
 
 .level-dot.active {
-  background: #6c4eff;
+  background: #4811AE;
   color: #fff;
-  box-shadow: 0 2px 8px rgba(108,78,255,0.3); /* лёгкая подсветка */
+  box-shadow: 0 2px 8px 4811AE; /* лёгкая подсветка */
 }
 
 /* ===== STATS ===== */
@@ -196,7 +196,7 @@
   padding: 10px 5px;
   text-align: center;
   box-shadow: 0 4px 12px rgba(0,0,0,0.06); /* чуть мягче */
-  font-size: 16px;
+  font-size: 14px;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -222,10 +222,9 @@
   background: #ffdf70; /* чуть мягче */
   padding: 10px;
   border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 14px;
   text-align: center;
-  color: #1e1e1e;
+  color: #4811AE;
 }
 
 /* ===== VISITED PLACES SECTION ===== */
@@ -261,11 +260,14 @@
 }
 
 .visited-list {
+  max-height: 300px; 
   overflow-y: auto;
   flex: 1;
+  display: flex;
+  flex-direction: column;
   padding-right: 5px;
   margin-top: 8px;
-  max-height: calc(100vh - 480px);
+  gap: 8px;
 }
 
 .place {
@@ -628,4 +630,30 @@
 .badge-card.current {
   border: 2px solid #1e88e5;
   background-color: #fff8ba;
+}
+
+/* Slide-in animation for edit actions */
+.place-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  animation: slideIn 0.2s ease;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Subtle highlight when in edit mode */
+.place--editing {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+/* Active state for the Done button */
+.edit-mode-active {
+  color: var(--accent, #1e88e5);
+  font-weight: 600;
 }
