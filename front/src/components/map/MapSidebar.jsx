@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { LEVELS_LIST } from "../../constants/mapConstants";
 import worldIcon from "../../assets/world.svg"
 import pinIcon from "../../assets/pin.svg"
@@ -12,6 +13,14 @@ export default function MapSidebar({ places, level, countriesCount, citiesCount,
   return (
     <aside className="map-sidebar">
       <h3>Traveler Level</h3>
+      
+      <div style={{ marginTop: 10 }}>
+        <Link to="/shared-maps" style={{ textDecoration: "none" }}>
+          <button type="button" className="shared-maps-btn">
+            See other user's maps
+          </button>
+        </Link>
+      </div>
 
       <div className="badge-scroll">
         {LEVELS_LIST.map((lvl, i) => {

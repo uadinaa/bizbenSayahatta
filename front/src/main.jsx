@@ -15,6 +15,7 @@ import Map from "./pages/Map";
 import Wishlist from "./pages/Wishlist";
 import ManagerAdvisorReview from "./pages/ManagerAdvisorReview";
 import TripStatus from "./pages/TripStatus";
+import SharedMaps from "./pages/SharedMaps";
 import ErrorPage from "./pages/ErrorPage";
 import RequireAuth from "./components/RequireAuth.jsx";
 import { store } from "./store.js";
@@ -34,6 +35,7 @@ const router = createBrowserRouter([
       { path: "trip", element: <RequireAuth><Trip /></RequireAuth> },
       { path: "chat", element: <RequireAuth><PlannerTest /></RequireAuth> },
       { path: "map", element: <RequireAuth><Map /></RequireAuth> },
+      { path: "shared-maps", element: <SharedMaps /> },
       { path: "wishlist", element: <RequireAuth><Wishlist /></RequireAuth> },
       { path: "manager/advisors", element: <RequireAuth><ManagerAdvisorReview /></RequireAuth> },
       { path: "error", element: <ErrorPage /> },

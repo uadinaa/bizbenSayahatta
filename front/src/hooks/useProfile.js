@@ -30,6 +30,12 @@ export function useProfile() {
   const [tempStyle, setTempStyle] = useState(travelStyle);
   const [avatarFile, setAvatarFile] = useState(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [privacySettings, setPrivacySettings] = useState({
+    share_map: false,
+    share_visited_places: false,
+    share_badges: false,
+  });
+  const [privacySaving, setPrivacySaving] = useState(false);
 
   useEffect(() => {
     if (localStorage.getItem("access")) dispatch(fetchProfile());
@@ -44,6 +50,11 @@ export function useProfile() {
     setAvatar(resolvedAvatar);
     setTempAvatar(resolvedAvatar);
     setCover(resolveMediaUrl(user.cover, null));
+    setPrivacySettings({
+      share_map: Boolean(user.preferences?.share_map),
+      share_visited_places: Boolean(user.preferences?.share_visited_places),
+      share_badges: Boolean(user.preferences?.share_badges),
+    });
   }, [user]);
 
   const fileToBase64 = (file) =>
@@ -105,13 +116,35 @@ export function useProfile() {
     navigate("/login");
   };
 
+  const updatePrivacySetting = async (field, value) => {
+    setPrivacySettings((prev) => ({ ...prev, [field]: value }));
+    setPrivacySaving(true);
+    try {
+      const res = await api.patch("users/profile/privacy/", { [field]: value });
+      setPrivacySettings({
+        share_map: Boolean(res.data?.share_map),
+        share_visited_places: Boolean(res.data?.share_visited_places),
+        share_badges: Boolean(res.data?.share_badges),
+      });
+      await dispatch(fetchProfile());
+    } catch (err) {
+      setPrivacySettings((prev) => ({ ...prev, [field]: !value }));
+      const backendError = err?.response?.data;
+      alert(typeof backendError === "string" ? backendError : JSON.stringify(backendError || "Failed to update privacy"));
+    } finally {
+      setPrivacySaving(false);
+    }
+  };
+
   return {
     // data
     user, email, username, avatar, cover, travelStyle, defaultAvatar,
+    privacySettings, privacySaving,
     // edit modal
     isEditOpen, tempUsername, tempAvatar, tempStyle, avatarFile,
     setTempUsername, setTempAvatar, setTempStyle, setAvatarFile, setIsEditOpen,
     // actions
     openEditModal, saveChanges, handleCoverChange, handleLogout, fileToBase64,
+    updatePrivacySetting,
   };
 }

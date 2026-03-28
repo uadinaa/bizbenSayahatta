@@ -259,6 +259,28 @@
   background: #f2e9ff;
 }
 
+.shared-maps-btn {
+  width: 100%;
+  border: 1px solid #d0d5dd;
+  background: #fff;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.shared-maps-btn:hover {
+  background: #f9fafb;
+  border-color: #c4c9d1;
+}
+
+.shared-maps-btn:active {
+  transform: translateY(1px);
+}
+
 
 .visited-list {
   max-height: 300px; 

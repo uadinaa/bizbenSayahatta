@@ -1,0 +1,71 @@
+.shared-maps-container {
+  display: flex;
+  gap: 20px;
+  padding: 20px;
+}
+
+/* Back button */
+.back-button {
+  position: absolute;
+  top: 90px;
+  left: 20px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #333;
+  background: #f5f5f5;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: 0.2s;
+}
+
+.back-button:hover {
+  background: #e0e0e0;
+}
+
+/* Users panel */
+.users-panel {
+  width: 250px;
+}
+
+.user-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: 0.2s;
+  background: #fff;
+}
+
+.user-card:hover {
+  background: #f9f9f9;
+  transform: translateY(-1px);
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* Map panel */
+.map-panel {
+  flex: 1;
+  margin-top: 60px; /* pushes content lower */
+}
+
+.placeholder-text {
+  margin-top: 70px; /* move text lower */
+  margin-left: 50px;
+  color: #777;
+  font-size: 16px;
+}
+
+.error-text {
+  color: red;
+  margin-bottom: 10px;
+}

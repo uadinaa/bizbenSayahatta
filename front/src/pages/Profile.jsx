@@ -24,6 +24,9 @@ export default function ProfileCard() {
           travelStyle={profile.travelStyle} user={advisor.user}
           advisorStatus={advisor.advisorStatus} advisorSuccess={advisor.advisorSuccess}
           latestApplication={advisor.latestApplication}
+          privacySettings={profile.privacySettings}
+          privacySaving={profile.privacySaving}
+          onPrivacyChange={profile.updatePrivacySetting}
           onOpenAdvisorModal={() => advisor.setAdvisorModalOpen(true)}
           onLogout={profile.handleLogout}
         />

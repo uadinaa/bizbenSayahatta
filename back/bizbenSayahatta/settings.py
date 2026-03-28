@@ -124,9 +124,9 @@ if DATABASE_URL:
         DATABASES = {
             "default": {
                 "ENGINE": "django.db.backends.postgresql",
-                "NAME": "bizbensayahatta_db",
-                "USER": "dinaabitova",
-                "PASSWORD": "",
+                "NAME": "bizbensayahattadb",
+                "USER": "aisha",
+                "PASSWORD": "1234",
                 "HOST": "127.0.0.1",
                 "PORT": "5432",
             }

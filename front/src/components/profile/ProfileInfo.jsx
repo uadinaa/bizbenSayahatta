@@ -4,6 +4,7 @@ import cupIcon from "../../assets/cup.svg";
 export default function ProfileInfo({
   email, username, travelStyle, user,
   advisorStatus, advisorSuccess, latestApplication,
+  privacySettings, privacySaving, onPrivacyChange,
   onOpenAdvisorModal, onLogout,
 }) {
   return (
@@ -53,6 +54,49 @@ export default function ProfileInfo({
             <button>upgrade level <img src={cupIcon} alt="Cup" width="15" height="15" /></button>
           </Link>
         </div>
+      </div>
+
+      <div className="privacy-panel">
+        <div className="privacy-header">
+          <strong>Map visibility</strong>
+          <span>Choose what other users can see in shared maps.</span>
+        </div>
+        <label className="privacy-option">
+          <input
+            type="checkbox"
+            checked={Boolean(privacySettings?.share_map)}
+            disabled={privacySaving}
+            onChange={(e) => onPrivacyChange("share_map", e.target.checked)}
+          />
+          <div>
+            <span className="privacy-option-title">Share my map points</span>
+            <span className="privacy-option-note">Cities and countries from my travel map.</span>
+          </div>
+        </label>
+        <label className="privacy-option">
+          <input
+            type="checkbox"
+            checked={Boolean(privacySettings?.share_visited_places)}
+            disabled={privacySaving}
+            onChange={(e) => onPrivacyChange("share_visited_places", e.target.checked)}
+          />
+          <div>
+            <span className="privacy-option-title">Share visited places</span>
+            <span className="privacy-option-note">The list of places I have visited.</span>
+          </div>
+        </label>
+        <label className="privacy-option">
+          <input
+            type="checkbox"
+            checked={Boolean(privacySettings?.share_badges)}
+            disabled={privacySaving}
+            onChange={(e) => onPrivacyChange("share_badges", e.target.checked)}
+          />
+          <div>
+            <span className="privacy-option-title">Share badges</span>
+            <span className="privacy-option-note">Traveler progress and earned badges.</span>
+          </div>
+        </label>
       </div>
 
       <button className="logout" onClick={onLogout}>Logout</button>
