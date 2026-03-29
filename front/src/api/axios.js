@@ -92,7 +92,17 @@ api.interceptors.response.use(
 
     error.userMessage = safeErrorMessage(status);
 
-    if ((!status || status >= 500) && !window.location.pathname.startsWith("/error")) {
+    // Let feature code (e.g. TripAdvisor checkout) surface errors in the UI instead of a full-page redirect.
+    const url = originalRequest?.url || "";
+    const skipGlobalErrorPage =
+      url.includes("payments/") ||
+      url.includes("marketplace/advisor/apply/");
+
+    if (
+      (!status || status >= 500) &&
+      !skipGlobalErrorPage &&
+      !window.location.pathname.startsWith("/error")
+    ) {
       const nextStatus = status || 503;
       window.location.assign(`/error?status=${nextStatus}`);
       return Promise.reject(error);

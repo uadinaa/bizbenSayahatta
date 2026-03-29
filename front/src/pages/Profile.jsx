@@ -49,11 +49,10 @@ export default function ProfileCard() {
 
       {advisor.advisorModalOpen && (
         <AdvisorModal
-          advisorForm={advisor.advisorForm} setAdvisorForm={advisor.setAdvisorForm}
-          categories={advisor.categories}
-          advisorLoading={advisor.advisorLoading} advisorError={advisor.advisorError}
-          advisorSuccess={advisor.advisorSuccess}
-          toggleCategory={advisor.toggleCategory}
+          advisorForm={advisor.advisorForm}
+          setAdvisorForm={advisor.setAdvisorForm}
+          advisorLoading={advisor.advisorLoading}
+          advisorError={advisor.advisorError}
           onSubmit={advisor.submitAdvisorApplication}
           onClose={() => advisor.setAdvisorModalOpen(false)}
         />

@@ -16,23 +16,32 @@ function toList(data) {
   return [];
 }
 
+const DEFAULT_PAY_AMOUNT = "1.00";
+const DEFAULT_CURRENCY = "usd";
+
+function getPaymentAmount() {
+  const raw = import.meta.env?.VITE_TRIPADVISOR_PAYMENT_AMOUNT;
+  return (raw && String(raw).trim()) || DEFAULT_PAY_AMOUNT;
+}
+
+function getPaymentCurrency() {
+  const raw = import.meta.env?.VITE_TRIPADVISOR_PAYMENT_CURRENCY;
+  return (raw && String(raw).trim().toLowerCase()) || DEFAULT_CURRENCY;
+}
+
 export function useAdvisor() {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
 
-  const [categories, setCategories] = useState([]);
   const [applications, setApplications] = useState([]);
   const [advisorModalOpen, setAdvisorModalOpen] = useState(false);
   const [advisorLoading, setAdvisorLoading] = useState(false);
   const [advisorError, setAdvisorError] = useState("");
   const [advisorSuccess, setAdvisorSuccess] = useState("");
   const [advisorForm, setAdvisorForm] = useState({
-    subscriptionPlan: "monthly",
-    paymentReference: "",
     instagram: "",
     notes: "",
     portfolioText: "",
-    categoryIds: [],
     contractAccepted: false,
     termsAccepted: false,
     cvFile: null,
@@ -40,19 +49,15 @@ export function useAdvisor() {
 
   useEffect(() => {
     if (!localStorage.getItem("access")) return;
-    const loadAdvisorData = async () => {
+    const loadApplications = async () => {
       try {
-        const [categoriesRes, applicationsRes] = await Promise.all([
-          api.get("marketplace/categories/"),
-          api.get("marketplace/advisor/applications/"),
-        ]);
-        setCategories(toList(categoriesRes.data));
+        const applicationsRes = await api.get("marketplace/advisor/applications/");
         setApplications(toList(applicationsRes.data));
       } catch (err) {
-        console.error("Failed to load advisor metadata", err);
+        console.error("Failed to load advisor applications", err);
       }
     };
-    loadAdvisorData();
+    loadApplications();
   }, []);
 
   const latestApplication = useMemo(() => {
@@ -62,7 +67,12 @@ export function useAdvisor() {
 
   const advisorStatus = useMemo(() => {
     if (user?.role === "TRIPADVISOR") return { code: "APPROVED", label: "Active TripAdvisor" };
-    if (latestApplication?.status) return { code: latestApplication.status, label: STATUS_LABELS[latestApplication.status] || latestApplication.status };
+    if (latestApplication?.status) {
+      return {
+        code: latestApplication.status,
+        label: STATUS_LABELS[latestApplication.status] || latestApplication.status,
+      };
+    }
     return { code: "NONE", label: "Not applied" };
   }, [user, latestApplication]);
 
@@ -72,50 +82,90 @@ export function useAdvisor() {
     }
   }, [latestApplication?.status, user?.role, dispatch]);
 
-  const toggleCategory = (categoryId) => {
-    setAdvisorForm((prev) =>
-      prev.categoryIds.includes(categoryId)
-        ? { ...prev, categoryIds: prev.categoryIds.filter((id) => id !== categoryId) }
-        : { ...prev, categoryIds: [...prev.categoryIds, categoryId] }
-    );
-  };
-
   const submitAdvisorApplication = async () => {
     setAdvisorError("");
     setAdvisorSuccess("");
     setAdvisorLoading(true);
     try {
-      const links = advisorForm.portfolioText.split("\n").map((l) => l.trim()).filter(Boolean);
+      const links = advisorForm.portfolioText
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean);
       if (advisorForm.instagram.trim()) links.unshift(advisorForm.instagram.trim());
 
       const formData = new FormData();
       formData.append("contract_accepted", String(advisorForm.contractAccepted));
       formData.append("terms_accepted", String(advisorForm.termsAccepted));
-      formData.append("subscription_plan", advisorForm.subscriptionPlan);
-      formData.append("payment_reference", advisorForm.paymentReference);
+      formData.append("subscription_plan", "stripe");
+      formData.append("payment_reference", "");
       formData.append("notes", advisorForm.notes);
-      advisorForm.categoryIds.forEach((id) => formData.append("category_ids", String(id)));
       formData.append("portfolio_links", JSON.stringify(links));
       if (advisorForm.cvFile) formData.append("cv_file", advisorForm.cvFile);
 
-      await api.post("marketplace/advisor/apply/", formData);
-      const applicationsRes = await api.get("marketplace/advisor/applications/");
-      setApplications(toList(applicationsRes.data));
+      try {
+        await api.post("marketplace/advisor/apply/", formData);
+      } catch (applyErr) {
+        const st = applyErr?.response?.status;
+        const detail = applyErr?.response?.data?.detail;
+        const pending =
+          st === 400 &&
+          typeof detail === "string" &&
+          detail.toLowerCase().includes("already pending");
+        if (!pending) throw applyErr;
+      }
+
+      const payRes = await api.post("payments/create/", {
+        amount: getPaymentAmount(),
+        currency: getPaymentCurrency(),
+      });
+
+      const checkoutUrl = payRes.data?.checkout_url;
+      if (!checkoutUrl) {
+        setAdvisorError(
+          "Application saved but payment link is missing. Check STRIPE_PAYMENT_LINK_URL on the server.",
+        );
+        const applicationsRes = await api.get("marketplace/advisor/applications/");
+        setApplications(toList(applicationsRes.data));
+        return;
+      }
+
       setAdvisorModalOpen(false);
-      setAdvisorSuccess("Application sent. Status is now Pending review.");
+      setAdvisorSuccess("Redirecting to payment…");
+      window.location.assign(checkoutUrl);
     } catch (err) {
+      const status = err?.response?.status;
       const backend = err?.response?.data;
-      setAdvisorError(typeof backend === "string" ? backend : JSON.stringify(backend || "Failed to send application"));
+      let msg =
+        typeof backend === "object" && backend !== null && backend.detail
+          ? backend.detail
+          : typeof backend === "string"
+            ? backend
+            : err?.userMessage || "Request failed";
+      if (typeof msg !== "string") {
+        msg = JSON.stringify(backend || "Request failed");
+      }
+      if (status === 404 && String(err?.config?.url || "").includes("payments")) {
+        msg =
+          "Payment API not found (404). Restart the backend and open /api/payments/create/ with a trailing slash.";
+      }
+      setAdvisorError(msg);
     } finally {
       setAdvisorLoading(false);
     }
   };
 
   return {
-    user, categories, applications, latestApplication, advisorStatus,
-    advisorModalOpen, setAdvisorModalOpen,
-    advisorLoading, advisorError, advisorSuccess,
-    advisorForm, setAdvisorForm,
-    toggleCategory, submitAdvisorApplication,
+    user,
+    applications,
+    latestApplication,
+    advisorStatus,
+    advisorModalOpen,
+    setAdvisorModalOpen,
+    advisorLoading,
+    advisorError,
+    advisorSuccess,
+    advisorForm,
+    setAdvisorForm,
+    submitAdvisorApplication,
   };
 }

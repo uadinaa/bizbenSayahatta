@@ -315,13 +315,44 @@
 }
 
 .advisor-modal {
-  width: 560px;
+  width: 100%;
+  max-width: 520px;
+}
+
+.advisor-modal-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.advisor-modal-header h3 {
+  margin: 0;
 }
 
 .advisor-rules {
   font-size: 14px;
   color: #667085;
   margin: 0;
+  line-height: 1.45;
+}
+
+.advisor-form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.advisor-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.advisor-cv-label input[type="file"] {
+  padding: 6px 0;
+  border: none;
+  background: transparent;
 }
 
 .modal label {
