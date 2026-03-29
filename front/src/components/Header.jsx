@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchProfile } from "../slices/authSlice";
+import logoImg from "../assets/logo.svg";
 import "../styles/Header.css";
 
 export default function Header() {
@@ -22,13 +23,12 @@ export default function Header() {
   return (
     <header className="header">
       <div className="header-left">
-        <Link to="/" className="home-link">
-          <div className="brand-top">
-            <div className="logo"><span>BS</span></div>
-            <h3>Bizben<br />Sayahat</h3>
-          </div>
-        </Link>
-      </div>
+  <Link to="/" className="home-link">
+    <div className="brand-top">
+      <img src={logoImg} alt="Bizben Sayahat logo" className="logo-img" />
+    </div>
+  </Link>
+</div>
 
       <nav className="header-nav">
         <Link to="/inspiration" className="header-link">Inspiration</Link>

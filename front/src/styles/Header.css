@@ -75,3 +75,17 @@
 .header-link.active {
   color: #5a5450; /* если нужно выделять активную ссылку */
 }
+
+.logo-img {
+  width: auto;
+  object-fit: contain;
+}
+
+.brand-top {
+  display: flex;
+  align-items: center;
+}
+
+.logo-img {
+  height: 45px;
+}

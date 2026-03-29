@@ -90,3 +90,14 @@
   line-height: 1.6;   /* (по желанию) делает текст более «воздушным» */
 }
 
+.footer-logo-img {
+  height: 55px;
+  width: auto;
+  object-fit: contain;
+}
+
+.brand-top {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}

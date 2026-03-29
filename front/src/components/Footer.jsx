@@ -1,4 +1,5 @@
 import "../styles/Footer.css";
+import footerLogoImg from "../assets/footerLogo.svg";
 
 export default function Footer() {
   return (
@@ -6,16 +7,20 @@ export default function Footer() {
       <div className="footer-container">
         <div className="footer-brand">
   <div className="brand-top">
-    <div className="logo">
-      <span>BS</span>
-    </div>
-    <h3>Bizben<br />Sayahat</h3>
+    <img
+      src={footerLogoImg}
+      alt="Bizben Sayahat logo"
+      className="footer-logo-img"
+    />
   </div>
-  <p>Intelligent travel planning 
+
+  <p>
+    Intelligent travel planning 
     <br />
     platform with AI-powered
     <br />
-     assistant.</p>
+    assistant.
+  </p>
 </div>
 
 

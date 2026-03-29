@@ -63,6 +63,7 @@ export default function TravelPlannerMap({ plan, isOpen }) {
   if (!isOpen || !hasRoute) {
     if (isOpen && !hasRoute) {
       console.error("MAP ERROR:", new Error("Route array is empty or has no valid points"));
+      throw new Error("Route array is empty or has no valid points");
     }
     return (
       <div className="trip-map-shell">
