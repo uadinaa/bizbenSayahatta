@@ -78,21 +78,32 @@ export default function SharedMaps() {
 
             {mapData && mapData.map_places.length > 0 && (
               <MapContainer
-                center={[
-                  mapData.map_places[0].lat,
-                  mapData.map_places[0].lon,
-                ]}
-                zoom={2}
-                style={{ height: "500px", width: "100%" }}
-              >
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                {mapData.map_places.map((place) => (
-                  <Marker
-                    key={place.id}
-                    position={[place.lat, place.lon]}
-                  />
-                ))}
-              </MapContainer>
+  center={[
+    mapData.map_places[0].lat,
+    mapData.map_places[0].lon,
+  ]}
+  zoom={2}
+  style={{ height: "500px", width: "100%" }}
+>
+  {/* ОСНОВНАЯ КАРТА */}
+  <TileLayer
+    url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
+    attribution="&copy; OpenStreetMap &copy; CARTO"
+  />
+
+  {/* ЛЕЙБЛЫ ПОВЕРХ */}
+  <TileLayer
+    url="https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png"
+    attribution="&copy; OpenStreetMap &copy; CARTO"
+  />
+
+  {mapData.map_places.map((place) => (
+    <Marker
+      key={place.id}
+      position={[place.lat, place.lon]}
+    />
+  ))}
+</MapContainer>
             )}
 
             {mapData && mapData.map_places.length === 0 && (
