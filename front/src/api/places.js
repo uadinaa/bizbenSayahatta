@@ -30,13 +30,10 @@ export const fetchInspirationPlaces = async (
       params.append("open_now", options.open_now);
     }
 
-    const response = await fetch(`${API_PREFIX}/places/inspiration/?${params.toString()}`);
+    // Use authenticated api instance to include auth headers
+    const response = await api.get(`places/inspiration/?${params.toString()}`);
 
-    if (!response.ok) {
-      throw new Error("Failed to fetch places");
-    }
-
-    const data = await response.json();
+    const data = response.data;
 
     // если API возвращает массив — приводим к одному формату
     return Array.isArray(data)

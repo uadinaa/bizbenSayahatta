@@ -1,4 +1,6 @@
 import { formatCategory, formatLocation, priceTierLabel } from "../../utils/placeUtils";
+import emptyHeart from "../../assets/emptyHeart.svg"
+import redHeart from "../../assets/redHeart.svg"
 
 export default function PlaceCard({
   place,
@@ -6,10 +8,40 @@ export default function PlaceCard({
   classes = {},
   onOpen,
   onToggleFavorite,
+  isFavorited: isFavoritedProp,
 }) {
+
+    // Use the explicit prop if provided, otherwise fall back to checking place data
+    const isFavorited = isFavoritedProp !== undefined ? isFavoritedProp : place?.is_must_visit;
+
+    const HeartButton = () => (
+    <button
+      className={`${classes.heartBtn || "heart-btn"} ${isFavorited ? classes.heartActive || "heart-active" : ""}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggleFavorite?.();
+      }}
+      aria-label={isFavorited ? "Remove from wishlist" : "Add to wishlist"}
+    >
+      <img
+        src={isFavorited ? redHeart : emptyHeart}
+        alt={isFavorited ? "Red heart" : "Empty heart"}
+        className={classes.heartImg || "heart-img"}
+        width="24"
+        height="24"
+      />
+    </button>
+  );
+
   if (variant === "wishlist") {
     return (
       <div className={classes.card} onClick={onOpen}>
+        {/* <div className={classes.cardTop}>
+          <button className={classes.redHeart}><img src={redHeart} alt="red heart" /></button>
+        </div> */}
+
+        <HeartButton />
+
         <div className={classes.imageContainer}>
           <img
             src={place.photo_url}
@@ -68,6 +100,12 @@ export default function PlaceCard({
 
   return (
     <div className={classes.card} onClick={onOpen}>
+
+      <HeartButton />
+      {/* <div className={classes.cardTop}>
+        <button className={classes.emptyHeart}><img src={emptyHeart} alt="empty heart" /></button>
+      </div> */}
+
       {place.photo_url ? (
         <img className={classes.photo} src={place.photo_url} alt={place.name} loading="lazy" />
       ) : (

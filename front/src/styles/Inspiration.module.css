@@ -262,11 +262,51 @@
   transition: all 0.25s ease;
   cursor: pointer;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.05);
+  position: relative;
 }
 
 .card:hover {
   transform: translateY(-6px);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
+}
+
+/* Heart Button */
+.heartBtn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+  padding: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.heartBtn:hover {
+  transform: scale(1.1);
+  background: white;
+}
+
+.heartBtn:active {
+  transform: scale(0.95);
+}
+
+.heartImg {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.heartActive .heartImg {
+  filter: drop-shadow(0 1px 2px rgba(229, 57, 53, 0.3));
 }
 
 /* Image */

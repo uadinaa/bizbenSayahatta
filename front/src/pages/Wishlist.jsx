@@ -113,7 +113,8 @@ export default function Wishlist() {
             <PlaceCard
               key={destination.id}
               place={destination}
-              variant="inspiration"
+              variant="wishlist"
+              isFavorited={true}
               classes={{
                 card: cardStyles.card,
                 photo: cardStyles.photo,
@@ -125,11 +126,15 @@ export default function Wishlist() {
                 priceTag: cardStyles.priceTag,
                 name: cardStyles.name,
                 location: cardStyles.location,
+                heartBtn: cardStyles.heartBtn,
+                heartActive: cardStyles.heartActive,
+                heartImg: cardStyles.heartImg,
               }}
               onOpen={() => {
                 setSelectedPlace(destination);
                 setIsModalOpen(true);
               }}
+              onToggleFavorite={() => toggleFavorite(destination.id)}
             />
           ))}
       </div>

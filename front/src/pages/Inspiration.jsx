@@ -18,6 +18,7 @@ import {
   loadTripCategories,
   openTripModal,
 } from "../service/placeService";
+import { toggleMustVisit } from "../api/places";
 import s from "../styles/Inspiration.module.css";
 
 const Inspiration = () => {
@@ -118,6 +119,28 @@ const Inspiration = () => {
     await loadPublicTrips({ setLoadingTrips, setPublicTrips });
   };
 
+  const handleToggleFavoriteInPlace = async (placeId) => {
+    if (!isAuthed) {
+      navigate("/login");
+      return;
+    }
+
+    const place = places.find(p => p.id === placeId);
+    if (!place) return;
+
+    try {
+      const data = await toggleMustVisit(placeId, !place.is_must_visit);
+      // Update the places list to reflect the change
+      setPlaces((prev) =>
+        prev.map((p) =>
+          p.id === placeId ? { ...p, is_must_visit: data.is_must_visit } : p
+        )
+      );
+    } catch (err) {
+      console.error("Failed to toggle favorite:", err);
+    }
+  };
+
   return (
     <div className={s.page}>
       <h1 className={s.title}>Inspiration</h1>
@@ -179,6 +202,7 @@ const Inspiration = () => {
             key={place.id}
             place={place}
             variant="inspiration"
+            isFavorited={place.is_must_visit}
             classes={{
               card: s.card,
               photo: s.photo,
@@ -190,8 +214,12 @@ const Inspiration = () => {
               priceTag: s.priceTag,
               name: s.name,
               location: s.location,
+              heartBtn: s.heartBtn,
+              heartActive: s.heartActive,
+              heartImg: s.heartImg,
             }}
             onOpen={() => openPlaceModal(place)}
+            onToggleFavorite={() => handleToggleFavoriteInPlace(place.id)}
           />
         ))}
       </div>
