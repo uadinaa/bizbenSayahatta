@@ -61,22 +61,22 @@ export default function TravelPlannerMap({ plan, isOpen }) {
   );
 
   if (!isOpen || !hasRoute) {
-    if (isOpen && !hasRoute) {
-      console.error("MAP ERROR:", new Error("Route array is empty or has no valid points"));
-      throw new Error("Route array is empty or has no valid points");
-    }
     return (
       <div className="trip-map-shell">
-        <p className="map-fallback">Map unavailable, but your route is listed below.</p>
-        <div className="text-directions">
-          {(plan?.itinerary || []).map((day) => (
-            <div key={day.day} className="text-direction-day">
-              <span className="day-dot" style={{ backgroundColor: day.color || "#E53E3E" }} />
-              <strong>Day {day.day}</strong>
-              <span>{(day.stops || []).map((stop) => stop.name).join(" -> ")}</span>
+        {isOpen ? (
+          <>
+            <p className="map-fallback">Map unavailable</p>
+            <div className="text-directions">
+              {(plan?.itinerary || []).map((day) => (
+                <div key={day.day} className="text-direction-day">
+                  <span className="day-dot" style={{ backgroundColor: day.color || "#E53E3E" }} />
+                  <strong>Day {day.day}</strong>
+                  <span>{(day.stops || []).map((stop) => stop.name).join(" -> ")}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </>
+        ) : null}
       </div>
     );
   }

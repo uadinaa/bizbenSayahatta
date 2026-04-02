@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ChatThread, ChatEntry
+from .models import ChatThread, ChatEntry, FinalTrip
 
 
 class ChatRequestSerializer(serializers.Serializer):
@@ -44,6 +44,7 @@ class ChatThreadListSerializer(serializers.ModelSerializer):
             "city",
             "start_date",
             "end_date",
+            "is_archived",
             "updated_at",
         ]
 
@@ -59,6 +60,7 @@ class ChatThreadDetailSerializer(serializers.ModelSerializer):
             "start_date",
             "end_date",
             "plan_json",
+            "is_archived",
             "updated_at",
         ]
 
@@ -76,3 +78,24 @@ class ChatEntrySerializer(serializers.ModelSerializer):
 
 class ChatEntryCreateSerializer(serializers.Serializer):
     message = serializers.CharField()
+
+
+class FinalTripSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FinalTrip
+        fields = [
+            "city",
+            "country",
+            "itinerary",
+            "route",
+            "response_markdown",
+            "updated_at",
+        ]
+
+
+class FinalTripUpdateSerializer(serializers.Serializer):
+    city = serializers.CharField(required=False, allow_blank=True)
+    country = serializers.CharField(required=False, allow_blank=True)
+    itinerary = serializers.JSONField(required=False)
+    route = serializers.JSONField(required=False)
+    response_markdown = serializers.CharField(required=False, allow_blank=True)

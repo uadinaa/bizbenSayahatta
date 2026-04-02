@@ -6,6 +6,8 @@ from .views import (
     ChatThreadDetailView,
     ChatEntryListCreateView,
     ChatThreadPlanView,
+    ChatThreadArchiveView,
+    ChatThreadTripView,
 )
 
 urlpatterns = [
@@ -15,4 +17,6 @@ urlpatterns = [
     path("threads/<int:thread_id>/", ChatThreadDetailView.as_view(), name="chat-thread-detail"),
     path("threads/<int:thread_id>/messages/", ChatEntryListCreateView.as_view(), name="chat-thread-messages"),
     path("threads/<int:thread_id>/plan/", ChatThreadPlanView.as_view(), name="chat-thread-plan"),
+    path("threads/<int:thread_id>/archive/", ChatThreadArchiveView.as_view(), name="chat-thread-archive"),
+    path("threads/<int:thread_id>/trip/", ChatThreadTripView.as_view(), name="chat-thread-trip"),
 ]

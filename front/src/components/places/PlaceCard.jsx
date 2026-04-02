@@ -45,14 +45,14 @@ export default function PlaceCard({
 
         {isWishlist ? (
           <div className={styles.tags}>
-            <span className={styles.tag}>{formatCategory(place.category)}</span>
+            <span className={styles.tag}>{formatCategory(place.category)} uu</span>
           </div>
         ) : null}
       </div>
 
       <div className={styles.content}>
         <div className={styles.cardHeader}>
-          {!isWishlist ? <span className={styles.category}>{formatCategory(place.category)}</span> : <span />}
+          {!isWishlist ? <span className={styles.category}>{formatCategory(place.category)}uu</span> : <span />}
           <div className={styles.metaRow}>
             {place.rating ? <span className={styles.rating}>★ {place.rating}</span> : null}
             <span className={styles.priceTag}>{priceTierLabel(place.price_level)}</span>

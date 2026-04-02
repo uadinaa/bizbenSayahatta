@@ -12,9 +12,12 @@ from .serializers import (
     ChatThreadDetailSerializer,
     ChatEntrySerializer,
     ChatEntryCreateSerializer,
+    FinalTripSerializer,
+    FinalTripUpdateSerializer,
 )
-from .models import ChatMessage, ChatThread, ChatEntry
+from .models import ChatMessage, ChatThread, ChatEntry, FinalTrip
 from .services.openai_service import ask_travel_ai, polish_trip_plan
+from .services.final_trip import sync_final_trip
 from .services.travel_chat import (
     build_missing_details_response,
     collect_trip_requirements,
@@ -70,6 +73,16 @@ def _detect_city_from_message(message: str, fallback_city: str = "") -> str:
         if city.lower() in text:
             return city
     return fallback_city or ""
+
+
+def _get_thread_for_request(request, thread_id: int):
+    # Enforce thread ownership before any thread action.
+    thread = ChatThread.objects.filter(id=thread_id).first()
+    if not thread:
+        return None, Response({"detail": "Thread not found"}, status=status.HTTP_404_NOT_FOUND)
+    if thread.user_id != request.user.id:
+        return None, Response({"detail": "You do not have permission to access this chat."}, status=status.HTTP_403_FORBIDDEN)
+    return thread, None
 
 
 def _get_top_places_for_city(city: str):
@@ -173,6 +186,7 @@ def _generate_thread_trip_response(thread, user, message: str):
         thread.plan_json = payload
         thread.city = payload.get("city") or thread.city
         thread.save(update_fields=["plan_json", "city", "updated_at"])
+        sync_final_trip(thread, payload)
         return {
             "response": payload["response_markdown"],
             "plan": payload,
@@ -258,7 +272,13 @@ class ChatThreadListCreateView(APIView):
     permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
 
     def get(self, request):
-        threads = ChatThread.objects.filter(user=request.user).order_by("-updated_at")
+        archived = request.query_params.get("archived")
+        threads = ChatThread.objects.filter(user=request.user)
+        if archived == "true":
+            threads = threads.filter(is_archived=True)
+        else:
+            threads = threads.filter(is_archived=False)
+        threads = threads.order_by("-updated_at")
         serializer = ChatThreadListSerializer(threads, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -297,26 +317,34 @@ class ChatThreadDetailView(APIView):
     permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
 
     def get(self, request, thread_id):
-        thread = ChatThread.objects.filter(id=thread_id, user=request.user).first()
-        if not thread:
-            return Response({"detail": "Thread not found"}, status=404)
+        thread, error_response = _get_thread_for_request(request, thread_id)
+        if error_response:
+            return error_response
         return Response(ChatThreadDetailSerializer(thread).data, status=status.HTTP_200_OK)
+
+    def delete(self, request, thread_id):
+        # Delete the chat and all related messages/trip data.
+        thread, error_response = _get_thread_for_request(request, thread_id)
+        if error_response:
+            return error_response
+        thread.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ChatEntryListCreateView(APIView):
     permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
 
     def get(self, request, thread_id):
-        thread = ChatThread.objects.filter(id=thread_id, user=request.user).first()
-        if not thread:
-            return Response({"detail": "Thread not found"}, status=404)
+        thread, error_response = _get_thread_for_request(request, thread_id)
+        if error_response:
+            return error_response
         messages = ChatEntry.objects.filter(thread=thread)
         return Response(ChatEntrySerializer(messages, many=True).data, status=status.HTTP_200_OK)
 
     def post(self, request, thread_id):
-        thread = ChatThread.objects.filter(id=thread_id, user=request.user).first()
-        if not thread:
-            return Response({"detail": "Thread not found"}, status=404)
+        thread, error_response = _get_thread_for_request(request, thread_id)
+        if error_response:
+            return error_response
 
         serializer = ChatEntryCreateSerializer(data=request.data)
         if not serializer.is_valid():
@@ -383,9 +411,9 @@ class ChatThreadPlanView(APIView):
     permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
 
     def post(self, request, thread_id):
-        thread = ChatThread.objects.filter(id=thread_id, user=request.user).first()
-        if not thread:
-            return Response({"detail": "Thread not found"}, status=404)
+        thread, error_response = _get_thread_for_request(request, thread_id)
+        if error_response:
+            return error_response
 
         if thread.kind != "planner":
             return Response({"detail": "Plan generation is only for planner chats."}, status=400)
@@ -423,6 +451,7 @@ class ChatThreadPlanView(APIView):
         if data.get("city"):
             thread.city = data.get("city")
         thread.save(update_fields=["plan_json", "city", "updated_at"])
+        sync_final_trip(thread, plan)
 
         ChatEntry.objects.create(
             thread=thread,
@@ -434,3 +463,86 @@ class ChatThreadPlanView(APIView):
         )
 
         return Response(plan, status=status.HTTP_200_OK)
+
+
+class ChatThreadArchiveView(APIView):
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
+
+    def patch(self, request, thread_id):
+        # Toggle archived state for the selected chat.
+        thread, error_response = _get_thread_for_request(request, thread_id)
+        if error_response:
+            return error_response
+
+        thread.is_archived = not thread.is_archived
+        thread.save(update_fields=["is_archived", "updated_at"])
+        return Response(
+            {
+                "id": thread.id,
+                "is_archived": thread.is_archived,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class ChatThreadTripView(APIView):
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
+
+    def get(self, request, thread_id):
+        # Return the persisted final trip or null for this chat.
+        thread, error_response = _get_thread_for_request(request, thread_id)
+        if error_response:
+            return error_response
+
+        final_trip = FinalTrip.objects.filter(thread=thread).first()
+        if not final_trip:
+            return Response(None, status=status.HTTP_200_OK)
+        return Response(FinalTripSerializer(final_trip).data, status=status.HTTP_200_OK)
+
+    def patch(self, request, thread_id):
+        # Update or create the persisted final trip for this chat.
+        thread, error_response = _get_thread_for_request(request, thread_id)
+        if error_response:
+            return error_response
+
+        serializer = FinalTripUpdateSerializer(data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        final_trip, _ = FinalTrip.objects.get_or_create(
+            thread=thread,
+            defaults={
+                "city": thread.city or "",
+                "country": "",
+                "itinerary": [],
+                "route": [],
+                "plan_snapshot": thread.plan_json or {},
+                "response_markdown": "",
+            },
+        )
+
+        update_data = serializer.validated_data
+        for field, value in update_data.items():
+            setattr(final_trip, field, value)
+
+        plan_snapshot = dict(final_trip.plan_snapshot or thread.plan_json or {})
+        if "city" in update_data:
+            plan_snapshot["city"] = final_trip.city
+        if "country" in update_data:
+            plan_snapshot["country"] = final_trip.country
+        if "itinerary" in update_data:
+            plan_snapshot["itinerary"] = final_trip.itinerary
+        if "route" in update_data:
+            plan_snapshot["route"] = final_trip.route
+        if "response_markdown" in update_data:
+            plan_snapshot["response_markdown"] = final_trip.response_markdown
+        final_trip.plan_snapshot = plan_snapshot
+        final_trip.save()
+
+        if plan_snapshot:
+            thread.plan_json = plan_snapshot
+            if final_trip.city:
+                thread.city = final_trip.city
+            thread.save(update_fields=["plan_json", "city", "updated_at"])
+
+        return Response(FinalTripSerializer(final_trip).data, status=status.HTTP_200_OK)

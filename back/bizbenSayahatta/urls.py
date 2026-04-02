@@ -29,6 +29,7 @@ urlpatterns = [
     path('users/', include('users.urls')),
     # path('llm/', include('llm.urls')),
     path('api/llm/', include('llm.urls')),
+    path('api/chats/', include('llm.chat_urls')),
     path("api/places/", include("places.urls")),
     path("api/places/", include("marketplace.comment_urls")),
     path("api/marketplace/", include("marketplace.urls")),

@@ -259,7 +259,3 @@ html, body, #root {
   color: #9cc3c9;
   transform: scale(1.2);
 }
-
-.add-btn:focus {
-  outline: none;
-}
