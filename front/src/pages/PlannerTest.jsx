@@ -460,8 +460,7 @@ export default function PlannerTest() {
       <aside className="planner-sidebar">
         <div className="sidebar-header">
           <div>
-            <p className="sidebar-label">Travel Chat</p>
-            <h2>Your chats</h2>
+            <h2 className="sidebar-label">Travel Chat</h2>
           </div>
           <button type="button" className="add-btn" onClick={handleCreateThread}>
             ＋
@@ -472,8 +471,7 @@ export default function PlannerTest() {
 
         <div className="thread-section">
           <div className="thread-section-header">
-            <span>Chats</span>
-            <span>{threads.length}</span>
+            
           </div>
           <div className="thread-list">
             {renderThreadList(threads, "No active chats yet.")}
@@ -486,7 +484,10 @@ export default function PlannerTest() {
             className="thread-section-toggle"
             onClick={() => setShowArchived((previous) => !previous)}
           >
-            <span>Archived</span>
+            <div className="section-left">
+              <span className="section-title">Archived</span>
+              <span className="section-count">{archivedThreads.length}</span>
+            </div>
             <span>{showArchived ? "−" : "+"}</span>
           </button>
           {showArchived ? (
