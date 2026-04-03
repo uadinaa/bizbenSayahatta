@@ -550,7 +550,7 @@ export default function PlannerTest() {
         {mapOpen && selectedThread ? (
           <div className="map-box map-box--open">
             <div className="map-box-header">
-              <span>Route map</span>
+              <span></span>
               <button type="button" className="map-close-btn" onClick={() => setMapOpen(false)}>
                 ×
               </button>
