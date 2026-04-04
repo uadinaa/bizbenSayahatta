@@ -3,6 +3,7 @@ import { Provider, useDispatch, useSelector } from "react-redux";
 import { createRoot } from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import "./index.css";
+import "./i18n";
 import App from "./App.jsx";
 import HomePage from "./pages/Home";
 import Signup from "./pages/Signup";

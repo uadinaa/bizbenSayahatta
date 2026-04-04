@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import api from "../api/axios";
 import s from "../styles/Trips.module.css";
 import "../styles/TripEmpty.css";
 import earthPic from "../assets/earthpic.png";
 
-function formatDateRange(startDate, endDate) {
-  if (!startDate && !endDate) return "Dates not set";
+function formatDateRange(startDate, endDate, t) {
+  if (!startDate && !endDate) return t("trips.datesNotSet");
   if (startDate && endDate) return `${startDate} - ${endDate}`;
   return startDate || endDate;
 }
@@ -17,7 +18,7 @@ function getTripStatus(endDate) {
   return endDate >= today ? "active" : "past";
 }
 
-function buildTripCard(thread) {
+function buildTripCard(thread, t) {
   const itinerary = thread.plan_json?.itinerary || [];
   const firstStop = itinerary[0]?.stops?.[0];
   const daysGenerated = thread.plan_json?.days_generated || itinerary.length || 0;
@@ -26,18 +27,19 @@ function buildTripCard(thread) {
 
   return {
     id: thread.id,
-    title: thread.title || (thread.city ? `${thread.city} trip` : "Untitled trip"),
-    city: thread.city || thread.plan_json?.city || "Unknown city",
-    dateRange: formatDateRange(thread.start_date, thread.end_date),
+    title: thread.title || (thread.city ? `${thread.city} ${t("trips.tripSuffix")}` : t("trips.untitledTrip")),
+    city: thread.city || thread.plan_json?.city || t("trips.unknownCity"),
+    dateRange: formatDateRange(thread.start_date, thread.end_date, t),
     daysGenerated,
     stopsCount,
     status,
     photoUrl: firstStop?.photo_url || null,
-    summary: itinerary[0]?.summary || "Trip plan is ready",
+    summary: itinerary[0]?.summary || t("trips.tripPlanReady"),
   };
 }
 
 export default function TripPage() {
+  const { t } = useTranslation();
   const [trips, setTrips] = useState([]);
   const [tab, setTab] = useState("active");
   const [loading, setLoading] = useState(true);
@@ -61,18 +63,18 @@ export default function TripPage() {
               itinerary.length > 0 || Number(thread.plan_json?.days_generated || 0) > 0
             );
           })
-          .map((thread) => buildTripCard(thread))
+          .map((thread) => buildTripCard(thread, t))
           .sort((a, b) => b.id - a.id);
         setTrips(cards);
       } catch (err) {
-        setError(err.response?.data?.detail || "Failed to load trips");
+        setError(err.response?.data?.detail || err.userMessage || t("trips.failedLoad"));
       } finally {
         setLoading(false);
       }
     };
 
     loadTrips();
-  }, []);
+  }, [t]);
 
   const activeTrips = useMemo(
     () => trips.filter((trip) => trip.status === "active"),
@@ -87,9 +89,9 @@ export default function TripPage() {
   return (
     <div className={s.page}>
       <header className={s.header}>
-        <h1 className={s.title}>My Trips</h1>
+        <h1 className={s.title}>{t("trips.myTrips")}</h1>
         <p className={s.subtitle}>
-          Active and completed journeys in one place
+          {t("trips.subtitle")}
         </p>
 
         <div className={s.tabs}>
@@ -97,34 +99,34 @@ export default function TripPage() {
             className={`${s.tab} ${tab === "active" ? s.tabActive : ""}`}
             onClick={() => setTab("active")}
           >
-            Active & Upcoming <span className={s.badge}>{activeTrips.length}</span>
+            {t("trips.activeUpcoming")} <span className={s.badge}>{activeTrips.length}</span>
           </button>
           <button
             className={`${s.tab} ${tab === "past" ? s.tabActive : ""}`}
             onClick={() => setTab("past")}
           >
-            Trip Archive <span className={s.badge}>{pastTrips.length}</span>
+            {t("trips.tripArchive")} <span className={s.badge}>{pastTrips.length}</span>
           </button>
         </div>
       </header>
 
-      {loading && <p className={s.meta}>Loading trips...</p>}
+      {loading && <p className={s.meta}>{t("trips.loading")}</p>}
       {error && <p className={s.error}>{error}</p>}
 
       {!loading && !error && visibleTrips.length === 0 ? (
         <main className="trip-empty">
           <div className="trip-empty__left">
             <h2 className="trip-empty__title">
-              You don&apos;t have any
+              {t("trips.emptyTitleLine1")}
               <br />
-              trips yet...
+              {t("trips.emptyTitleLine2")}
             </h2>
             <Link to="/chat" className="trip-cta">
-              Create new trip <span className="trip-cta__arrow">→</span>
+              {t("trips.createNewTrip")} <span className="trip-cta__arrow">→</span>
             </Link>
           </div>
           <div className="trip-empty__right">
-            <img className="trip-illustration" src={earthPic} alt="Travel illustration" />
+            <img className="trip-illustration" src={earthPic} alt={t("common.travelIllustration")} />
           </div>
         </main>
       ) : null}
@@ -144,7 +146,7 @@ export default function TripPage() {
             trip.status === "active" ? s.statusActive : s.statusUpcoming
           }`}
         >
-          {trip.status === "active" ? "Active Now" : "Upcoming"}
+          {trip.status === "active" ? t("trips.activeNow") : t("trips.upcoming")}
         </span>
       </div>
 
@@ -154,11 +156,11 @@ export default function TripPage() {
 
         <div className={s.tripInfo}>
           <span>{trip.dateRange}</span>
-          <span>{trip.stopsCount} travelers</span>
+          <span>{trip.stopsCount} {t("trips.travelers")}</span>
         </div>
 
         <div className={s.budget}>
-          <label>Budget</label>
+          <label>{t("trips.budget")}</label>
           <div className={s.budgetBar}>
             <div
               className={s.budgetProgress}
@@ -177,7 +179,7 @@ export default function TripPage() {
         </div>
 
         <Link className={s.viewTrip} to={`/chat?thread=${trip.id}`}>
-          View your trip →
+          {t("trips.viewYourTrip")} →
         </Link>
       </div>
     </article>

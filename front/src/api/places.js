@@ -63,6 +63,11 @@ export const createMapPlace = async (payload) => {
   return response.data;
 };
 
+export const updateMapPlace = async (placeId, payload) => {
+  const response = await api.patch(`places/map-places/${placeId}/`, payload);
+  return response.data;
+};
+
 export const deleteMapPlace = async (placeId) => {
   await api.delete(`places/map-places/${placeId}/`);
 };

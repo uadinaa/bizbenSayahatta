@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
 import api from "../api/axios";
 import { toggleMustVisit } from "../api/places";
 import PlaceCard from "../components/places/PlaceCard";
@@ -8,7 +8,7 @@ import "../styles/Wishlist.css";
 
 export default function Wishlist() {
   const navigate = useNavigate();
-  const { isAuthenticated } = useSelector((state) => state.auth);
+  const { t } = useTranslation();
 
   const [destinations, setDestinations] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -69,9 +69,9 @@ export default function Wishlist() {
       <div className="wishlist-header">
         <div className="wishlist-header-content">
           <div className="wishlist-title-section">
-            <h1 className="wishlist-title">My Wishlist</h1>
+            <h1 className="wishlist-title">{t("wishlist.title")}</h1>
             <p className="wishlist-subtitle">
-              Dream destinations waiting to be explored
+              {t("wishlist.subtitle")}
             </p>
           </div>
 
@@ -79,7 +79,7 @@ export default function Wishlist() {
             className="add-destination-btn"
             onClick={() => navigate("/inspiration")}
           >
-            + Add Destination
+            + {t("wishlist.addDestination")}
           </button>
         </div>
       </div>
@@ -95,7 +95,11 @@ export default function Wishlist() {
               }`}
               onClick={() => setSelectedCategory(category)}
             >
-              {category === "All" ? "All" : category.replace("_", " ")}
+              {category === "All"
+                ? t("wishlist.all")
+                : t(`wishlist.categories.${category}`, {
+                    defaultValue: category.replaceAll("_", " "),
+                  })}
             </button>
           ))}
         </div>
@@ -103,10 +107,10 @@ export default function Wishlist() {
 
       {/* Grid */}
       <div className="destinations-grid">
-        {loading && <p>Loading...</p>}
+        {loading && <p>{t("wishlist.loading")}</p>}
 
         {!loading && filteredDestinations.length === 0 && (
-          <p>No saved destinations yet.</p>
+          <p>{t("wishlist.empty")}</p>
         )}
 
         {!loading &&
@@ -140,23 +144,25 @@ export default function Wishlist() {
         <h2>{selectedPlace.name}</h2>
 
         <p>
-          <strong>Category:</strong>{" "}
-          {selectedPlace.category.replace("_", " ")}
+          <strong>{t("wishlist.category")}:</strong>{" "}
+          {t(`wishlist.categories.${selectedPlace.category}`, {
+            defaultValue: selectedPlace.category.replaceAll("_", " "),
+          })}
         </p>
 
         {selectedPlace.rating && (
           <p>
-            <strong>Rating:</strong> {selectedPlace.rating}
+            <strong>{t("wishlist.rating")}:</strong> {selectedPlace.rating}
           </p>
         )}
 
         <p>
-          <strong>Location:</strong> {selectedPlace.city},{" "}
+          <strong>{t("wishlist.location")}:</strong> {selectedPlace.city},{" "}
           {selectedPlace.country}
         </p>
 
         <p>
-          {selectedPlace.description || "No description available"}
+          {selectedPlace.description || t("wishlist.noDescription")}
         </p>
       </div>
 
@@ -165,14 +171,14 @@ export default function Wishlist() {
           className="lightActionBtn"
           onClick={() => toggleFavorite(selectedPlace.id)}
         >
-          💚 Added to wishlist
+          💚 {t("wishlist.addedToWishlist")}
         </button>
 
         <button
           className="lightActionBtn"
           onClick={handleCreateTrip}
         >
-          ✈️ Add to trip
+          ✈️ {t("wishlist.addToTrip")}
         </button>
       </div>
 
@@ -180,7 +186,7 @@ export default function Wishlist() {
         className="modalClose"
         onClick={() => setIsModalOpen(false)}
       >
-        Close
+        {t("wishlist.close")}
       </button>
     </div>
   </div>

@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 export default function AdvisorModal({
   advisorForm,
   setAdvisorForm,
@@ -6,20 +8,21 @@ export default function AdvisorModal({
   onSubmit,
   onClose,
 }) {
+  const { t } = useTranslation();
+
   return (
     <div className="modal-overlay">
       <div className="modal advisor-modal">
         <div className="advisor-modal-header">
-          <h3>Become TripAdvisor</h3>
+          <h3>{t("profile.advisorTitle")}</h3>
           <p className="advisor-rules">
-            Fill in your details. After you submit, you will be redirected to secure Stripe checkout
-            to complete payment.
+            {t("profile.advisorDescription")}
           </p>
         </div>
 
         <div className="advisor-form-stack">
           <label>
-            Instagram / social
+            {t("profile.instagram")}
             <input
               type="text"
               placeholder="https://instagram.com/..."
@@ -31,7 +34,7 @@ export default function AdvisorModal({
           </label>
 
           <label>
-            Portfolio / trip links (one per line)
+            {t("profile.portfolio")}
             <textarea
               rows={4}
               placeholder="https://..."
@@ -43,10 +46,10 @@ export default function AdvisorModal({
           </label>
 
           <label>
-            About your trips
+            {t("profile.aboutTrips")}
             <textarea
               rows={3}
-              placeholder="What kind of trips you create"
+              placeholder={t("profile.aboutTripsPlaceholder")}
               value={advisorForm.notes}
               onChange={(e) =>
                 setAdvisorForm((prev) => ({ ...prev, notes: e.target.value }))
@@ -55,7 +58,7 @@ export default function AdvisorModal({
           </label>
 
           <label className="advisor-cv-label">
-            CV (optional)
+            {t("profile.cvOptional")}
             <input
               type="file"
               onChange={(e) =>
@@ -79,7 +82,7 @@ export default function AdvisorModal({
                   }))
                 }
               />
-              I accept contract
+              {t("profile.acceptContract")}
             </label>
 
             <label className="check-row">
@@ -93,7 +96,7 @@ export default function AdvisorModal({
                   }))
                 }
               />
-              I accept terms
+              {t("profile.acceptTerms")}
             </label>
           </div>
         </div>
@@ -102,7 +105,7 @@ export default function AdvisorModal({
 
         <div className="modal-actions">
           <button type="button" className="cancel-btn" onClick={onClose}>
-            Cancel
+            {t("profile.cancel")}
           </button>
           <button
             type="button"
@@ -114,7 +117,7 @@ export default function AdvisorModal({
               !advisorForm.termsAccepted
             }
           >
-            {advisorLoading ? "Redirecting…" : "Continue to payment"}
+            {advisorLoading ? t("profile.redirecting") : t("profile.continueToPayment")}
           </button>
         </div>
       </div>

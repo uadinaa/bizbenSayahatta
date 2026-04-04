@@ -2,7 +2,8 @@ import "../styles/Map.css";
 import "leaflet/dist/leaflet.css";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { createMapPlace, deleteMapPlace, fetchMapPlaces, markPlaceAsVisited, fetchInspirationPlaces } from "../api/places";
+import { useTranslation } from "react-i18next";
+import { createMapPlace, deleteMapPlace, fetchMapPlaces, markPlaceAsVisited, fetchInspirationPlaces, updateMapPlace } from "../api/places";
 import { LEVELS_LIST } from "../constants/mapConstants";
 import MapSidebar from "../components/map/MapSidebar";
 import MapView from "../components/map/MapView";
@@ -14,6 +15,7 @@ const currentMonth = String(now.getMonth() + 1).padStart(2, "0");
 const yearOptions = Array.from({ length: 81 }, (_, i) => String(currentYear - i));
 
 export default function Map() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [places, setPlaces] = useState([]);
   const [countriesData, setCountriesData] = useState(null);
@@ -89,7 +91,7 @@ export default function Map() {
         `https://nominatim.openstreetmap.org/search?format=json&q=${editingPlace.city},${editingPlace.country}`
       );
       const data = await res.json();
-      if (!data.length) { alert("City not found"); return; }
+      if (!data.length) { alert(t("map.cityNotFound")); return; }
 
       const updated = await updateMapPlace(editingPlace.id, {
         city: editingPlace.city,
@@ -104,7 +106,7 @@ export default function Map() {
       setEditingPlace(null);
     } catch (err) {
       if (err?.response?.status === 401) { navigate("/login"); return; }
-      alert("Error updating location");
+      alert(t("map.errorUpdatingLocation"));
     }
   };
 
@@ -133,7 +135,7 @@ export default function Map() {
     const data = await res.json();
 
     if (!data.length) {
-      alert("City not found");
+      alert(t("map.cityNotFound"));
       return;
     }
 
@@ -151,7 +153,7 @@ export default function Map() {
 
   
     if (visitedResponse?.badges?.length) {
-      alert(`🎉 New badges: ${visitedResponse.badges.join(", ")}`);
+      alert(`🎉 ${t("map.newBadges")}: ${visitedResponse.badges.join(", ")}`);
     }
 
     setNewPlace({
@@ -168,7 +170,7 @@ export default function Map() {
       return;
     }
     console.error(err);
-    alert("Error adding place");
+    alert(t("map.errorAddingPlace"));
   }
 };
 
@@ -212,6 +214,8 @@ export default function Map() {
           onInputChange={handleInputChange}
           onAdd={addPlace}
           onClose={() => setIsModalOpen(false)}
+          title={t("map.addPlaceTitle")}
+          submitLabel={t("map.add")}
         />
       )}
 
@@ -225,8 +229,8 @@ export default function Map() {
           }}
           onAdd={saveEditPlace}
           onClose={() => { setIsEditModalOpen(false); setEditingPlace(null); }}
-          title="Edit Place"      // add a title prop to AddPlaceModal
-          submitLabel="Save"      // and a submit label prop
+          title={t("map.editPlaceTitle")}
+          submitLabel={t("map.save")}
         />
       )}
     </div>

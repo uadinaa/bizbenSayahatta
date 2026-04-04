@@ -1,18 +1,5 @@
 import { Link, useRouteError, useSearchParams } from "react-router-dom";
-
-const TITLES = {
-  400: "Bad Request",
-  401: "Unauthorized",
-  403: "Forbidden",
-  404: "Not Found",
-  408: "Request Timeout",
-  409: "Conflict",
-  429: "Too Many Requests",
-  500: "Server Error",
-  502: "Bad Gateway",
-  503: "Service Unavailable",
-  504: "Gateway Timeout",
-};
+import { useTranslation } from "react-i18next";
 
 function getStatus(routeError, searchParams) {
   const fromQuery = Number(searchParams.get("status"));
@@ -25,16 +12,17 @@ function getStatus(routeError, searchParams) {
 }
 
 export default function ErrorPage() {
+  const { t } = useTranslation();
   const routeError = useRouteError();
   const [searchParams] = useSearchParams();
   const status = getStatus(routeError, searchParams);
-  const title = TITLES[status] || "Unexpected Error";
+  const title = t(`errors.status.${status}`, { defaultValue: t("errors.defaultTitle") });
 
   return (
     <div style={{ maxWidth: 760, margin: "40px auto", padding: 20, textAlign: "center" }}>
       <h1 style={{ marginBottom: 8 }}>{status} - {title}</h1>
       <p style={{ color: "#667085", marginBottom: 18 }}>
-        Something went wrong. We logged the issue and sanitized technical details.
+        {t("errors.description")}
       </p>
 
       <img
@@ -45,10 +33,10 @@ export default function ErrorPage() {
 
       <div style={{ marginTop: 18, display: "flex", justifyContent: "center", gap: 10 }}>
         <Link to="/" style={{ textDecoration: "none", padding: "8px 14px", borderRadius: 8, border: "1px solid #d0d5dd" }}>
-          Go Home
+          {t("errors.goHome")}
         </Link>
         <button type="button" onClick={() => window.location.reload()} style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #d0d5dd", background: "#fff", cursor: "pointer" }}>
-          Retry
+          {t("errors.retry")}
         </button>
       </div>
     </div>

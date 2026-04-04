@@ -13,36 +13,36 @@ export default function AddPlaceModal({ newPlace, yearOptions, onInputChange, on
         <h3>{title}</h3>
 
         <input
-            type="text"
-            name="city"
-            placeholder="City"
-            value={newPlace.city}
-            onChange={(e) => {
-              const { name, value } = e.target;
-              const formattedValue =
-                name === "city" || name === "country"
-                  ? capitalizeFirstLetter(value)
-                  : value;
+          type="text"
+          name="city"
+          placeholder="City"
+          value={newPlace.city}
+          onChange={(e) => {
+            const { name, value } = e.target;
+            const formattedValue =
+              name === "city" || name === "country"
+                ? capitalizeFirstLetter(value)
+                : value;
 
-              onInputChange({ target: { name, value: formattedValue } });
-            }}
-          />
+            onInputChange({ target: { name, value: formattedValue } });
+          }}
+        />
 
-          <input
-            type="text"
-            name="country"
-            placeholder="Country"
-            value={newPlace.country}
-            onChange={(e) => {
-              const { name, value } = e.target;
-              const formattedValue =
-                name === "city" || name === "country"
-                  ? capitalizeFirstLetter(value)
-                  : value;
+        <input
+          type="text"
+          name="country"
+          placeholder="Country"
+          value={newPlace.country}
+          onChange={(e) => {
+            const { name, value } = e.target;
+            const formattedValue =
+              name === "city" || name === "country"
+                ? capitalizeFirstLetter(value)
+                : value;
 
-              onInputChange({ target: { name, value: formattedValue } });
-            }}
-          />
+            onInputChange({ target: { name, value: formattedValue } });
+          }}
+        />
 
         <div className="month-year-row">
           <select name="month" value={newPlace.month} onChange={onInputChange}>

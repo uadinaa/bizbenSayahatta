@@ -18,6 +18,7 @@ import {
   loadTripCategories,
   openTripModal,
 } from "../service/placeService";
+import { toggleMustVisit } from "../api/places";
 import s from "../styles/Inspiration.module.css";
 
 const Inspiration = () => {
@@ -118,18 +119,59 @@ const Inspiration = () => {
     await loadPublicTrips({ setLoadingTrips, setPublicTrips });
   };
 
+  // const handleToggleFavoriteInPlace = async (placeId) => {
+  //   if (!isAuthed) {
+  //     navigate("/login");
+  //     return;
+  //   }
+
+  //   const place = places.find(p => p.id === placeId);
+  //   if (!place) return;
+
+  //   try {
+  //     const data = await toggleMustVisit(placeId, !place.is_must_visit);
+  //     // Update the places list to reflect the change
+  //     setPlaces((prev) =>
+  //       prev.map((p) =>
+  //         p.id === placeId ? { ...p, is_must_visit: data.is_must_visit } : p
+  //       )
+  //     );
+  //   } catch (err) {
+  //     console.error("Failed to toggle favorite:", err);
+  //   }
+  // };
   const handleToggleFavoriteInPlace = async (placeId) => {
-    const place = places.find((item) => item.id === placeId);
-    if (!place) return;
-    await handleToggleMustVisit({
-      placeId,
-      currentValue: place.is_must_visit,
-      isAuthed,
-      navigate,
-      setPlaces,
-      setSelectedPlace,
-    });
-  };
+  if (!isAuthed) {
+    navigate("/login");
+    return;
+  }
+
+  const place = places.find((p) => p.id === placeId);
+  if (!place) return;
+
+  const newValue = !place.is_must_visit;
+
+  // Optimistic update — react immediately, no waiting for API
+  setPlaces((prev) =>
+    prev.map((p) => p.id === placeId ? { ...p, is_must_visit: newValue } : p)
+  );
+  if (selectedPlace?.id === placeId) {
+    setSelectedPlace((prev) => ({ ...prev, is_must_visit: newValue }));
+  }
+
+  try {
+    await toggleMustVisit(placeId, newValue);
+  } catch (err) {
+    // Revert on failure
+    setPlaces((prev) =>
+      prev.map((p) => p.id === placeId ? { ...p, is_must_visit: !newValue } : p)
+    );
+    if (selectedPlace?.id === placeId) {
+      setSelectedPlace((prev) => ({ ...prev, is_must_visit: !newValue }));
+    }
+    console.error("Failed to toggle favorite:", err);
+  }
+};
 
   return (
     <div className={s.page}>
@@ -193,6 +235,21 @@ const Inspiration = () => {
             place={place}
             variant="inspiration"
             isFavorited={place.is_must_visit}
+            classes={{
+              card: s.card,
+              photo: s.photo,
+              photoPlaceholder: s.photoPlaceholder,
+              cardHeader: s.cardHeader,
+              category: s.category,
+              metaRow: s.metaRow,
+              rating: s.rating,
+              priceTag: s.priceTag,
+              name: s.name,
+              location: s.location,
+              heartBtn: s.heartBtn,
+              heartActive: s.heartActive,
+              heartImg: s.heartImg,
+            }}
             onOpen={() => openPlaceModal(place)}
             onToggleFavorite={() => handleToggleFavoriteInPlace(place.id)}
           />
@@ -237,7 +294,7 @@ const Inspiration = () => {
               setNewComment,
             })
           }
-        />
+        /> 
       ) : null}
 
       <AddTripModal

@@ -1,3 +1,5 @@
+import i18n from "../i18n";
+
 export function formatAuthError(error) {
   if (!error) return "";
   if (typeof error === "string") return error;
@@ -39,5 +41,5 @@ export function formatAuthError(error) {
     if (fieldErrors.length > 0) return fieldErrors.join(" ");
   }
 
-  return "Something went wrong";
+  return i18n.t("errors.generic");
 }
