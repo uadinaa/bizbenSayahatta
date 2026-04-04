@@ -133,6 +133,7 @@ export default function PlannerTest() {
   const [mapOpen, setMapOpen] = useState(false);
   const [showArchived, setShowArchived] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const messageRequestRef = useRef(0);
   const tripRequestRef = useRef(0);
@@ -145,6 +146,26 @@ export default function PlannerTest() {
     () => allThreads.find((thread) => thread.id === selectedId) || null,
     [allThreads, selectedId]
   );
+
+  const filteredThreads = useMemo(() => {
+  if (!searchQuery.trim()) return threads;
+
+  return threads.filter((thread) =>
+    (thread.title || "")
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase())
+  );
+}, [threads, searchQuery]);
+
+const filteredArchivedThreads = useMemo(() => {
+  if (!searchQuery.trim()) return archivedThreads;
+
+  return archivedThreads.filter((thread) =>
+    (thread.title || "")
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase())
+  );
+}, [archivedThreads, searchQuery]);
 
   useEffect(() => {
     if (localStorage.getItem("access") && !user) {
@@ -429,7 +450,12 @@ export default function PlannerTest() {
             aria-label={thread.is_archived ? "Unarchive chat" : "Archive chat"}
             title={thread.is_archived ? "Unarchive" : "Archive"}
           >
-            <ArchiveIcon />
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 7h18" />
+              <path d="M5 7l1 14h12l1-14" />
+              <path d="M9 11h6" />
+            </svg>
+                    
           </button>
           <button
             type="button"
@@ -438,7 +464,12 @@ export default function PlannerTest() {
             aria-label="Delete chat"
             title="Delete"
           >
-            <DeleteIcon />
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 6h18" />
+              <path d="M8 6V4h8v2" />
+              <path d="M6 6l1 14h10l1-14" />
+              <path d="M10 11v6M14 11v6" />
+            </svg>
           </button>
         </div>
       </div>
@@ -448,10 +479,17 @@ export default function PlannerTest() {
   return (
     <div className="planner-shell">
       <aside className="planner-sidebar">
+        <div className="chat-search">
+          <input
+            type="text"
+            placeholder="Search chats..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
         <div className="sidebar-header">
           <div>
-            <p className="sidebar-label">Travel Chat</p>
-            <h2>Your chats</h2>
+            <h2 className="sidebar-label">Travel Chat</h2>
           </div>
           <button type="button" className="add-btn" onClick={handleCreateThread}>
             ＋
@@ -462,11 +500,10 @@ export default function PlannerTest() {
 
         <div className="thread-section">
           <div className="thread-section-header">
-            <span>Chats</span>
-            <span>{threads.length}</span>
+            
           </div>
           <div className="thread-list">
-            {renderThreadList(threads, "No active chats yet.")}
+            {renderThreadList(filteredThreads, "No chats found.")}
           </div>
         </div>
 
@@ -476,12 +513,15 @@ export default function PlannerTest() {
             className="thread-section-toggle"
             onClick={() => setShowArchived((previous) => !previous)}
           >
-            <span>Archived</span>
+            <div className="section-left">
+              <span className="section-title">Archived</span>
+              <span className="section-count">{archivedThreads.length}</span>
+            </div>
             <span>{showArchived ? "−" : "+"}</span>
           </button>
           {showArchived ? (
             <div className="thread-list archived-thread-list">
-              {renderThreadList(archivedThreads, "No archived chats.")}
+              {renderThreadList(filteredArchivedThreads, "No chats found.")}
             </div>
           ) : null}
         </div>
@@ -545,22 +585,12 @@ export default function PlannerTest() {
             <p className="right-panel-label">Trip tools</p>
             <h2>{selectedThread ? "This chat's plan" : "Trip preview"}</h2>
           </div>
-          {selectedThread ? (
-            <button
-              type="button"
-              className="map-toggle-btn"
-              onClick={() => setMapOpen((previous) => !previous)}
-            >
-              <MapIcon />
-              <span>{mapOpen ? "Hide Map" : "Show Map"}</span>
-            </button>
-          ) : null}
         </div>
 
         {mapOpen && selectedThread ? (
           <div className="map-box map-box--open">
             <div className="map-box-header">
-              <span>Route map</span>
+              <span></span>
               <button type="button" className="map-close-btn" onClick={() => setMapOpen(false)}>
                 ×
               </button>
@@ -570,6 +600,18 @@ export default function PlannerTest() {
         ) : null}
 
         <div className={`final-box ${mapOpen ? "final-box--split" : ""}`}>
+
+        {selectedThread ? (
+            <button
+              type="button"
+              className="map-toggle-btn"
+              onClick={() => setMapOpen((previous) => !previous)}
+            >
+              <MapIcon />
+              <span>{mapOpen ? "Hide Map" : "Show Map"}</span>
+            </button>
+          ) : null}
+
           {!selectedThread ? (
             <div className="trip-empty-card">
               Open a chat to view its trip summary and route.
@@ -593,4 +635,3 @@ export default function PlannerTest() {
     </div>
   );
 }
-

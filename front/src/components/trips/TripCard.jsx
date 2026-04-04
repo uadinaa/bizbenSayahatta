@@ -9,15 +9,18 @@ export default function TripCard({ trip }) {
           ? <img className={s.photo} src={trip.photoUrl} alt={trip.title} />
           : <div className={s.photoPlaceholder} />
         }
+
+         <div className={s.overlay}>
+          <h3 className={s.overlayTitle}>{trip.title}</h3>
+          <p className={s.overlayLocation}>{trip.city}</p>
+        </div>
+
         <span className={`${s.statusBadge} ${trip.status === "active" ? s.statusActive : s.statusUpcoming}`}>
           {trip.status === "active" ? "Active Now" : "Upcoming"}
         </span>
       </div>
 
       <div className={s.cardContent}>
-        <h3 className={s.tripTitle}>{trip.title}</h3>
-        <p className={s.tripLocation}>{trip.city}</p>
-
         <div className={s.tripInfo}>
           <span>{trip.dateRange}</span>
           <span>{trip.stopsCount} travelers</span>

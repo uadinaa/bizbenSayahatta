@@ -1,6 +1,3 @@
-/* ===============================
-   ROOT LAYOUT
-================================= */
 
 html, body, #root {
   height: 100%;
@@ -17,10 +14,6 @@ html, body, #root {
   font-family: Inter, sans-serif;
 }
 
-/* ===============================
-   SIDEBAR
-================================= */
-
 .planner-sidebar {
   background: #f3f4f6;
   padding: 16px;
@@ -36,21 +29,6 @@ html, body, #root {
   margin: 0;
 }
 
-/* ===============================
-   SEARCH
-================================= */
-
-.search {
-  padding: 10px;
-  border-radius: 10px;
-  border: none;
-  background: #e5e7eb;
-  outline: none;
-}
-
-/* ===============================
-   THREADS
-================================= */
 
 .thread-list {
   display: flex;
@@ -77,19 +55,13 @@ html, body, #root {
   color: white;
 }
 
-/* ===============================
-   CHAT PANEL
-================================= */
 
 .chat-panel {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  height: 100vh;
 }
 
-/* ===============================
-   MESSAGES
-================================= */
 
 .chat-messages {
   padding: 40px;
@@ -99,9 +71,6 @@ html, body, #root {
   gap: 18px;
 }
 
-/* ===============================
-   MESSAGE BUBBLES
-================================= */
 
 .message {
   max-width: 700px;
@@ -120,17 +89,13 @@ html, body, #root {
   align-self: flex-start;
 }
 
-/* ===============================
-   CHAT INPUT
-================================= */
 
 .chat-input {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 16px;
-  border-top: 1px solid #e5e7eb;
-  background: white;
+  border-radius: 12px;
 }
 
 .chat-input textarea {
@@ -140,7 +105,7 @@ html, body, #root {
   outline: none;
   padding: 12px;
   border-radius: 12px;
-  background: #f3f4f6;
+  background: #ffffff;
 }
 
 .chat-input button {
@@ -152,9 +117,6 @@ html, body, #root {
   cursor: pointer;
 }
 
-/* ===============================
-   RIGHT PANEL
-================================= */
 
 .right-panel {
   padding: 16px;
@@ -164,9 +126,6 @@ html, body, #root {
   gap: 16px;
 }
 
-/* ===============================
-   MAP PREVIEW
-================================= */
 
 .map-box {
   height: 180px;
@@ -174,10 +133,6 @@ html, body, #root {
   border-radius: 12px;
   overflow: hidden;
 }
-
-/* ===============================
-   FINAL TRIP CARD
-================================= */
 
 .final-box {
   border: 1px solid #9cc3c9;
@@ -209,32 +164,17 @@ html, body, #root {
   padding: 16px;
 }
 
-.chat-input {
-  display: flex;
-  padding: 10px;
-  border-top: 1px solid #ddd;
-  background: white;
-}
-
 .chat-input textarea {
   flex: 1;
   resize: none;
   height: 50px;
 }
 
-/* ===============================
-   THREAD ROW UTILITIES
-================================= */
-
 .thread-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
-
-/* ===============================
-   SIDEBAR ACTIONS
-================================= */
 
 .sidebar-header {
   display: flex;
@@ -258,4 +198,184 @@ html, body, #root {
 .add-btn:hover {
   color: #9cc3c9;
   transform: scale(1.2);
+}
+
+.final-box {
+  position: relative; 
+}
+
+.map-toggle-btn {
+  position: absolute;
+  left: 190px; 
+  top: 5px;
+
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 8px 10px;
+  background: white;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  cursor: pointer;
+
+  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+  transition: 0.2s;
+}
+
+.map-toggle-btn:hover {
+  transform: translateX(-3px);
+}
+
+
+.map-box-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.map-close-btn{
+  all: unset;
+  font-size: 22px;
+  cursor: pointer;
+  color: #333333;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+
+  transition: 0.2s;
+}
+
+.map-close-btn:hover {
+  color: #9cc3c9;
+  transform: scale(1.2);
+  background: rgba(156, 195, 201, 0.1);
+}
+
+.thread-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.thread-actions {
+  display: flex;
+  gap: 6px;
+
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(8px);
+
+  transition: 0.2s;
+}
+
+.thread-row:hover .thread-actions {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+.thread-action-btn {
+  all: unset;
+  cursor: pointer;
+  color: #777;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+
+  transition: 0.2s;
+}
+
+.thread-action-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.thread-action-btn:hover {
+  background: #f1f3f5;
+  color: #000;
+  transform: scale(1.1);
+}
+
+.thread-action-btn--danger:hover {
+  background: rgba(255, 0, 0, 0.1);
+  color: #e03131;
+}
+
+.thread-section-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+
+  background: transparent;
+  transition: 0.2s;
+}
+
+.thread-section-toggle:hover {
+  background: #f5f7f9;
+}
+
+.section-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  letter-spacing: 0.3px;
+}
+
+.section-count {
+  font-size: 12px;
+  color: #888;
+  background: #eef2f5;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.section-toggle-icon {
+  font-size: 16px;
+  color: #888;
+  transition: 0.2s;
+}
+
+.thread-section-toggle:hover .section-toggle-icon {
+  color: #333;
+}
+
+.chat-search {
+  padding: 8px 12px;
+  margin-left: px;
+}
+
+.chat-search input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  outline: none;
+  font-size: 14px;
+  background: #f5f7f9;
+}
+
+.chat-search input:focus {
+  border-color: #9cc3c9;
 }
