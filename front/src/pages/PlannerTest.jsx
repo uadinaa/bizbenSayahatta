@@ -133,6 +133,7 @@ export default function PlannerTest() {
   const [mapOpen, setMapOpen] = useState(false);
   const [showArchived, setShowArchived] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const messageRequestRef = useRef(0);
   const tripRequestRef = useRef(0);
@@ -145,6 +146,26 @@ export default function PlannerTest() {
     () => allThreads.find((thread) => thread.id === selectedId) || null,
     [allThreads, selectedId]
   );
+
+  const filteredThreads = useMemo(() => {
+  if (!searchQuery.trim()) return threads;
+
+  return threads.filter((thread) =>
+    (thread.title || "")
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase())
+  );
+}, [threads, searchQuery]);
+
+const filteredArchivedThreads = useMemo(() => {
+  if (!searchQuery.trim()) return archivedThreads;
+
+  return archivedThreads.filter((thread) =>
+    (thread.title || "")
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase())
+  );
+}, [archivedThreads, searchQuery]);
 
   useEffect(() => {
     if (localStorage.getItem("access") && !user) {
@@ -458,6 +479,14 @@ export default function PlannerTest() {
   return (
     <div className="planner-shell">
       <aside className="planner-sidebar">
+        <div className="chat-search">
+          <input
+            type="text"
+            placeholder="Search chats..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
         <div className="sidebar-header">
           <div>
             <h2 className="sidebar-label">Travel Chat</h2>
@@ -474,7 +503,7 @@ export default function PlannerTest() {
             
           </div>
           <div className="thread-list">
-            {renderThreadList(threads, "No active chats yet.")}
+            {renderThreadList(filteredThreads, "No chats found.")}
           </div>
         </div>
 
@@ -492,7 +521,7 @@ export default function PlannerTest() {
           </button>
           {showArchived ? (
             <div className="thread-list archived-thread-list">
-              {renderThreadList(archivedThreads, "No archived chats.")}
+              {renderThreadList(filteredArchivedThreads, "No chats found.")}
             </div>
           ) : null}
         </div>

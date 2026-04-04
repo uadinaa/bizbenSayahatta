@@ -414,3 +414,22 @@ html, body, #root {
 .thread-section-toggle:hover .section-toggle-icon {
   color: #333;
 }
+
+.chat-search {
+  padding: 8px 12px;
+  margin-left: px;
+}
+
+.chat-search input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  outline: none;
+  font-size: 14px;
+  background: #f5f7f9;
+}
+
+.chat-search input:focus {
+  border-color: #9cc3c9;
+}
