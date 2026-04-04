@@ -7,8 +7,10 @@ import ProfileAvatar from "../components/profile/ProfileAvatar";
 import ProfileInfo from "../components/profile/ProfileInfo";
 import EditProfileModal from "../components/profile/EditProfileModal";
 import AdvisorModal from "../components/profile/AdvisorModal";
+import { useTranslation } from "react-i18next";
 
 export default function ProfileCard() {
+  const { t } = useTranslation();
   const profile = useProfile();
   const advisor = useAdvisor();
 
@@ -32,7 +34,7 @@ export default function ProfileCard() {
         />
 
         <div className="edit" onClick={profile.openEditModal}>
-          <img src={editIcon} alt="Edit" width="28" height="28" />
+          <img src={editIcon} alt={t("common.edit")} width="28" height="28" />
         </div>
       </div>
 

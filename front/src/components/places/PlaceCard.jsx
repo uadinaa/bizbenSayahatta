@@ -45,7 +45,7 @@ export default function PlaceCard({
 
         {isWishlist ? (
           <div className={styles.tags}>
-            <span className={styles.tag}>{formatCategory(place.category)} uu</span>
+            <span className={styles.tag}>{formatCategory(place.category)}</span>
           </div>
         ) : null}
       </div>

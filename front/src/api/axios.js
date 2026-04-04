@@ -1,4 +1,5 @@
 import axios from "axios";
+import i18n from "../i18n";
 import {
   clearClientUserData,
   clearStoredTokens,
@@ -30,14 +31,14 @@ function isPublicAuthEndpoint(url = "") {
 }
 
 function safeErrorMessage(status) {
-  if (!status) return "Network error. Please check your connection.";
-  if (status === 400) return "Invalid request. Please check your input.";
-  if (status === 401) return "Your session expired. Please log in again.";
-  if (status === 403) return "You do not have permission to perform this action.";
-  if (status === 404) return "Requested resource was not found.";
-  if (status === 429) return "Too many requests. Please try again shortly.";
-  if (status >= 500) return "Server is temporarily unavailable. Please try again later.";
-  return "Request failed. Please try again.";
+  if (!status) return i18n.t("errors.network");
+  if (status === 400) return i18n.t("errors.invalidRequest");
+  if (status === 401) return i18n.t("errors.sessionExpired");
+  if (status === 403) return i18n.t("errors.permissionDenied");
+  if (status === 404) return i18n.t("errors.resourceNotFound");
+  if (status === 429) return i18n.t("errors.tooManyRequests");
+  if (status >= 500) return i18n.t("errors.serverUnavailable");
+  return i18n.t("errors.requestFailed");
 }
 
 let refreshRequest = null;

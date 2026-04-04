@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { LEVELS_LIST } from "../../constants/mapConstants";
 import worldIcon from "../../assets/world.svg"
 import pinIcon from "../../assets/pin.svg"
@@ -9,15 +10,16 @@ import pinVPlaces from "../../assets/pinVPlaces.svg"
 
 export default function MapSidebar({ places, level, countriesCount, citiesCount, progress, loadingPlaces, onOpenModal, onRemovePlace, onEditPlace,
   isEditMode, onToggleEditMode,  }) {
+  const { t } = useTranslation();
     
   return (
     <aside className="map-sidebar">
-      <h3>Traveler Level</h3>
+      <h3>{t("map.travelerLevel")}</h3>
       
       <div style={{ marginTop: 10 }}>
         <Link to="/shared-maps" style={{ textDecoration: "none" }}>
           <button type="button" className="shared-maps-btn">
-            See other user's maps
+            {t("map.seeOtherMaps")}
           </button>
         </Link>
       </div>
@@ -33,7 +35,7 @@ export default function MapSidebar({ places, level, countriesCount, citiesCount,
           return (
             <div key={i} className={`badge-card ${isCurrent ? "current" : isCompleted ? "completed" : "locked"}`}>
               <div className="badge-icon">🧭</div>
-              <strong>{lvl.name}</strong>
+              <strong>{t(`map.levels.${lvl.name}`, { defaultValue: lvl.name })}</strong>
               {lvl.next ? (
                 <div className="mini-progress">
                   <div className="mini-bar" style={{ width: `${Math.min(progressPercent, 100)}%` }} />
@@ -53,27 +55,27 @@ export default function MapSidebar({ places, level, countriesCount, citiesCount,
       </div>
 
       <section className="stats">
-        <h3>Your Statistics</h3>
+        <h3>{t("map.yourStatistics")}</h3>
 
         <div className="stats-row">
 
           <div className="stat-card"> 
             <img src={worldIcon} alt="worldIcon" />
-            <strong>{countriesCount}</strong> Countries
+            <strong>{countriesCount}</strong> {t("map.countries")}
           </div>
 
           <div className="stat-card">
             <img src={pinIcon} alt="pinIcon" /> 
-            <strong>{citiesCount}</strong> Cities
+            <strong>{citiesCount}</strong> {t("map.cities")}
           </div>
         </div>
 
-        <div className="world-progress"><strong>{progress}%</strong> of the world explored</div>
+        <div className="world-progress"><strong>{progress}%</strong> {t("map.worldExplored")}</div>
       </section>
 
       <section className="visited">
         <div className="visited-header">
-          <h3>Visited Places</h3>
+          <h3>{t("map.visitedPlaces")}</h3>
 
           {!isEditMode && (
             <button className="add-btn" onClick={onOpenModal}>
@@ -86,7 +88,7 @@ export default function MapSidebar({ places, level, countriesCount, citiesCount,
             className={`add-btn ${isEditMode ? "edit-mode-active" : ""}`}
             onClick={onToggleEditMode}
           >
-            {isEditMode ? "Done" : <img src={editVPlace} alt="Edit places" />}
+            {isEditMode ? t("map.done") : <img src={editVPlace} alt="Edit places" />}
           </button>
 
           {/* <button className="add-btn" onClick={onOpenModal}><img src={addVPlace} alt="addVPlace"/></button>
@@ -95,7 +97,7 @@ export default function MapSidebar({ places, level, countriesCount, citiesCount,
 
         </div>
 
-        {loadingPlaces && <p>Loading...</p>}
+        {loadingPlaces && <p>{t("map.loading")}</p>}
 
         <div className="visited-list">
           {places.map((p) => (
