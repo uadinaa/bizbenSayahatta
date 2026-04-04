@@ -1,12 +1,8 @@
 import api from "./axios";
 
-<<<<<<< HEAD
-const API_BASE = import.meta.env.VITE_API_BASE;
-=======
 const API_BASE_RAW = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000/api";
 const API_BASE = API_BASE_RAW.replace(/\/+$/, "");
 const API_PREFIX = API_BASE.endsWith("/api") ? API_BASE : `${API_BASE}/api`;
->>>>>>> origin/dev
 
 export const fetchInspirationPlaces = async (
   page = 1,

@@ -14,11 +14,7 @@ const API_BASE = NORMALIZED_BASE.endsWith("/api")
   : `${NORMALIZED_BASE}/api/`;
 
 const api = axios.create({
-<<<<<<< HEAD
-  baseURL: import.meta.env.VITE_API_BASE + "/api/", 
-=======
   baseURL: API_BASE,
->>>>>>> origin/dev
   withCredentials: true,
 });
 
