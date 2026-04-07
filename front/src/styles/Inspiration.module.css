@@ -454,7 +454,7 @@
 }
 
 .lightActionBtn {
-  padding: 12px 20px;
+  padding: 12px 70px;
   border-radius: 999px;
   border: 1px solid #e6e6e6;
   background: #f9f9f7;
@@ -770,4 +770,44 @@
 
 .addTripBtn:hover {
   background: #000;
+}
+
+.photoWrapper {
+  position: relative;
+}
+
+.modalPhoto {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 16px 16px 0 0;
+}
+
+/* 🔥 группа */
+.iconGroup {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  gap: 10px;
+}
+
+/* 🔥 кнопки */
+.iconBtn {
+  width: 34px;
+  height: 34px;
+  cursor: pointer;
+  background: rgb(255, 255, 255);
+  border-radius: 50%;
+  padding: 6px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.iconBtn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.iconBtn:active {
+  transform: scale(1.25);
 }

@@ -1,4 +1,7 @@
 import { formatCategory, formatLocation, priceTierLabel } from "../../utils/placeUtils";
+import emptyHeart from "../../assets/eHeart.svg";
+import redHeart from "../../assets/fHeart.svg";
+import closeIcon from "../../assets/X.svg";
 
 function renderStars(rating) {
   if (!rating) return null;
@@ -33,8 +36,33 @@ export default function PlaceDetailModal({
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+
+        {/* 📸 Фото + иконки */}
         {place.photo_url && (
-          <img className={styles.modalPhoto} src={place.photo_url} alt={place.name} />
+          <div className={styles.photoWrapper}>
+            <img
+              className={styles.modalPhoto}
+              src={place.photo_url}
+              alt={place.name}
+            />
+
+            {/* ❤️ + ❌ */}
+            <div className={styles.iconGroup}>
+              <img
+                src={place.is_must_visit ? redHeart : emptyHeart}
+                alt="wishlist"
+                className={styles.iconBtn}
+                onClick={onToggleMustVisit}
+              />
+
+              <img
+                src={closeIcon}
+                alt="close"
+                className={styles.iconBtn}
+                onClick={onClose}
+              />
+            </div>
+          </div>
         )}
 
         <div className={styles.modalContent}>
@@ -51,32 +79,44 @@ export default function PlaceDetailModal({
           <p><strong>Location:</strong> {formatLocation(place)}</p>
 
           {place.opening_hours?.openNow !== undefined && (
-            <p><strong>Status:</strong> {place.opening_hours.openNow ? "Open now" : "Closed"}</p>
+            <p>
+              <strong>Status:</strong>{" "}
+              {place.opening_hours.openNow ? "Open now" : "Closed"}
+            </p>
           )}
 
           <div className={styles.modalActions}>
-            <button className={styles.lightActionBtn} onClick={onToggleMustVisit}>
-              {place.is_must_visit ? "💚 Added to wishlist" : "❤️ Add to wishlist"}
-            </button>
-            <button className={styles.lightActionBtn} onClick={onCreateTrip}>
-              ✈️ Add to trip
-            </button>
-          </div>
+  <button className={styles.lightActionBtn} onClick={onCreateTrip}>
+    ✈️ Add to trip
+  </button>
+</div>
 
+          {/* 💬 Комментарии */}
           <div className={styles.commentsSection}>
             <h3>
               Comments
-              {comments.length > 0 && <span className={styles.commentCount}>{comments.length}</span>}
+              {comments.length > 0 && (
+                <span className={styles.commentCount}>{comments.length}</span>
+              )}
             </h3>
 
             <div className={styles.commentsContainer}>
-              {loadingComments && <div className={styles.loadingComments}>Loading comments...</div>}
+              {loadingComments && (
+                <div className={styles.loadingComments}>
+                  Loading comments...
+                </div>
+              )}
 
               {!loadingComments && comments.length === 0 && (
                 <div className={styles.emptyComments}>
-                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <svg viewBox="0 0 24 24" fill="none">
                     <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
-                    <path d="M8 12h8M8 8h8M8 16h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    <path
+                      d="M8 12h8M8 8h8M8 16h4"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                    />
                   </svg>
                   <span>No comments yet</span>
                   <span style={{ fontSize: "12px", marginTop: "4px" }}>
@@ -92,11 +132,16 @@ export default function PlaceDetailModal({
                       {comment.username?.charAt(0).toUpperCase() || "U"}
                     </div>
                     <strong>{comment.username || "Anonymous"}</strong>
+
                     {comment.is_trip_advisor && (
-                      <span className={styles.tripAdvisorBadge}>✓ TripAdvisor</span>
+                      <span className={styles.tripAdvisorBadge}>
+                        ✓ TripAdvisor
+                      </span>
                     )}
                   </div>
+
                   <p>{comment.comment_text}</p>
+
                   {comment.created_at && (
                     <small className={styles.commentDate}>
                       {new Date(comment.created_at).toLocaleDateString("en-US", {
@@ -120,13 +165,21 @@ export default function PlaceDetailModal({
                   onChange={(e) => onCommentChange(e.target.value)}
                   rows="3"
                 />
-                <button className={styles.commentBtn} onClick={onAddComment} disabled={!newComment.trim()}>
+
+                <button
+                  className={styles.commentBtn}
+                  onClick={onAddComment}
+                  disabled={!newComment.trim()}
+                >
                   Post Comment
                 </button>
               </div>
             ) : (
               <div className={styles.loginHint}>
-                <button className={styles.loginLink} onClick={() => navigate("/login")}>
+                <button
+                  className={styles.loginLink}
+                  onClick={() => navigate("/login")}
+                >
                   Sign in
                 </button>{" "}
                 to join the conversation
@@ -134,8 +187,6 @@ export default function PlaceDetailModal({
             )}
           </div>
         </div>
-
-        <button className={styles.modalClose} onClick={onClose}>Close</button>
       </div>
     </div>
   );

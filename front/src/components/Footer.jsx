@@ -1,9 +1,14 @@
+import { useLocation } from "react-router-dom";
 import "../styles/Footer.css";
 import footerLogoImg from "../assets/footerLogo.svg";
-import { useTranslation } from "react-i18next";
 
 export default function Footer() {
-  const { t } = useTranslation();
+  const location = useLocation();
+
+  // если путь /chat → не рендерим футер
+  if (location.pathname === "/chat") {
+    return null;
+  }
 
   return (
     <footer className="footer">
@@ -12,47 +17,52 @@ export default function Footer() {
           <div className="brand-top">
             <img
               src={footerLogoImg}
-              alt={t("common.bizbenLogoAlt")}
+              alt="Bizben Sayahat logo"
               className="footer-logo-img"
             />
           </div>
 
-          <p>{t("footer.description")}</p>
+          <p>
+            Intelligent travel planning
+            <br />
+            platform with AI-powered
+            <br />
+            assistant.
+          </p>
         </div>
-
 
         <div className="footer-links">
           <div>
-            <a href="#">{t("footer.features")}</a>
-            <a href="#">{t("footer.pricing")}</a>
-            <a href="#">{t("footer.api")}</a>
+            <a href="#">Features</a>
+            <a href="#">Pricing</a>
+            <a href="#">API</a>
           </div>
 
           <div>
-            <a href="#">{t("footer.aboutUs")}</a>
-            <a href="#">{t("footer.blog")}</a>
-            <a href="#">{t("footer.careers")}</a>
-            <a href="#">{t("footer.press")}</a>
+            <a href="#">About Us</a>
+            <a href="#">Blog</a>
+            <a href="#">Careers</a>
+            <a href="#">Press</a>
           </div>
 
           <div>
-            <a href="#">{t("footer.helpCenter")}</a>
-            <a href="#">{t("footer.community")}</a>
-            <a href="#">{t("footer.guides")}</a>
-            <a href="#">{t("footer.partners")}</a>
+            <a href="#">Help Center</a>
+            <a href="#">Community</a>
+            <a href="#">Guides</a>
+            <a href="#">Partners</a>
           </div>
 
           <div>
-            <a href="#">{t("footer.privacy")}</a>
-            <a href="#">{t("footer.terms")}</a>
-            <a href="#">{t("footer.cookies")}</a>
+            <a href="#">Privacy</a>
+            <a href="#">Terms</a>
+            <a href="#">Cookies</a>
           </div>
         </div>
       </div>
 
       <div className="footer-bottom">
-        <span>{t("footer.rights")}</span>
-        <span>{t("footer.madeWithLove")}</span>
+        <span>All rights reserved</span>
+        <span>Made with love</span>
       </div>
     </footer>
   );
