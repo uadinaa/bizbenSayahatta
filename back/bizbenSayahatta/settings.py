@@ -198,13 +198,14 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 if USE_CLOUDINARY_STORAGE:
-    # Django 4.2+ recommended way: STORAGES dict
+    # Django 4.2+ STORAGES. Use CompressedStaticFilesStorage (not Manifest*): on Render/Heroku
+    # a missing or stale staticfiles manifest after collectstatic causes HTTP 500 on /admin/.
     STORAGES = {
         "default": {
             "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
         },
         "staticfiles": {
-            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+            "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
         },
     }
 
