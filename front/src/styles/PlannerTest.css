@@ -29,6 +29,14 @@ html, body, #root {
   margin: 0;
 }
 
+.right-panel-toolbar{
+  margin: -10px 0 0;
+}
+
+.chat-empty-state{
+  margin: 75px 0 0;
+}
+
 
 .thread-list {
   display: flex;

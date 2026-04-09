@@ -134,6 +134,7 @@ export default function PlannerTest() {
   const [showArchived, setShowArchived] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [threadTitle, setThreadTitle] = useState("New trip");
 
   const messageRequestRef = useRef(0);
   const tripRequestRef = useRef(0);
@@ -298,7 +299,7 @@ const filteredArchivedThreads = useMemo(() => {
     // Create a new planner chat and focus it immediately.
     try {
       const response = await createChatThread({
-        title: "New trip",
+        title: threadTitle,
         kind: "planner",
       });
       const nextThread = response.data;
@@ -377,6 +378,7 @@ const filteredArchivedThreads = useMemo(() => {
       setDeletingChatId(null);
     }
   };
+  
 
   const handleSendMessage = async (event) => {
     // Send a message and refresh the visible trip cache from the response.
@@ -439,7 +441,7 @@ const filteredArchivedThreads = useMemo(() => {
           onClick={() => setSelectedId(thread.id)}
         >
           <span className="thread-title">{thread.title || "Untitled"}</span>
-          <span className="thread-meta">{thread.city || "Planner chat"}</span>
+          <span className="thread-meta">{thread.city }</span>
         </button>
 
         <div className="thread-actions">
@@ -528,16 +530,6 @@ const filteredArchivedThreads = useMemo(() => {
       </aside>
 
       <section className="chat-panel">
-        <div className="chat-header">
-          <div>
-            <p className="chat-header-label">Current chat</p>
-            <h1>{selectedThread?.title || "Choose a chat"}</h1>
-          </div>
-          {selectedThread?.is_archived ? (
-            <span className="archived-pill">Archived</span>
-          ) : null}
-        </div>
-
         <div className="chat-messages">
           {!selectedThread ? (
             <div className="chat-empty-state">
@@ -582,7 +574,6 @@ const filteredArchivedThreads = useMemo(() => {
       <aside className="right-panel">
         <div className="right-panel-toolbar">
           <div>
-            <p className="right-panel-label">Trip tools</p>
             <h2>{selectedThread ? "This chat's plan" : "Trip preview"}</h2>
           </div>
         </div>
