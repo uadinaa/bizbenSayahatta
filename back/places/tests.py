@@ -73,5 +73,8 @@ class WishlistFlowTests(TestCase):
         response = self.client.get("/api/places/inspiration/?page=1")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["results"][0]["id"], self.place.id)
-        self.assertTrue(response.data["results"][0]["is_must_visit"])
+        self.assertEqual(response.data["places"][0]["id"], self.place.id)
+        self.assertTrue(response.data["places"][0]["is_must_visit"])
+        self.assertIn("tours", response.data)
+        self.assertIn("next", response.data)
+        self.assertIn("previous", response.data)

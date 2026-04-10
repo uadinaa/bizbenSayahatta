@@ -23,6 +23,7 @@ from places.serializers import (
 )
 from places.services.google_places import get_places
 from places.services.save_place import save_place_for_user, set_place_wishlist_state
+from places.services.tripadvisor_service import get_tours_cached
 from bizbenSayahatta.api_exceptions import MapPlaceAlreadyExistsError
 from users.permissions import IsActiveAndNotBlocked
 
@@ -134,6 +135,45 @@ class InspirationListAPIView(ListAPIView):
             ]
 
         return places
+    
+    def get(self, request, *args, **kwargs):
+        """
+        Extended to also return TripAdvisor tours alongside Google Places.
+        Response format: { "places": [...], "tours": [...] }
+        """
+        # Get filtered places using the existing filter_queryset logic
+        places_queryset = self.filter_queryset(self.get_queryset())
+
+        # Apply pagination
+        page = self.paginate_queryset(places_queryset)
+        if page is not None:
+            places_serializer = self.get_serializer(page, many=True, context={"request": request})
+            places_data = places_serializer.data
+            response_data = {
+                "places": places_data,
+                "next": self.paginator.get_next_link(),
+                "previous": self.paginator.get_previous_link(),
+            }
+        else:
+            places_serializer = self.get_serializer(places_queryset, many=True, context={"request": request})
+            response_data = {
+                "places": places_serializer.data,
+            }
+
+        # Fetch TripAdvisor tours (with caching)
+        # Extract city from search param for tour fetching
+        city = request.query_params.get("search") or request.query_params.get("city")
+        tours = []
+        if city:
+            try:
+                tours = get_tours_cached(city=city, max_results=10)
+            except Exception:
+                # Silently fail - don't crash the page if TripAdvisor API is down
+                tours = []
+
+        response_data["tours"] = tours
+
+        return Response(response_data)
 
 
 class PlacesListAPIView(APIView):

@@ -758,5 +758,16 @@ def generate_trip_payload(*, user, requirements: TripRequirements) -> Dict[str, 
         "partial_note": partial_note,
         "generated_at": datetime.utcnow().isoformat(),
     }
+    payload["budget_total"] = requirements.budget_total
+
+    daily_budget_per_person = None
+    if requirements.budget_total is not None and days and requirements.travelers:
+        try:
+            daily_budget_per_person = int(round(requirements.budget_total / days / requirements.travelers))
+        except Exception:
+            daily_budget_per_person = None
+    payload["daily_budget_per_person"] = daily_budget_per_person
+
+    payload["trip_type"] = requirements.traveler_type or requirements.travel_style or ""
     payload["response_markdown"] = _format_trip_response(payload)
     return payload

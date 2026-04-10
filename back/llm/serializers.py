@@ -86,6 +86,9 @@ class FinalTripSerializer(serializers.ModelSerializer):
         fields = [
             "city",
             "country",
+            "trip_type", 
+            "travelers",
+            "daily_budget", 
             "itinerary",
             "route",
             "response_markdown",
