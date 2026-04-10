@@ -247,6 +247,10 @@ const en = {
       allPrices: "All prices",
       toDate: "To date",
       fromDate: "From date",
+      bySource: "By source",
+      all: "All",
+      places: "Places",
+      tours: "Tours",
     },
     card: {
       removeFromWishlist: "Remove from wishlist",

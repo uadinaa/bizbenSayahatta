@@ -247,6 +247,10 @@ const kz = {
       allPrices: "Барлық бағалар",
       toDate: "Күніне дейін",
       fromDate: "Күнінен бастап",
+      bySource: "Дереккөз бойынша",
+      all: "Барлығы",
+      places: "Орындар",
+      tours: "Турлар",
     },
     card: {
       removeFromWishlist: "Таңдаулылардан алып тастау",

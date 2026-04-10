@@ -1,7 +1,7 @@
 import { formatCategory, formatLocation, priceTierLabel } from "../../utils/placeUtils";
 import { useTranslation } from "react-i18next";
-import emptyHeart from "../../assets/eHeart.svg";
-import redHeart from "../../assets/fHeart.svg";
+import emptyHeart from "../../assets/fHeart.svg";
+import redHeart from "../../assets/filledredHeart.svg";
 import closeIcon from "../../assets/X.svg";
 
 
@@ -62,7 +62,7 @@ export default function PlaceDetailModal({
               <img
                 src={closeIcon}
                 alt="close"
-                className={styles.iconBtn}
+                className={styles.iconBtnClose}
                 onClick={onClose}
               />
             </div>

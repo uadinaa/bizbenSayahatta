@@ -245,6 +245,10 @@ const ru = {
       allPrices: "Все цены",
       toDate: "До даты",
       fromDate: "С даты",
+      bySource: "По источнику",
+      all: "Все",
+      places: "Места",
+      tours: "Туры",
     },
     card: {
       removeFromWishlist: "Удалить из избранного",
