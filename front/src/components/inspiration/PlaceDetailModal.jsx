@@ -24,14 +24,19 @@ export default function PlaceDetailModal({
   place,
   isAuthed,
   comments,
+  commentsTotalCount = 0,
+  commentsHasMore = false,
   newComment,
   loadingComments,
+  loadingMoreComments = false,
   navigate,
   onClose,
   onToggleMustVisit,
   onCreateTrip,
   onCommentChange,
   onAddComment,
+  onLoadMoreComments,
+  onToggleCommentLike,
 }) {
   if (!place) return null;
 
@@ -99,8 +104,12 @@ export default function PlaceDetailModal({
           {/* 💬 Комментарии */}
           <div className={styles.commentsSection}>
             <h3>
-              {t("inspiration.card.comments")}
-              {comments.length > 0 && <span className={styles.commentCount}>{comments.length}</span>}
+              Comments
+              {(commentsTotalCount > 0 || comments.length > 0) && (
+                <span className={styles.commentCount}>
+                  {commentsTotalCount || comments.length}
+                </span>
+              )}
             </h3>
 
             <div className={styles.commentsContainer}>
@@ -138,20 +147,56 @@ export default function PlaceDetailModal({
 
                   <p>{comment.comment_text}</p>
 
-                  {comment.created_at && (
-                    <small className={styles.commentDate}>
-                      {new Date(comment.created_at).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </small>
-                  )}
+                  <div className={styles.commentFooter}>
+                    <button
+                      type="button"
+                      className={`${styles.commentLikeBtn} ${
+                        comment.liked_by_me ? styles.commentLikeBtnActive : ""
+                      }`}
+                      onClick={() => onToggleCommentLike?.(comment)}
+                      aria-pressed={Boolean(comment.liked_by_me)}
+                      aria-label={
+                        comment.liked_by_me
+                          ? "Unlike comment"
+                          : "Like comment"
+                      }
+                    >
+                      <img
+                        src={comment.liked_by_me ? redHeart : emptyHeart}
+                        alt=""
+                        className={styles.commentLikeIcon}
+                        width={18}
+                        height={18}
+                        aria-hidden
+                      />
+                      <span>{comment.likes_count ?? 0}</span>
+                    </button>
+                    {comment.created_at && (
+                      <small className={styles.commentDate}>
+                        {new Date(comment.created_at).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </small>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
+
+            {!loadingComments && commentsHasMore && onLoadMoreComments ? (
+              <button
+                type="button"
+                className={styles.commentsLoadMore}
+                onClick={onLoadMoreComments}
+                disabled={loadingMoreComments}
+              >
+                {loadingMoreComments ? "Loading…" : "Load more comments"}
+              </button>
+            ) : null}
 
             {isAuthed ? (
               <div className={styles.addComment}>

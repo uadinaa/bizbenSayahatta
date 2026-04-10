@@ -172,6 +172,7 @@ class Comment(models.Model):
     )
     comment_text = models.TextField(max_length=1000)
     is_deleted = models.BooleanField(default=False, db_index=True)
+    likes_count = models.PositiveIntegerField(default=0, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -179,7 +180,34 @@ class Comment(models.Model):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["place", "created_at"]),
+            models.Index(fields=["place", "likes_count", "created_at"]),
             models.Index(fields=["user", "created_at"]),
+        ]
+
+
+class CommentLike(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="comment_likes",
+    )
+    comment = models.ForeignKey(
+        "Comment",
+        on_delete=models.CASCADE,
+        related_name="likes",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "comment"],
+                name="marketplace_commentlike_user_comment_uniq",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["comment", "created_at"]),
         ]
 
 

@@ -12,8 +12,10 @@ import {
   closeTripModal,
   handleAddComment,
   handleCreateTrip,
+  handleToggleCommentLike,
   handleToggleMustVisit,
   loadComments,
+  loadMoreComments,
   loadPlaces,
   loadPublicTrips,
   loadTripCategories,
@@ -38,8 +40,11 @@ const Inspiration = () => {
   const [tripCategories, setTripCategories] = useState([]);
 
   const [comments, setComments] = useState([]);
+  const [commentsMeta, setCommentsMeta] = useState({ count: 0, hasMore: false });
+  const [commentsPage, setCommentsPage] = useState(1);
   const [newComment, setNewComment] = useState("");
   const [loadingComments, setLoadingComments] = useState(false);
+  const [loadingMoreComments, setLoadingMoreComments] = useState(false);
   const [publicTrips, setPublicTrips] = useState([]);
   const [loadingTrips, setLoadingTrips] = useState(false);
 
@@ -106,10 +111,12 @@ const Inspiration = () => {
   const openPlaceModal = (place) => {
     setSelectedPlace(place);
     setIsModalOpen(true);
+    setCommentsPage(1);
     loadComments({
       placeId: place.id,
       setLoadingComments,
       setComments,
+      setCommentsMeta,
     });
   };
 
@@ -270,8 +277,11 @@ const Inspiration = () => {
           place={selectedPlace}
           isAuthed={isAuthed}
           comments={comments}
-          newComment={newComment}
+          commentsTotalCount={commentsMeta.count}
+          commentsHasMore={commentsMeta.hasMore}
           loadingComments={loadingComments}
+          loadingMoreComments={loadingMoreComments}
+          newComment={newComment}
           navigate={navigate}
           onClose={closePlaceModal}
           onToggleMustVisit={() =>
@@ -286,7 +296,8 @@ const Inspiration = () => {
           }
           onCreateTrip={() => handleCreateTrip({ isAuthed, navigate })}
           onCommentChange={setNewComment}
-          onAddComment={() =>
+          onAddComment={() => {
+            setCommentsPage(1);
             handleAddComment({
               placeId: selectedPlace.id,
               newComment,
@@ -294,6 +305,28 @@ const Inspiration = () => {
               navigate,
               setComments,
               setNewComment,
+              setLoadingComments,
+              setCommentsMeta,
+            });
+          }}
+          onLoadMoreComments={() =>
+            loadMoreComments({
+              placeId: selectedPlace.id,
+              page: commentsPage + 1,
+              setLoadingMoreComments,
+              setComments,
+              setCommentsMeta,
+              onSuccess: () => setCommentsPage((p) => p + 1),
+            })
+          }
+          onToggleCommentLike={(comment) =>
+            handleToggleCommentLike({
+              placeId: selectedPlace.id,
+              commentId: comment.id,
+              liked: Boolean(comment.liked_by_me),
+              isAuthed,
+              navigate,
+              setComments,
             })
           }
         /> 
