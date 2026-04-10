@@ -1,6 +1,11 @@
 import api from "../api/axios";
 import { fetchInspirationPlaces, toggleMustVisit } from "../api/places";
-import { createPlaceComment, fetchPlaceComments } from "../api/comments";
+import {
+  createPlaceComment,
+  fetchPlaceComments,
+  likePlaceComment,
+  unlikePlaceComment,
+} from "../api/comments";
 import { filterByDate, filterByPrice } from "../filters/placeFilters";
 import { computeDurationDays, toList } from "../utils/placeUtils";
 
@@ -42,16 +47,55 @@ export async function loadPublicTrips({ setLoadingTrips, setPublicTrips }) {
   }
 }
 
-export async function loadComments({ placeId, setLoadingComments, setComments }) {
+export async function loadComments({
+  placeId,
+  setLoadingComments,
+  setComments,
+  setCommentsMeta,
+}) {
   try {
     setLoadingComments(true);
     setComments([]);
-    const data = await fetchPlaceComments(placeId);
-    setComments(Array.isArray(data) ? data : []);
+    if (setCommentsMeta) {
+      setCommentsMeta({ count: 0, hasMore: false });
+    }
+    const { results, count, next } = await fetchPlaceComments(placeId, {
+      page: 1,
+    });
+    setComments(results);
+    if (setCommentsMeta) {
+      setCommentsMeta({ count, hasMore: Boolean(next) });
+    }
   } catch (err) {
     console.error("Failed to load comments", err);
   } finally {
     setLoadingComments(false);
+  }
+}
+
+export async function loadMoreComments({
+  placeId,
+  page,
+  setLoadingMoreComments,
+  setComments,
+  setCommentsMeta,
+  onSuccess,
+}) {
+  if (!page || page < 2) return;
+  try {
+    setLoadingMoreComments(true);
+    const { results, count, next } = await fetchPlaceComments(placeId, {
+      page,
+    });
+    setComments((prev) => [...prev, ...results]);
+    if (setCommentsMeta) {
+      setCommentsMeta({ count, hasMore: Boolean(next) });
+    }
+    onSuccess?.();
+  } catch (err) {
+    console.error("Failed to load more comments", err);
+  } finally {
+    setLoadingMoreComments(false);
   }
 }
 
@@ -62,6 +106,8 @@ export async function handleAddComment({
   navigate,
   setComments,
   setNewComment,
+  setLoadingComments,
+  setCommentsMeta,
 }) {
   if (!newComment.trim()) return;
 
@@ -71,12 +117,50 @@ export async function handleAddComment({
   }
 
   try {
-    const created = await createPlaceComment(placeId, newComment);
-    setComments((prev) => [created, ...prev]);
+    await createPlaceComment(placeId, newComment);
     setNewComment("");
+    await loadComments({
+      placeId,
+      setLoadingComments,
+      setComments,
+      setCommentsMeta,
+    });
   } catch (err) {
     console.error(err);
     alert("Failed to post comment. Please try again.");
+  }
+}
+
+export async function handleToggleCommentLike({
+  placeId,
+  commentId,
+  liked,
+  isAuthed,
+  navigate,
+  setComments,
+}) {
+  if (!isAuthed) {
+    navigate("/login");
+    return;
+  }
+
+  try {
+    const data = liked
+      ? await unlikePlaceComment(placeId, commentId)
+      : await likePlaceComment(placeId, commentId);
+    setComments((prev) =>
+      prev.map((c) =>
+        c.id === commentId
+          ? {
+              ...c,
+              likes_count: data.likes_count,
+              liked_by_me: data.liked,
+            }
+          : c
+      )
+    );
+  } catch (err) {
+    console.error(err);
   }
 }
 
