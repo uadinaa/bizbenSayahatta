@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  CircleMarker,
+  Popup,
+} from "react-leaflet";
 import { getSharedMaps, getUserMap } from "../api/map";
 import { useNavigate } from "react-router-dom";
 import "../styles/SharedMaps.css";
@@ -78,32 +83,44 @@ export default function SharedMaps() {
 
             {mapData && mapData.map_places.length > 0 && (
               <MapContainer
-  center={[
-    mapData.map_places[0].lat,
-    mapData.map_places[0].lon,
-  ]}
-  zoom={2}
-  style={{ height: "500px", width: "100%" }}
->
-  {/* ОСНОВНАЯ КАРТА */}
-  <TileLayer
-    url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
-    attribution="&copy; OpenStreetMap &copy; CARTO"
-  />
+                center={[
+                  mapData.map_places[0].lat,
+                  mapData.map_places[0].lon,
+                ]}
+                zoom={2}
+                style={{ height: "500px", width: "100%" }}
+              >
+                {/* ОСНОВНАЯ КАРТА */}
+                <TileLayer
+                  url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
+                  attribution="&copy; OpenStreetMap &copy; CARTO"
+                />
 
-  {/* ЛЕЙБЛЫ ПОВЕРХ */}
-  <TileLayer
-    url="https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png"
-    attribution="&copy; OpenStreetMap &copy; CARTO"
-  />
+                {/* ЛЕЙБЛЫ ПОВЕРХ */}
+                <TileLayer
+                  url="https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png"
+                  attribution="&copy; OpenStreetMap &copy; CARTO"
+                />
 
-  {mapData.map_places.map((place) => (
-    <Marker
-      key={place.id}
-      position={[place.lat, place.lon]}
-    />
-  ))}
-</MapContainer>
+                {mapData.map_places.map((place) => (
+                  <CircleMarker
+                    key={place.id}
+                    center={[place.lat, place.lon]}
+                    radius={5}
+                    color="#1e88e5"
+                  >
+                    <Popup>
+                      {place.city && place.country && (
+                        <>
+                          {place.city}, {place.country}
+                          <br />
+                        </>
+                      )}
+                      {place.date && <>{place.date}</>}
+                    </Popup>
+                  </CircleMarker>
+                ))}
+              </MapContainer>
             )}
 
             {mapData && mapData.map_places.length === 0 && (
@@ -111,7 +128,6 @@ export default function SharedMaps() {
             )}
           </>
         )}
-
         {!selectedUser && (
           <div className="placeholder-text">
             Select a user to view their map
