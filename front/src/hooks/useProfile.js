@@ -35,6 +35,7 @@ export function useProfile() {
     share_map: false,
     share_visited_places: false,
     share_badges: false,
+    is_map_public: false,
   });
   const [privacySaving, setPrivacySaving] = useState(false);
 
@@ -55,6 +56,7 @@ export function useProfile() {
       share_map: Boolean(user.preferences?.share_map),
       share_visited_places: Boolean(user.preferences?.share_visited_places),
       share_badges: Boolean(user.preferences?.share_badges),
+      is_map_public: Boolean(user.is_map_public),
     });
   }, [user]);
 
@@ -130,6 +132,7 @@ export function useProfile() {
         share_map: Boolean(res.data?.share_map),
         share_visited_places: Boolean(res.data?.share_visited_places),
         share_badges: Boolean(res.data?.share_badges),
+        is_map_public: Boolean(res.data?.is_map_public),
       });
       await dispatch(fetchProfile());
     } catch (err) {

@@ -56,7 +56,23 @@
 }
 
 .visited-list {
-  max-height: 300px; 
-  overflow-y: auto;
   padding-right: 8px;
+}
+
+/* Share map — same pill style as .shared-maps-btn (defined in Map.css) */
+.map-share-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.map-share-btn__icon {
+  flex-shrink: 0;
+  display: block;
+}
+
+.map-share-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }

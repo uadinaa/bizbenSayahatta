@@ -17,6 +17,7 @@ from .serializers import (
     UserUpdateSerializer,
 )
 from .services import sync_user_travel_profile
+import secrets
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -50,15 +51,23 @@ class UserProfileView(APIView):
                 request.user.role = User.Role.TRIPADVISOR
                 request.user.save(update_fields=["role"])
                 TripAdvisorProfile.objects.get_or_create(user=request.user)
-        return Response(UserSerializer(request.user, context={"traveler_profile": traveler_profile}).data)
+        return Response(
+            UserSerializer(
+                request.user,
+                context={"request": request, "traveler_profile": traveler_profile},
+            ).data
+        )
 
     def put(self, request):
         prefs, _ = UserPreferences.objects.get_or_create(user=request.user)
 
-        user_fields = {k: v for k, v in request.data.items() if k in {"username", "avatar", "cover"}}
+        user_fields = {k: v for k, v in request.data.items() if k in {"username", "avatar", "cover", "is_map_public"}}
         user_serializer = UserUpdateSerializer(request.user, data=user_fields, partial=True)
         user_serializer.is_valid(raise_exception=True)
         user_serializer.save()
+        if "is_map_public" in user_fields and not request.user.map_share_token:
+            request.user.map_share_token = secrets.token_urlsafe(32)
+            request.user.save(update_fields=["map_share_token"])
 
         pref_fields = {"budget", "travel_style", "citizenship", "open_now", "interests"}
         pref_data = {key: value for key, value in request.data.items() if key in pref_fields}
@@ -68,7 +77,12 @@ class UserProfileView(APIView):
             pref_serializer.save()
 
         traveler_profile = sync_user_travel_profile(request.user)
-        return Response(UserSerializer(request.user, context={"traveler_profile": traveler_profile}).data)
+        return Response(
+            UserSerializer(
+                request.user,
+                context={"request": request, "traveler_profile": traveler_profile},
+            ).data
+        )
 
     def patch(self, request):
         return self.put(request)
@@ -81,7 +95,31 @@ class PrivacySettingsView(APIView):
 
     def patch(self, request):
         prefs, _ = UserPreferences.objects.get_or_create(user=request.user)
-        serializer = PrivacySettingsSerializer(prefs, data=request.data, partial=True)
+        body = request.data.copy()
+        raw_public = body.pop("is_map_public", None)
+
+        serializer = PrivacySettingsSerializer(prefs, data=body, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(PrivacySettingsSerializer(prefs).data)
+
+        if raw_public is not None:
+            request.user.is_map_public = str(raw_public).lower() in {"1", "true", "yes"}
+            if not request.user.map_share_token:
+                request.user.map_share_token = secrets.token_urlsafe(32)
+            request.user.save(update_fields=["is_map_public", "map_share_token"])
+
+        data = PrivacySettingsSerializer(prefs).data
+        data["is_map_public"] = request.user.is_map_public
+        return Response(data)
+
+
+class MapShareTokenRotateView(APIView):
+    """POST — issue a new map_share_token (invalidates old shared links)."""
+
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
+
+    def post(self, request):
+        user = request.user
+        user.map_share_token = secrets.token_urlsafe(32)
+        user.save(update_fields=["map_share_token"])
+        return Response({"map_share_token": user.map_share_token})

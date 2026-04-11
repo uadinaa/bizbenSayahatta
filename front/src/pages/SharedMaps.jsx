@@ -45,97 +45,104 @@ export default function SharedMaps() {
       .finally(() => setLoadingMap(false));
   }, [selectedUser, t]);
 
-  if (loadingUsers) return <div>{t("sharedMaps.loadingUsers")}</div>;
-  if (!users.length) return <div>{t("sharedMaps.noUsers")}</div>;
+  if (loadingUsers) return <div className="shared-maps-page">{t("sharedMaps.loadingUsers")}</div>;
+  if (!users.length) return <div className="shared-maps-page">{t("sharedMaps.noUsers")}</div>;
 
   return (
-    <div className="shared-maps-container">
-      {/* Back button */}
-      <div className="back-button" onClick={() => navigate("/map")}>
-        ← {t("sharedMaps.backToMap")}
-      </div>
-
-      {/* Users list */}
-      <div className="users-panel">
-        <h2>{t("sharedMaps.publicMaps")}</h2>
-        {users.map((user) => (
-          <div
-            key={user.id}
-            className="user-card"
-            onClick={() => setSelectedUser(user)}
+    <div className="shared-maps-page">
+      <div className="shared-maps-container">
+        <header className="shared-maps-header">
+          <button
+            type="button"
+            className="shared-maps-back"
+            onClick={() => navigate("/map")}
           >
-            <img
-              src={user.avatar}
-              alt={user.username}
-              className="user-avatar"
-            />
-            <span>{user.username}</span>
-          </div>
-        ))}
-      </div>
+            ← {t("sharedMaps.backToMap")}
+          </button>
+          <h1 className="shared-maps-title">{t("sharedMaps.publicMaps")}</h1>
+        </header>
 
-      {/* Map section */}
-      <div className="map-panel">
-        {selectedUser && (
-          <>
-            <h3>{selectedUser.username} — {t("sharedMaps.map")}</h3>
-
-            {loadingMap && <div>{t("sharedMaps.loadingMap")}</div>}
-            {error && <div className="error-text">{error}</div>}
-
-            {mapData && mapData.map_places.length > 0 && (
-              <MapContainer
-                center={[
-                  mapData.map_places[0].lat,
-                  mapData.map_places[0].lon,
-                ]}
-                zoom={2}
-                style={{ height: "500px", width: "100%" }}
+        <div className="shared-maps-body">
+          <aside className="users-panel">
+            {users.map((user) => (
+              <div
+                key={user.id}
+                className={`user-card ${selectedUser?.id === user.id ? "user-card--active" : ""}`}
+                onClick={() => setSelectedUser(user)}
               >
-                {/* ОСНОВНАЯ КАРТА */}
-                <TileLayer
-                  url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
-                  attribution="&copy; OpenStreetMap &copy; CARTO"
+                <img
+                  src={user.avatar}
+                  alt={user.username}
+                  className="user-avatar"
                 />
+                <span>{user.username}</span>
+              </div>
+            ))}
+          </aside>
 
-                {/* ЛЕЙБЛЫ ПОВЕРХ */}
-                <TileLayer
-                  url="https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png"
-                  attribution="&copy; OpenStreetMap &copy; CARTO"
-                />
+          <div className="map-panel">
+            {selectedUser && (
+              <>
+                <h2 className="map-panel__heading">
+                  {selectedUser.username} — {t("sharedMaps.map")}
+                </h2>
 
-                {mapData.map_places.map((place) => (
-                  <CircleMarker
-                    key={place.id}
-                    center={[place.lat, place.lon]}
-                    radius={5}
-                    color="#1e88e5"
+                {loadingMap && <div className="map-panel__status">{t("sharedMaps.loadingMap")}</div>}
+                {error && <div className="error-text">{error}</div>}
+
+                {mapData && mapData.map_places.length > 0 && (
+                  <MapContainer
+                    center={[
+                      mapData.map_places[0].lat,
+                      mapData.map_places[0].lon,
+                    ]}
+                    zoom={2}
+                    className="shared-maps-leaflet"
+                    style={{ height: "500px", width: "100%" }}
                   >
-                    <Popup>
-                      {place.city && place.country && (
-                        <>
-                          {place.city}, {place.country}
-                          <br />
-                        </>
-                      )}
-                      {place.date && <>{place.date}</>}
-                    </Popup>
-                  </CircleMarker>
-                ))}
-              </MapContainer>
+                    <TileLayer
+                      url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
+                      attribution="&copy; OpenStreetMap &copy; CARTO"
+                    />
+                    <TileLayer
+                      url="https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png"
+                      attribution="&copy; OpenStreetMap &copy; CARTO"
+                    />
+
+                    {mapData.map_places.map((place) => (
+                      <CircleMarker
+                        key={place.id}
+                        center={[place.lat, place.lon]}
+                        radius={5}
+                        color="#1e88e5"
+                      >
+                        <Popup>
+                          {place.city && place.country && (
+                            <>
+                              {place.city}, {place.country}
+                              <br />
+                            </>
+                          )}
+                          {place.date && <>{place.date}</>}
+                        </Popup>
+                      </CircleMarker>
+                    ))}
+                  </MapContainer>
+                )}
+
+                {mapData && mapData.map_places.length === 0 && (
+                  <div className="map-panel__empty">{t("sharedMaps.noPlaces")}</div>
+                )}
+              </>
             )}
 
-            {mapData && mapData.map_places.length === 0 && (
-              <div>{t("sharedMaps.noPlaces")}</div>
+            {!selectedUser && (
+              <div className="placeholder-text">
+                {t("sharedMaps.selectUser")}
+              </div>
             )}
-          </>
-        )}
-
-        {!selectedUser && (
-          <div className="placeholder-text">
-            {t("sharedMaps.selectUser")}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

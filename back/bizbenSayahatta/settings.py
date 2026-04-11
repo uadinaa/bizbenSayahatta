@@ -31,6 +31,8 @@ STRIPE_SECRET_KEY = (os.getenv("STRIPE_SECRET_KEY") or "").strip()
 STRIPE_WEBHOOK_SECRET = (os.getenv("STRIPE_WEBHOOK_SECRET") or "").strip()
 # Base Payment Link URL (no query string). client_reference_id is appended per checkout.
 STRIPE_PAYMENT_LINK_URL = (os.getenv("STRIPE_PAYMENT_LINK_URL") or "").strip()
+# Public SPA origin for shared travel-map links and Open Graph fallbacks.
+FRONTEND_APP_URL = (os.getenv("FRONTEND_APP_URL") or "http://127.0.0.1:5173").rstrip("/")
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.

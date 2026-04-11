@@ -2,6 +2,7 @@ import { formatCategory, formatLocation, priceTierLabel } from "../../utils/plac
 import emptyHeart from "../../assets/emptyHeart.svg";
 import redHeart from "../../assets/redHeart.svg";
 import styles from "../../styles/PlaceCard.module.css";
+import defaultStyles from "../../styles/PlaceCard.module.css";
 import { useTranslation } from "react-i18next";
 
 export default function PlaceCard({

@@ -20,6 +20,7 @@ from django.conf.urls.static import static
 from django.conf import settings
 
 from users.views import CustomTokenObtainPairView, CustomTokenRefreshView
+from places.views import TravelMapShareHTMLView
 
 
 urlpatterns = [
@@ -38,6 +39,7 @@ urlpatterns = [
     path('token/', CustomTokenObtainPairView.as_view()),
     path('api/token/refresh/', CustomTokenRefreshView.as_view()),
     path("marketplace/", include("marketplace.urls")),
+    path("share/travel-map/<int:user_id>/", TravelMapShareHTMLView.as_view(), name="travel-map-share-og"),
 ]
 
 if settings.DEBUG:

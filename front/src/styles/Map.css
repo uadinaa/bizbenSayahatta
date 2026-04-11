@@ -13,16 +13,99 @@
    SIDEBAR
 ================================= */
 .map-sidebar {
-  width: 320px;
-  min-width: 320px;
+  width: 352px;
+  min-width: 352px;
   background: #f9f9fa; /* чуть светлее */
-  padding: 25px 25px 20px 25px;
+  padding: 0;
   position: relative;
   border-right: 1px solid #e0e0e0;
   display: flex;
   flex-direction: column;
   height: 100vh;
+  min-height: 0;
+  overflow: hidden;
   box-shadow: 2px 0 8px rgba(0,0,0,0.03); /* лёгкая тень */
+}
+
+.map-sidebar__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 25px 25px 20px 25px;
+}
+
+.map-sidebar__scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.map-sidebar__scroll::-webkit-scrollbar-thumb {
+  background: #c4c9d1;
+  border-radius: 8px;
+}
+
+.map-sidebar__scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.map-sidebar__intro {
+  flex-shrink: 0;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.map-sidebar__title {
+  margin: 0 0 8px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #1e1e1e;
+  line-height: 1.25;
+}
+
+.map-sidebar__subtitle {
+  margin: 0 0 12px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #667085;
+}
+
+.map-sidebar__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.map-sidebar__link-maps {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #6c4eff;
+  text-decoration: none;
+}
+
+.map-sidebar__link-maps:hover {
+  text-decoration: underline;
+}
+
+.map-sidebar__block-heading {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 12px 0 10px;
+  color: #1e1e1e;
+}
+
+.map-sidebar .visited-header h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+.map-sidebar .inline-add-btn {
+  margin-left: 0;
+  flex-shrink: 0;
 }
 
 /* ===============================
@@ -193,6 +276,7 @@
   margin-bottom: 20px;
 }
 
+.stats h3,
 .stats h4 {
   margin-bottom: 12px;
   font-size: 14px;
@@ -207,13 +291,27 @@
 
 .stat-card {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
   background: #fff;
   border-radius: 12px;
-  padding: 10px 5px;
-  text-align: center;
+  padding: 12px 8px 10px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.06); /* чуть мягче */
   font-size: 14px;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Same baseline for world vs pin SVGs */
+.stat-card > img {
+  display: block;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  object-position: center;
+  margin: 0 0 8px;
+  flex-shrink: 0;
 }
 
 .stat-card:hover {
@@ -224,7 +322,7 @@
 .stat-card strong {
   display: block;
   font-size: 18px;
-  margin: 5px 0 2px;
+  margin: 0 0 2px;
   color: #1e1e1e;
 }
 
@@ -248,6 +346,18 @@
 /* ===============================
    VISITED PLACES
 ================================= */
+section.visited {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+section.visited > .visited-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
 .places-section {
   margin-top: 15px;
   flex: 1;
@@ -303,9 +413,6 @@
 
 
 .visited-list {
-  max-height: 300px; 
-  overflow-y: auto;
-  flex: 1;
   display: flex;
   flex-direction: column;
   padding-right: 5px;

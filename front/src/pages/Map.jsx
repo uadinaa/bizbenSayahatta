@@ -3,10 +3,10 @@ import "leaflet/dist/leaflet.css";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { createMapPlace, deleteMapPlace, fetchMapPlaces, markPlaceAsVisited, fetchInspirationPlaces, updateMapPlace } from "../api/places";
+import { createMapPlace, deleteMapPlace, fetchMapPlaces, markPlaceAsVisited, fetchInspirationPlaces } from "../api/places";
 import { LEVELS_LIST } from "../constants/mapConstants";
-import MapSidebar from "../components/map/MapSidebar";
 import MapView from "../components/map/MapView";
+import MapSidebar from "../components/map/MapSidebar";
 import AddPlaceModal from "../components/map/AddPlaceModal";
 
 const now = new Date();
@@ -26,9 +26,6 @@ export default function Map() {
   const [citiesCount, setCitiesCount] = useState(0);
   const [progress, setProgress] = useState(0);
   const [level, setLevel] = useState({ name: "Pathfinder", current: 0, needed: 5, index: 0 });
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [editingPlace, setEditingPlace] = useState(null); 
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   useEffect(() => {
     const loadPlaces = async () => {
       setLoadingPlaces(true);
@@ -70,44 +67,6 @@ export default function Map() {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewPlace((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const openEditPlace = (place) => {
-    setEditingPlace({
-      id: place.id,
-      city: place.city,
-      country: place.country,
-      month: place.date?.split("-")[1] || currentMonth,
-      year: place.date?.split("-")[0] || String(currentYear),
-    });
-    setIsEditModalOpen(true);
-  };
-  
-  const saveEditPlace = async (e) => {
-    e.preventDefault();
-    if (!editingPlace.city || !editingPlace.country) return;
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${editingPlace.city},${editingPlace.country}`
-      );
-      const data = await res.json();
-      if (!data.length) { alert(t("map.cityNotFound")); return; }
-
-      const updated = await updateMapPlace(editingPlace.id, {
-        city: editingPlace.city,
-        country: editingPlace.country,
-        date: `${editingPlace.year}-${editingPlace.month}`,
-        lat: parseFloat(data[0].lat),
-        lon: parseFloat(data[0].lon),
-      });
-
-      setPlaces((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-      setIsEditModalOpen(false);
-      setEditingPlace(null);
-    } catch (err) {
-      if (err?.response?.status === 401) { navigate("/login"); return; }
-      alert(t("map.errorUpdatingLocation"));
-    }
   };
 
   const addPlace = async (e) => {
@@ -185,27 +144,21 @@ export default function Map() {
 
   return (
     <div className="map-page">
-      {/* <MapSidebar
-        places={places} level={level}
-        countriesCount={countriesCount} citiesCount={citiesCount}
-        progress={progress} loadingPlaces={loadingPlaces}
-        onOpenModal={() => setIsModalOpen(true)} onRemovePlace={removePlace}
-        // isEditMode={isEditMode}
-        onToggleEditMode={() => setIsEditMode((prev) => !prev)}
-        // onRemovePlace={removePlace}
-        onEditPlace={openEditPlace}
-      /> */}
       <MapSidebar
-        places={places} level={level}
-        countriesCount={countriesCount} citiesCount={citiesCount}
-        progress={progress} loadingPlaces={loadingPlaces}
+        places={places}
+        level={level}
+        countriesCount={countriesCount}
+        citiesCount={citiesCount}
+        progress={progress}
+        loadingPlaces={loadingPlaces}
         onOpenModal={() => setIsModalOpen(true)}
         onRemovePlace={removePlace}
-        isEditMode={isEditMode}                              
-        onToggleEditMode={() => setIsEditMode((prev) => !prev)}
-        onEditPlace={openEditPlace}
       />
-      <MapView places={places} countriesData={countriesData} onOpenModal={() => setIsModalOpen(true)} />
+      <MapView
+        places={places}
+        countriesData={countriesData}
+        onOpenModal={() => setIsModalOpen(true)}
+      />
 
       {isModalOpen && (
         <AddPlaceModal
@@ -219,20 +172,6 @@ export default function Map() {
         />
       )}
 
-      {isEditModalOpen && editingPlace && (
-        <AddPlaceModal
-          newPlace={editingPlace}
-          yearOptions={yearOptions}
-          onInputChange={(e) => {
-            const { name, value } = e.target;
-            setEditingPlace((prev) => ({ ...prev, [name]: value }));
-          }}
-          onAdd={saveEditPlace}
-          onClose={() => { setIsEditModalOpen(false); setEditingPlace(null); }}
-          title={t("map.editPlaceTitle")}
-          submitLabel={t("map.save")}
-        />
-      )}
     </div>
   );
 }

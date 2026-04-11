@@ -1,32 +1,72 @@
 /* ===============================
-   PAGE LAYOUT
+   PAGE
 ================================= */
+
+.shared-maps-page {
+  width: 100%;
+  min-height: 0;
+}
 
 .shared-maps-container {
   display: flex;
+  flex-direction: column;
   gap: 20px;
-  padding: 20px;
+  padding: 20px 24px 32px;
+  max-width: 1280px;
+  margin: 0 auto;
+  box-sizing: border-box;
 }
 
 /* ===============================
-   BACK BUTTON
+   HEADER (back + title — one row, no overlap)
 ================================= */
 
-.back-button {
-  position: absolute;
-  top: 90px;
-  left: 20px;
-  cursor: pointer;
-  font-weight: 500;
-  color: #333;
-  background: #f5f5f5;
-  padding: 6px 10px;
-  border-radius: 8px;
-  transition: 0.2s;
+.shared-maps-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e8e8e8;
 }
 
-.back-button:hover {
-  background: #e0e0e0;
+.shared-maps-back {
+  flex-shrink: 0;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: #344054;
+  background: #fff;
+  border: 1px solid #d0d5dd;
+  padding: 8px 14px;
+  border-radius: 20px;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.shared-maps-back:hover {
+  background: #f9fafb;
+  border-color: #c4c9d1;
+}
+
+.shared-maps-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #1e1e1e;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+/* ===============================
+   BODY: list + map
+================================= */
+
+.shared-maps-body {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  min-height: 0;
 }
 
 /* ===============================
@@ -34,25 +74,35 @@
 ================================= */
 
 .users-panel {
-  width: 250px;
+  width: 260px;
+  min-width: 220px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .user-card {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px;
-  margin-bottom: 10px;
-  border: 1px solid #ddd;
-  border-radius: 20px;
+  padding: 10px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 16px;
   cursor: pointer;
-  transition: 0.2s;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
   background: #fff;
 }
 
 .user-card:hover {
-  background: #f9f9f9;
-  transform: translateY(-1px);
+  background: #f9fafb;
+  border-color: #d0d5dd;
+}
+
+.user-card--active {
+  border-color: #6c4eff;
+  background: #f5f2ff;
+  box-shadow: 0 0 0 1px rgba(108, 78, 255, 0.2);
 }
 
 .user-avatar {
@@ -68,17 +118,59 @@
 
 .map-panel {
   flex: 1;
-  margin-top: 60px;
+  min-width: 0;
+}
+
+.map-panel__heading {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #1e1e1e;
+}
+
+.map-panel__status,
+.map-panel__empty {
+  color: #667085;
+  font-size: 0.95rem;
+  margin-bottom: 12px;
+}
+
+.shared-maps-leaflet {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
 }
 
 .placeholder-text {
-  margin-top: 70px;
-  margin-left: 50px;
-  color: #777;
-  font-size: 16px;
+  padding: 48px 24px;
+  color: #667085;
+  font-size: 1rem;
+  text-align: center;
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 1px dashed #d0d5dd;
 }
 
 .error-text {
-  color: red;
-  margin-bottom: 10px;
+  color: #c62828;
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+  .shared-maps-body {
+    flex-direction: column;
+  }
+
+  .users-panel {
+    width: 100%;
+    min-width: 0;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .user-card {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 140px;
+  }
 }

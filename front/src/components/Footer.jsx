@@ -10,6 +10,10 @@ export default function Footer() {
     return null;
   }
 
+  if (location.pathname === "/map") {
+    return null;
+  }
+
   return (
     <footer className="footer">
       <div className="footer-container">
