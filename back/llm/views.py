@@ -22,9 +22,12 @@ from .services.travel_chat import (
     HotelSearchParams,
     build_missing_details_response,
     collect_trip_requirements,
+    enrich_thread_plan_for_final_trip,
     extract_hotel_search_params,
     generate_trip_payload,
     get_missing_requirements,
+    strip_trip_sources_from_markdown,
+    trip_plan_should_refresh,
 )
 from .services.trip_planner import build_trip_plan
 from places.models import Place
@@ -32,6 +35,7 @@ from users.permissions import IsActiveAndNotBlocked
 from users.models import UserPreferences
 from users.services import sync_user_travel_profile
 from .services.hotel_cache import get_hotels_cached
+from .services.tripadvisor_service import get_tours_cached
 
 MAX_CHAT_CONTEXT_PLACES = 8
 TOKENS_PER_CHAT = 1
@@ -168,7 +172,16 @@ def _build_hotel_context_block(hotels: list, search_params: HotelSearchParams) -
         distance = hotel.get("distance_to_center_km", 0)
         highlights = hotel.get("highlights", [])
         cancellation = hotel.get("cancellation_policy", "Contact for details")
+        # Build booking URL with dates for real-time availability
         booking_url = hotel.get("booking_url", "")
+        if not booking_url and name:
+            from .services.booking_service import _build_booking_url
+            booking_url = _build_booking_url(
+                hotel.get("id", ""),
+                name,
+                checkin=search_params.checkin,
+                checkout=search_params.checkout,
+            )
 
         highlights_str = ", ".join(highlights) if highlights else "No specific highlights"
 
@@ -206,12 +219,9 @@ def _generate_thread_trip_response(thread, user, message: str):
     )
     missing = get_missing_requirements(requirements)
 
-    should_generate_trip = (
+    should_generate_trip = not missing and (
         not thread.plan_json
-        and not missing
-    ) or (
-        not missing
-        and any(keyword in message.lower() for keyword in {"regenerate", "rebuild", "update trip", "new trip"})
+        or trip_plan_should_refresh(thread, requirements, message)
     )
 
     if missing and (previous_user_count == 0 or not thread.plan_json):
@@ -223,7 +233,9 @@ def _generate_thread_trip_response(thread, user, message: str):
 
     if should_generate_trip:
         try:
-            payload = generate_trip_payload(user=user, requirements=requirements)
+            payload = generate_trip_payload(
+                user=user, requirements=requirements, thread=thread
+            )
         except ValueError as exc:
             if str(exc) == "no_places_for_city":
                 return {
@@ -239,8 +251,17 @@ def _generate_thread_trip_response(thread, user, message: str):
         thread.city = payload.get("city") or thread.city
         thread.save(update_fields=["plan_json", "city", "updated_at"])
         sync_final_trip(thread, payload)
+        full_md = payload["response_markdown"]
+        sources_already = ChatEntry.objects.filter(
+            thread=thread,
+            role="assistant",
+            content__contains="## 📚 Sources",
+        ).exists()
+        chat_md = (
+            strip_trip_sources_from_markdown(full_md) if sources_already else full_md
+        )
         return {
-            "response": payload["response_markdown"],
+            "response": chat_md,
             "plan": payload,
             "sources": [item["label"] for item in payload["sources"]["items"]],
         }
@@ -297,6 +318,56 @@ def _get_hotel_context_for_chat(user_message: str, thread=None, user=None) -> st
     return ""
 
 
+def _get_tour_context_for_chat(city: str) -> str:
+    """
+    Fetch tour/attraction context from TripAdvisor based on city.
+    Returns formatted tour block or empty string if no tours found.
+
+    Args:
+        city: Destination city name
+
+    Returns:
+        Formatted string with tour information for LLM context
+    """
+    if not city:
+        return ""
+
+    # Fetch tours from TripAdvisor (uses cache internally)
+    tours = get_tours_cached(city, max_results=10)
+
+    if not tours:
+        return ""
+
+    lines = []
+    lines.append(f"TOURS & ATTRACTIONS FOR {city.upper()}:")
+    lines.append("")
+
+    for i, tour in enumerate(tours[:5], 1):
+        name = tour.get("name", "Unknown Attraction")
+        category = tour.get("category") or tour.get("subcategory", "Attraction")
+        rating = tour.get("rating", 0)
+        num_reviews = tour.get("num_reviews", 0)
+        price_amount = tour.get("price_amount")
+        price_currency = tour.get("price_currency", "USD")
+        photo_url = tour.get("photo_url", "")
+        web_url = tour.get("web_url", "")
+        duration = tour.get("duration", "")
+
+        lines.append(f"Option {i}: {name} ({category})")
+        if rating:
+            lines.append(f"  Rating: {rating}/10 ({num_reviews} reviews)")
+        if price_amount:
+            lines.append(f"  Price: {price_currency} {price_amount}")
+        if duration:
+            lines.append(f"  Duration: {duration}")
+        if web_url:
+            lines.append(f"  Book: {web_url}")
+        lines.append("")
+
+    lines.append("(max 5 tours shown)")
+    return "\n".join(lines)
+
+
 class TravelChatView(APIView):
     permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
 
@@ -314,7 +385,14 @@ class TravelChatView(APIView):
 
         detected_city = _detect_city_from_message(user_message)
         source_places = _get_top_places_for_city(detected_city)
-        context = _build_places_context_for_city(detected_city)
+        places_context = _build_places_context_for_city(detected_city)
+        hotel_context = _get_hotel_context_for_chat(user_message, user=request.user)
+        tour_context = _get_tour_context_for_chat(detected_city)
+
+        # Build combined context from all sources
+        context = "\n\n".join(
+            part for part in [places_context, hotel_context, tour_context] if part
+        )
 
         ai_response = ask_travel_ai(
             user_message=user_message,
@@ -477,13 +555,15 @@ class ChatEntryListCreateView(APIView):
         selected_city = _detect_city_from_message(user_message, fallback_city=thread.city or "")
         source_places = _get_top_places_for_city(selected_city)
         places_context = _build_places_context_for_city(selected_city)
+        hotel_context = _get_hotel_context_for_chat(user_message, thread=thread, user=request.user)
+        tour_context = _get_tour_context_for_chat(selected_city)
         trip_context = ""
         if thread.city or thread.start_date or thread.end_date:
             trip_context = (
                 f"Trip context: city={thread.city}, start={thread.start_date}, end={thread.end_date}."
             )
         context = "\n\n".join(
-            part for part in [trip_context, places_context] if part
+            part for part in [trip_context, places_context, hotel_context, tour_context] if part
         )
 
         ai_response = ask_travel_ai(
@@ -548,22 +628,23 @@ class ChatThreadPlanView(APIView):
         except Exception:
             plan["ai_polish"] = ""
 
-        thread.plan_json = plan
+        full_plan = enrich_thread_plan_for_final_trip(user=request.user, thread=thread, plan=plan)
+        thread.plan_json = full_plan
         if data.get("city"):
             thread.city = data.get("city")
         thread.save(update_fields=["plan_json", "city", "updated_at"])
-        sync_final_trip(thread, plan)
+        sync_final_trip(thread, full_plan)
 
         ChatEntry.objects.create(
             thread=thread,
             role="assistant",
             content=(
                 polished_text
-                or f"Generated a {plan.get('days_generated', '')}-day plan for {plan.get('city', '')}."
+                or f"Generated a {full_plan.get('days_generated', '')}-day plan for {full_plan.get('city', '')}."
             ),
         )
 
-        return Response(plan, status=status.HTTP_200_OK)
+        return Response(full_plan, status=status.HTTP_200_OK)
 
 
 class ChatThreadArchiveView(APIView):

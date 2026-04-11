@@ -142,6 +142,34 @@ html, body, #root {
   overflow: hidden;
 }
 
+/* Chat trip map: give Leaflet a real height (otherwise tiles render at 0×0). */
+.map-box--open {
+  display: flex;
+  flex-direction: column;
+  height: min(42vh, 320px);
+  min-height: 220px;
+  background: #dfe3e8;
+}
+
+.map-box--open .map-box-header {
+  flex: 0 0 auto;
+  padding: 4px 4px 0 8px;
+}
+
+.map-box--open .trip-map-shell {
+  flex: 1;
+  min-height: 180px;
+  position: relative;
+  width: 100%;
+}
+
+.trip-map-shell .trip-map-canvas,
+.trip-map-shell .leaflet-container {
+  height: 100% !important;
+  width: 100% !important;
+  border-radius: 0 0 12px 12px;
+}
+
 .final-box {
   border: 1px solid #9cc3c9;
   border-radius: 16px;

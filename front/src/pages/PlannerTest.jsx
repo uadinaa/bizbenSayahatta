@@ -28,25 +28,52 @@ function applyDayColors(itinerary = []) {
   }));
 }
 
+function toLngLat(value) {
+  const n = typeof value === "string" ? parseFloat(value) : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 function decorateTripPayload(payload) {
   // Normalize trip payloads from both the trip endpoint and live AI responses.
   if (!payload) return null;
 
   const itinerary = applyDayColors(payload.itinerary || payload.plan_snapshot?.itinerary || []);
-  const route = (payload.route || itinerary.map((day, index) => ({
+
+  const routeFromStops = itinerary.map((day, index) => ({
     day: day.day,
     color: day.color || DAY_COLORS[index % DAY_COLORS.length],
     places: (day.stops || [])
-      .filter((stop) => Number.isFinite(stop.lat) && Number.isFinite(stop.lng))
-      .map((stop) => ({
-        name: stop.name,
-        lat: stop.lat,
-        lng: stop.lng,
-        address: stop.address,
-      })),
-  }))).map((day, index) => ({
+      .map((stop) => {
+        const lat = toLngLat(stop.lat);
+        const lng = toLngLat(stop.lng);
+        if (lat == null || lng == null) return null;
+        return {
+          name: stop.name,
+          lat,
+          lng,
+          address: stop.address,
+        };
+      })
+      .filter(Boolean),
+  }));
+
+  const routeRaw = payload.route?.length ? payload.route : routeFromStops;
+
+  const route = routeRaw.map((day, index) => ({
     ...day,
     color: day.color || DAY_COLORS[index % DAY_COLORS.length],
+    places: (day.places || [])
+      .map((p) => {
+        const lat = toLngLat(p.lat);
+        const lng = toLngLat(p.lng);
+        if (lat == null || lng == null) return null;
+        return {
+          ...p,
+          lat,
+          lng,
+        };
+      })
+      .filter(Boolean),
   }));
 
   return {
@@ -599,7 +626,7 @@ const filteredArchivedThreads = useMemo(() => {
                 ×
               </button>
             </div>
-            <TravelPlannerMap plan={currentTrip} isOpen />
+            <TravelPlannerMap key={selectedId} plan={currentTrip} isOpen />
           </div>
         ) : null}
 

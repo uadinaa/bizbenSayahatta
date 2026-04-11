@@ -9,8 +9,9 @@ import requests
 from django.conf import settings
 
 
-RAPIDAPI_HOST = getattr(settings, 'RAPIDAPI_HOST', 'booking-com15.p.rapidapi.com')
-RAPIDAPI_KEY = getattr(settings, 'RAPIDAPI_KEY', '')
+# Note: Uses VITE_ prefix to match .env file naming
+RAPIDAPI_HOST = getattr(settings, 'VITE_RAPIDAPI_HOST', 'booking-com15.p.rapidapi.com')
+RAPIDAPI_KEY = getattr(settings, 'VITE_RAPIDAPI_KEY', '')
 
 BASE_URL = "https://booking-com.p.rapidapi.com/v1"
 
@@ -330,8 +331,40 @@ def _extract_cancellation_policy(prop: dict) -> str:
     return "Contact property for details"
 
 
-def _build_booking_url(hotel_id: str, hotel_name: str) -> str:
-    """Build Booking.com URL for the hotel."""
-    # Construct a friendly URL slug
-    slug = hotel_name.lower().replace(" ", "-").replace("'", "")[:50]
-    return f"https://www.booking.com/hotel/{slug}.html?aid=356980&label=ref-{hotel_id}"
+def _build_booking_url(hotel_id: str, hotel_name: str, checkin: str = None, checkout: str = None) -> str:
+    """
+    Build Booking.com deep-link URL for the hotel.
+
+    Uses a search-based URL that reliably finds the hotel by name + city,
+    with optional check-in/check-out dates for real-time availability.
+
+    Args:
+        hotel_id: Hotel ID from Booking.com API
+        hotel_name: Hotel name
+        checkin: Optional check-in date (YYYY-MM-DD)
+        checkout: Optional checkout date (YYYY-MM-DD)
+
+    Returns:
+        Booking.com affiliate URL with pre-filled search params
+    """
+    from urllib.parse import quote
+
+    # Base search URL - searches for hotel by name
+    # This is more reliable than constructing hotel-specific URLs
+    params = {
+        "ss": hotel_name,  # Search string (hotel name)
+        "aid": "356980",  # Affiliate ID
+        "label": f"ref-{hotel_id}",  # Tracking label
+        "sb_price_type": "total",  # Show total price
+        "srpopsrc": "affiliate",  # Traffic source
+    }
+
+    # Add dates if provided for real-time availability
+    if checkin:
+        params["checkin"] = checkin
+    if checkout:
+        params["checkout"] = checkout
+
+    # Build query string
+    query_string = "&".join(f"{k}={quote(str(v))}" for k, v in params.items())
+    return f"https://www.booking.com/searchresults.html?{query_string}"

@@ -399,6 +399,69 @@ def build_missing_details_response(missing: Iterable[str]) -> str:
     return "\n".join(lines)
 
 
+def _norm_key(value: str | None) -> str:
+    return (value or "").strip().lower()
+
+
+def trip_plan_should_refresh(
+    thread,
+    requirements: TripRequirements,
+    user_message: str,
+) -> bool:
+    """True when the conversation implies the structured trip should be rebuilt."""
+    lowered = user_message.lower()
+    if any(
+        kw in lowered
+        for kw in ("regenerate", "rebuild", "update trip", "new trip", "refresh trip")
+    ):
+        return True
+    plan = thread.plan_json or {}
+    if not plan:
+        return True
+    if bool(plan.get("has_kids")) != bool(requirements.has_kids):
+        return True
+    if requirements.has_kids and plan.get("kids_age_band") and requirements.kids_age_band:
+        if _norm_key(requirements.kids_age_band) != _norm_key(str(plan.get("kids_age_band"))):
+            return True
+    if requirements.destination and _norm_key(requirements.destination) != _norm_key(
+        str(plan.get("city") or "")
+    ):
+        return True
+    if requirements.travelers is not None and plan.get("travelers") is not None:
+        if int(requirements.travelers) != int(plan["travelers"]):
+            return True
+    if requirements.duration_days is not None:
+        prev = plan.get("duration_days")
+        if prev is None:
+            prev = plan.get("days_requested")
+        if prev is not None and int(requirements.duration_days) != int(prev):
+            return True
+    if requirements.budget_total is not None and plan.get("budget_total") is not None:
+        if int(requirements.budget_total) != int(plan["budget_total"]):
+            return True
+    if requirements.travel_style and plan.get("travel_style"):
+        if _norm_key(requirements.travel_style) != _norm_key(str(plan.get("travel_style"))):
+            return True
+    if requirements.traveler_type and plan.get("traveler_type"):
+        if _norm_key(requirements.traveler_type) != _norm_key(str(plan.get("traveler_type"))):
+            return True
+    return False
+
+
+def strip_trip_sources_from_markdown(full_markdown: str) -> str:
+    """Remove the Sources section for chat; keep safety and the rest (sources stay on FinalTrip)."""
+    marker_sources = "## 📚 Sources"
+    marker_safety = "## ⚠️ Safety"
+    if marker_sources not in full_markdown:
+        return full_markdown
+    head, tail = full_markdown.split(marker_sources, 1)
+    head = head.rstrip()
+    if marker_safety in tail:
+        _, after_safety = tail.split(marker_safety, 1)
+        return f"{head}\n\n{marker_safety}{after_safety}".strip()
+    return head.strip()
+
+
 def _budget_to_price_level(total_budget: Optional[int], days: int) -> Optional[int]:
     if total_budget is None:
         return None
@@ -629,6 +692,58 @@ def _build_route(plan: Dict[str, object]) -> List[Dict[str, object]]:
     return route
 
 
+def _trip_summary_lines(plan: Dict[str, object]) -> List[str]:
+    out: List[str] = []
+    travelers = plan.get("travelers")
+    if travelers is not None:
+        out.append(f"- **Travelers:** {travelers}")
+    dur = plan.get("duration_days")
+    if dur is None:
+        dur = plan.get("days_requested")
+    if dur is not None:
+        out.append(f"- **Trip length:** {dur} day(s)")
+    start, end = plan.get("start_date"), plan.get("end_date")
+    if start and end:
+        out.append(f"- **Dates:** {start} → {end}")
+    elif start:
+        out.append(f"- **Start date:** {start}")
+    elif end:
+        out.append(f"- **End date:** {end}")
+    else:
+        out.append("- **Dates:** (set start/end on the chat if you have fixed dates)")
+
+    bt = plan.get("budget_total")
+    dbpp = plan.get("daily_budget_per_person")
+    daily_b = plan.get("daily_budget")
+    if bt is not None:
+        line = f"- **Budget:** ${int(bt)} total"
+        if dbpp is not None:
+            line += f" (~${int(dbpp)}/person/day)"
+        out.append(line)
+    elif daily_b is not None:
+        try:
+            out.append(f"- **Daily budget (estimate):** ${int(daily_b)}/person/day")
+        except (TypeError, ValueError):
+            out.append("- **Budget:** not specified")
+    else:
+        pl = plan.get("budget")
+        if pl is not None:
+            out.append(
+                f"- **Budget filter:** Google price level ≤ {pl} (planner constraint on places)"
+            )
+        else:
+            out.append("- **Budget:** not specified")
+
+    style = plan.get("travel_style") or ""
+    ttype = plan.get("traveler_type") or plan.get("trip_type") or ""
+    if style or ttype:
+        out.append(
+            "- **Trip profile:** "
+            + ", ".join(part for part in (ttype, style) if part)
+        )
+    return out
+
+
 def _format_trip_response(plan: Dict[str, object]) -> str:
     lines = []
     history_line = plan.get("history_line")
@@ -637,10 +752,10 @@ def _format_trip_response(plan: Dict[str, object]) -> str:
         lines.append("")
 
     lines.append(f"## Final Trip for {plan.get('city')}")
-    lines.append(
-        f"{plan.get('travelers')} traveler(s), {plan.get('duration_days')} days, "
-        f"{plan.get('travel_style')} style"
-    )
+    lines.append("")
+    lines.append("### Trip summary")
+    for row in _trip_summary_lines(plan):
+        lines.append(row)
     lines.append("")
 
     if plan.get("family_note"):
@@ -655,12 +770,19 @@ def _format_trip_response(plan: Dict[str, object]) -> str:
             lines.append(f"- {stop['name']} — {stop['address']}")
         lines.append("")
 
+    country = plan.get("country") or _country_for_destination(str(plan.get("city") or ""))
+    citizenship = ""
+    sources = plan.get("sources")
+    if not sources:
+        sources = _build_sources(plan, country, citizenship)
+    items = sources.get("items") or []
+
     lines.append("## 📚 Sources & Useful Links")
     lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
-    for item in plan["sources"]["items"]:
+    for item in items:
         lines.append(f"📍 [{item['label']}]({item['url']}) — {item['provider']}")
 
-    visa = plan["sources"]["visa"]
+    visa = sources["visa"]
     if visa["status"] == "required":
         lines.append(f"🛂 {visa['label']} → [link]({visa['url']})")
     elif visa["status"] == "not_required":
@@ -670,7 +792,7 @@ def _format_trip_response(plan: Dict[str, object]) -> str:
     else:
         lines.append(f"🛂 {visa['label']}")
     lines.append(
-        f"📋 [{plan['sources']['advisory']['label']}]({plan['sources']['advisory']['url']})"
+        f"📋 [{sources['advisory']['label']}]({sources['advisory']['url']})"
     )
     lines.append("")
 
@@ -690,7 +812,62 @@ def _format_trip_response(plan: Dict[str, object]) -> str:
     return "\n".join(lines).strip()
 
 
-def generate_trip_payload(*, user, requirements: TripRequirements) -> Dict[str, object]:
+def enrich_thread_plan_for_final_trip(
+    *, user, thread, plan: Dict[str, object]
+) -> Dict[str, object]:
+    """Turn a raw `build_trip_plan` dict into a full payload for FinalTrip + markdown."""
+    city = plan.get("city") or thread.city or ""
+    country = _country_for_destination(city)
+    days = int(plan.get("days_requested") or plan.get("days_generated") or 1)
+    travelers = plan.get("travelers")
+    if travelers is None and thread.plan_json:
+        travelers = thread.plan_json.get("travelers")
+    travelers = travelers or 1
+
+    merged: Dict[str, object] = {**plan}
+    merged["country"] = country
+    merged["travelers"] = travelers
+    merged["duration_days"] = days
+    merged["travel_style"] = merged.get("travel_style") or ""
+    merged["traveler_type"] = merged.get("traveler_type") or ""
+    merged["family_note"] = (
+        "Family-friendly filters applied ✅" if merged.get("has_kids") else ""
+    )
+
+    prev = thread.plan_json or {}
+    merged["budget_total"] = prev.get("budget_total")
+    merged["daily_budget_per_person"] = prev.get("daily_budget_per_person")
+
+    if thread.start_date:
+        merged["start_date"] = thread.start_date.isoformat()
+    if thread.end_date:
+        merged["end_date"] = thread.end_date.isoformat()
+
+    for index, day in enumerate(merged.get("itinerary", [])):
+        if isinstance(day, dict):
+            day["color"] = DAY_COLORS[index % len(DAY_COLORS)]
+            day["color_emoji"] = DAY_EMOJIS[index % len(DAY_EMOJIS)]
+
+    citizenship = ""
+    prefs = getattr(user, "preferences", None)
+    if prefs:
+        citizenship = prefs.citizenship or ""
+
+    merged["route"] = _build_route(merged)
+    merged["safety_tips"] = _safety_tips(city, country, bool(merged.get("has_kids")))
+    merged["sources"] = _build_sources(merged, country, citizenship)
+    merged["needs_citizenship"] = (
+        merged["sources"]["visa"]["status"] == "citizenship_needed"
+    )
+    merged["partial_note"] = ""
+    merged["history_line"] = None
+    merged["response_markdown"] = _format_trip_response(merged)
+    return merged
+
+
+def generate_trip_payload(
+    *, user, requirements: TripRequirements, thread=None
+) -> Dict[str, object]:
     days = requirements.duration_days or 3
     price_level_budget = _budget_to_price_level(requirements.budget_total, days)
     pace = "slow" if requirements.has_kids else "medium"
@@ -769,5 +946,11 @@ def generate_trip_payload(*, user, requirements: TripRequirements) -> Dict[str, 
     payload["daily_budget_per_person"] = daily_budget_per_person
 
     payload["trip_type"] = requirements.traveler_type or requirements.travel_style or ""
+
+    if thread is not None:
+        if thread.start_date:
+            payload["start_date"] = thread.start_date.isoformat()
+        if thread.end_date:
+            payload["end_date"] = thread.end_date.isoformat()
     payload["response_markdown"] = _format_trip_response(payload)
     return payload
