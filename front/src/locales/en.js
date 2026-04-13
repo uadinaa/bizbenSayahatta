@@ -535,7 +535,7 @@ const en = {
     contactInfo: "Contact info",
     bio: "Bio",
     category:"Your trip advisor category",
-
+    shareYourTravelExperience: "Share your travel experience, help other users plan better trips, and unlock advisor tools on your account.",
   },
   trips: {
     myTrips: "My Trips",

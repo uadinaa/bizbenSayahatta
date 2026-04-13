@@ -308,6 +308,12 @@
   padding-top: 4px;
 }
 
+.advisor-checks-row{
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+
+}
 .advisor-cv-label input[type="file"] {
   padding: 6px 0;
   border: none;
@@ -356,11 +362,14 @@
 
 .check-row {
   display: inline-grid;
-  grid-auto-flow: column;
-  align-items: center;
+  grid-auto-flow:row;
   gap: 8px;
 }
 
+.check-row-checkbox{
+  max-width: 20px;
+  border-color: #067647;
+}
 
 .advisor-error {
   font-size: 13px;

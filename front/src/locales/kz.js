@@ -337,6 +337,12 @@ const kz = {
     deleteForever: "Біржола жою",
     mapUnavailable: "Карта қолжетімсіз",
     day: "Күн",
+    travelers: "Саяхатшылар",
+    dailyBudget: "Күнделікті бюджет",
+    totalBudget: "Жалпы бюджет",
+    currentEstimate: "Ағымдағы бағалау",
+    safetyTips: "Қауіпсіздік кеңестері",
+    sources: "Дереккөздер",
   },
   advisorTrips: {
     noCategoriesAvailable: "Қолжетімді санаттар жоқ. Кейінірек қайталап көріңіз.",
@@ -481,6 +487,7 @@ const kz = {
     contactInfo: "Байланыс ақпараты", 
     bio: "Жеке ақпарат",
     category:"Сенің trip advisor категорияң",
+    shareYourTravelExperience: "Саяхат тәжірибеңізбен бөлісіңіз, басқа пайдаланушыларға ең жақсы сапарларды жоспарлауға көмектесіңіз және есептік жазбаңыздағы кеңесші құралдарының құлпын ашыңыз.",
   },
   trips: {
     myTrips: "Менің сапарларым",

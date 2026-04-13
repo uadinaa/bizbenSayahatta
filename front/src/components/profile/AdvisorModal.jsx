@@ -10,8 +10,6 @@ export default function AdvisorModal({
   tripCategories = [],
 }) {
   const { t } = useTranslation();
-  console.log("tripCategories in AdvisorModal:", tripCategories);
-
 
   return (
     <div className="modal-overlay">
@@ -93,8 +91,9 @@ export default function AdvisorModal({
           </label>
 
           <div className="advisor-checks">
-            <label className="check-row">
+            <div className="advisor-checks-row">
               <input
+                className="check-row-checkbox"
                 type="checkbox"
                 checked={advisorForm.contractAccepted}
                 onChange={(e) =>
@@ -104,11 +103,14 @@ export default function AdvisorModal({
                   }))
                 }
               />
-              {t("profile.acceptContract")}
+              <label className="check-row">
+                {t("profile.acceptContract")}
             </label>
+            </div>
 
-            <label className="check-row">
+            <div className="advisor-checks-row">
               <input
+                className="check-row-checkbox"
                 type="checkbox"
                 checked={advisorForm.termsAccepted}
                 onChange={(e) =>
@@ -118,8 +120,10 @@ export default function AdvisorModal({
                   }))
                 }
               />
+              <label className="check-row">
               {t("profile.acceptTerms")}
             </label>
+            </div>
           </div>
         </div>
 

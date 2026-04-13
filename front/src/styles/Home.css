@@ -875,6 +875,11 @@ font-size: 14px;
   font-weight: 500;
 }
 
+.view-all-destinations-btn:hover{
+  box-shadow: 0 10px 30px rgba(255, 223, 0, 0.3);
+  border-color: #FFDF00;
+
+}
 .view-all-destinations-btn span {
   margin-left: 8px;
 }
@@ -1046,7 +1051,7 @@ font-size: 14px;
 .contact-form textarea {
   padding: 14px 16px;
   border-radius: 32px;
-  border: 1px solid #e6e6e6;
+  border: 1.5px solid #e6e6e6;
   font-size: 14px;
   outline: none;
   transition: 0.2s ease;
@@ -1054,6 +1059,11 @@ font-size: 14px;
 
 .contact-form input:focus,
 .contact-form textarea:focus {
+  border-color: rgba(117, 183, 193, 0.426);
+}
+
+.contact-form input:hover,
+.contact-form textarea:hover {
   border-color: rgba(117, 183, 193, 0.426);
 }
 

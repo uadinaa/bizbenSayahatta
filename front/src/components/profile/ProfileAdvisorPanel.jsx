@@ -9,8 +9,8 @@ export default function ProfileAdvisorPanel({ user, advisorStatus, onOpenAdvisor
       <p className="profilePage__advisorText">
         {user?.role === "TRIPADVISOR"
           ? t("profile.advisorToolsActive")
-          : "Share your travel experience, help other users plan better trips, and unlock advisor tools on your account."}
-      </p>
+          : t("profile.shareYourTravelExperience")}
+      </p> 
 
       {user?.role !== "TRIPADVISOR" ? (
         <button
