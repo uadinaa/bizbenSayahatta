@@ -318,7 +318,11 @@ class AdminCommentDeleteAPIView(APIView):
             "content.delete_comment",
             target_type="comment",
             target_id=comment.id,
-            metadata={"place_id": comment.place_id, "user_id": comment.user_id},
+            metadata={
+                "place_id": comment.place_id,
+                "trip_id": comment.trip_id,
+                "user_id": comment.user_id,
+            },
         )
         return Response({"detail": "Comment deleted."}, status=status.HTTP_200_OK)
 

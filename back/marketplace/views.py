@@ -595,7 +595,7 @@ class PlaceCommentListCreateView(ListCreateAPIView):
         return qs
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user, place=self.place)
+        serializer.save(user=self.request.user, place=self.place, trip=None)
 
 
 class PlaceCommentLikeView(APIView):
@@ -644,6 +644,119 @@ class PlaceCommentLikeView(APIView):
 
     def delete(self, request, place_id, comment_id):
         comment = self._get_comment(place_id, comment_id)
+        if not comment:
+            return Response({"detail": "Comment not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        with transaction.atomic():
+            deleted, _ = CommentLike.objects.filter(
+                user=request.user,
+                comment=comment,
+            ).delete()
+            if deleted:
+                Comment.objects.filter(pk=comment.pk).update(
+                    likes_count=Greatest(F("likes_count") - 1, Value(0))
+                )
+
+        comment.refresh_from_db(fields=["likes_count"])
+        return Response(
+            {"liked": False, "likes_count": comment.likes_count},
+            status=status.HTTP_200_OK,
+        )
+
+
+def _public_trip_queryset():
+    return Trip.objects.filter(
+        status=Trip.STATUS_APPROVED,
+        visibility=Trip.VISIBILITY_PUBLIC,
+    )
+
+
+class TripCommentListCreateView(ListCreateAPIView):
+    """
+    GET /api/marketplace/public/trips/{trip_id}/comments — paginated.
+    POST — create (authenticated).
+    """
+
+    serializer_class = CommentSerializer
+    pagination_class = PlaceCommentPagination
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAuthenticated(), IsActiveAndNotBlocked()]
+        return []
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        self.trip = get_object_or_404(_public_trip_queryset(), id=kwargs["trip_id"])
+
+    def get_queryset(self):
+        qs = (
+            Comment.objects.filter(trip=self.trip, is_deleted=False)
+            .select_related("user")
+            .order_by("-likes_count", "-created_at")
+        )
+        user = self.request.user
+        if user.is_authenticated:
+            qs = qs.annotate(
+                liked_by_me=Exists(
+                    CommentLike.objects.filter(
+                        comment_id=OuterRef("pk"),
+                        user_id=user.id,
+                    )
+                )
+            )
+        else:
+            qs = qs.annotate(liked_by_me=Value(False, output_field=BooleanField()))
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user, trip=self.trip, place=None)
+
+
+class TripCommentLikeView(APIView):
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
+
+    def _get_comment(self, trip_id, comment_id):
+        trip = _public_trip_queryset().filter(id=trip_id).first()
+        if not trip:
+            return None
+        return Comment.objects.filter(
+            id=comment_id,
+            trip_id=trip_id,
+            is_deleted=False,
+        ).first()
+
+    def post(self, request, trip_id, comment_id):
+        comment = self._get_comment(trip_id, comment_id)
+        if not comment:
+            return Response({"detail": "Comment not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if CommentLike.objects.filter(user=request.user, comment=comment).exists():
+            comment.refresh_from_db(fields=["likes_count"])
+            return Response(
+                {"liked": True, "likes_count": comment.likes_count},
+                status=status.HTTP_200_OK,
+            )
+
+        try:
+            with transaction.atomic():
+                CommentLike.objects.create(user=request.user, comment=comment)
+                Comment.objects.filter(pk=comment.pk).update(likes_count=F("likes_count") + 1)
+        except IntegrityError:
+            comment.refresh_from_db(fields=["likes_count"])
+            return Response(
+                {"liked": True, "likes_count": comment.likes_count},
+                status=status.HTTP_200_OK,
+            )
+
+        comment.refresh_from_db(fields=["likes_count"])
+        return Response(
+            {"liked": True, "likes_count": comment.likes_count},
+            status=status.HTTP_201_CREATED,
+        )
+
+    def delete(self, request, trip_id, comment_id):
+        comment = self._get_comment(trip_id, comment_id)
         if not comment:
             return Response({"detail": "Comment not found."}, status=status.HTTP_404_NOT_FOUND)
 

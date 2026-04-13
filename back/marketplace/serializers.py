@@ -239,7 +239,8 @@ class TripMediaSerializer(serializers.ModelSerializer):
             return ""
 class CommentSerializer(serializers.ModelSerializer):
     user_id = serializers.IntegerField(read_only=True)
-    place_id = serializers.IntegerField(read_only=True)
+    place_id = serializers.IntegerField(read_only=True, allow_null=True)
+    trip_id = serializers.IntegerField(read_only=True, allow_null=True)
     username = serializers.CharField(source="user.username", read_only=True)
     is_trip_advisor = serializers.SerializerMethodField()
     likes_count = serializers.IntegerField(read_only=True)
@@ -252,6 +253,7 @@ class CommentSerializer(serializers.ModelSerializer):
             "user_id",
             "username",
             "place_id",
+            "trip_id",
             "comment_text",
             "is_trip_advisor",
             "likes_count",
@@ -264,6 +266,7 @@ class CommentSerializer(serializers.ModelSerializer):
             "user_id",
             "username",
             "place_id",
+            "trip_id",
             "is_trip_advisor",
             "likes_count",
             "liked_by_me",

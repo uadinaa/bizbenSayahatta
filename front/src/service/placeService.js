@@ -2,9 +2,13 @@ import api from "../api/axios";
 import { fetchInspirationPlaces, toggleMustVisit } from "../api/places";
 import {
   createPlaceComment,
+  createTripComment,
   fetchPlaceComments,
+  fetchTripComments,
   likePlaceComment,
+  likeTripComment,
   unlikePlaceComment,
+  unlikeTripComment,
 } from "../api/comments";
 import { filterByDate, filterByPrice } from "../filters/placeFilters";
 import { computeDurationDays, toList } from "../utils/placeUtils";
@@ -108,6 +112,58 @@ export async function loadMoreComments({
   }
 }
 
+export async function loadTripComments({
+  tripId,
+  setLoadingComments,
+  setComments,
+  setCommentsMeta,
+}) {
+  try {
+    setLoadingComments(true);
+    setComments([]);
+    if (setCommentsMeta) {
+      setCommentsMeta({ count: 0, hasMore: false });
+    }
+    const { results, count, next } = await fetchTripComments(tripId, {
+      page: 1,
+    });
+    setComments(results);
+    if (setCommentsMeta) {
+      setCommentsMeta({ count, hasMore: Boolean(next) });
+    }
+  } catch (err) {
+    console.error("Failed to load trip comments", err);
+  } finally {
+    setLoadingComments(false);
+  }
+}
+
+export async function loadMoreTripComments({
+  tripId,
+  page,
+  setLoadingMoreComments,
+  setComments,
+  setCommentsMeta,
+  onSuccess,
+}) {
+  if (!page || page < 2) return;
+  try {
+    setLoadingMoreComments(true);
+    const { results, count, next } = await fetchTripComments(tripId, {
+      page,
+    });
+    setComments((prev) => [...prev, ...results]);
+    if (setCommentsMeta) {
+      setCommentsMeta({ count, hasMore: Boolean(next) });
+    }
+    onSuccess?.();
+  } catch (err) {
+    console.error("Failed to load more trip comments", err);
+  } finally {
+    setLoadingMoreComments(false);
+  }
+}
+
 export async function handleAddComment({
   placeId,
   newComment,
@@ -157,6 +213,71 @@ export async function handleToggleCommentLike({
     const data = liked
       ? await unlikePlaceComment(placeId, commentId)
       : await likePlaceComment(placeId, commentId);
+    setComments((prev) =>
+      prev.map((c) =>
+        c.id === commentId
+          ? {
+              ...c,
+              likes_count: data.likes_count,
+              liked_by_me: data.liked,
+            }
+          : c
+      )
+    );
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+export async function handleAddTripComment({
+  tripId,
+  newComment,
+  isAuthed,
+  navigate,
+  setComments,
+  setNewComment,
+  setLoadingComments,
+  setCommentsMeta,
+}) {
+  if (!newComment.trim()) return;
+
+  if (!isAuthed) {
+    navigate("/login");
+    return;
+  }
+
+  try {
+    await createTripComment(tripId, newComment);
+    setNewComment("");
+    await loadTripComments({
+      tripId,
+      setLoadingComments,
+      setComments,
+      setCommentsMeta,
+    });
+  } catch (err) {
+    console.error(err);
+    alert("Failed to post comment. Please try again.");
+  }
+}
+
+export async function handleToggleTripCommentLike({
+  tripId,
+  commentId,
+  liked,
+  isAuthed,
+  navigate,
+  setComments,
+}) {
+  if (!isAuthed) {
+    navigate("/login");
+    return;
+  }
+
+  try {
+    const data = liked
+      ? await unlikeTripComment(tripId, commentId)
+      : await likeTripComment(tripId, commentId);
     setComments((prev) =>
       prev.map((c) =>
         c.id === commentId

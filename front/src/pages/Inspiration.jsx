@@ -12,14 +12,18 @@ import { fetchProfile } from "../slices/authSlice";
 import {
   closeTripModal,
   handleAddComment,
+  handleAddTripComment,
   handleCreateTrip,
   handleToggleCommentLike,
+  handleToggleTripCommentLike,
   handleToggleMustVisit,
   loadComments,
   loadMoreComments,
+  loadMoreTripComments,
   loadPlaces,
   loadPublicTrips,
   loadTripCategories,
+  loadTripComments,
   openTripModal,
 } from "../service/placeService";
 import { toggleMustVisit } from "../api/places";
@@ -88,14 +92,13 @@ const Inspiration = () => {
   // Logic to close modals on ESC
   useEffect(() => {
     const handleEsc = (e) => {
-      if (e.key === "Escape") {
-        closeManualTripModal();
-        closePlaceModal();
-      }
+      if (e.key !== "Escape") return;
+      if (isManualTripModalOpen) closeManualTripModal();
+      if (isModalOpen) closePlaceModal();
     };
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
-  }, []);
+  }, [isManualTripModalOpen, isModalOpen]);
 
   useEffect(() => {
     loadPlaces({
@@ -144,6 +147,7 @@ const Inspiration = () => {
     setSelectedPlace(place);
     setIsModalOpen(true);
     setCommentsPage(1);
+    setNewComment("");
     loadComments({
       placeId: place.id,
       setLoadingComments,
@@ -160,6 +164,14 @@ const Inspiration = () => {
   const openManualTripModal = (trip) => {
     setSelectedTrip(trip);
     setIsManualTripModalOpen(true);
+    setCommentsPage(1);
+    setNewComment("");
+    loadTripComments({
+      tripId: trip.id,
+      setLoadingComments,
+      setComments,
+      setCommentsMeta,
+    });
   };
 
   const closeManualTripModal = () => {
@@ -420,6 +432,48 @@ const Inspiration = () => {
           onToggleWishlist={() => {
             console.log("toggle wishlist", selectedTrip.id);
           }}
+          isAuthed={isAuthed}
+          navigate={navigate}
+          comments={comments}
+          commentsTotalCount={commentsMeta.count}
+          commentsHasMore={commentsMeta.hasMore}
+          newComment={newComment}
+          loadingComments={loadingComments}
+          loadingMoreComments={loadingMoreComments}
+          onCommentChange={setNewComment}
+          onAddComment={() => {
+            setCommentsPage(1);
+            handleAddTripComment({
+              tripId: selectedTrip.id,
+              newComment,
+              isAuthed,
+              navigate,
+              setComments,
+              setNewComment,
+              setLoadingComments,
+              setCommentsMeta,
+            });
+          }}
+          onLoadMoreComments={() =>
+            loadMoreTripComments({
+              tripId: selectedTrip.id,
+              page: commentsPage + 1,
+              setLoadingMoreComments,
+              setComments,
+              setCommentsMeta,
+              onSuccess: () => setCommentsPage((p) => p + 1),
+            })
+          }
+          onToggleCommentLike={(comment) =>
+            handleToggleTripCommentLike({
+              tripId: selectedTrip.id,
+              commentId: comment.id,
+              liked: Boolean(comment.liked_by_me),
+              isAuthed,
+              navigate,
+              setComments,
+            })
+          }
         />
       ) : null}
 
