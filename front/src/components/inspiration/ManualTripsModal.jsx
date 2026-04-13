@@ -2,12 +2,25 @@ import { useTranslation } from "react-i18next";
 import emptyHeart from "../../assets/fHeart.svg";
 import redHeart from "../../assets/filledredHeart.svg";
 import closeIcon from "../../assets/X.svg";
+import InspirationCommentsPanel from "./InspirationCommentsPanel";
 
 export default function ManualTripsModal({
   styles,
   trip,
   onClose,
   onToggleWishlist,
+  isAuthed,
+  navigate,
+  comments = [],
+  commentsTotalCount = 0,
+  commentsHasMore = false,
+  newComment = "",
+  loadingComments = false,
+  loadingMoreComments = false,
+  onCommentChange,
+  onAddComment,
+  onLoadMoreComments,
+  onToggleCommentLike,
 }) {
   const { t } = useTranslation();
 
@@ -17,14 +30,14 @@ export default function ManualTripsModal({
   const getDescription = () => {
     const data = trip.itinerary_json;
     if (!data) return "";
-    
+
     // Если бэк прислал уже объект
-    if (typeof data === 'object' && !Array.isArray(data)) {
+    if (typeof data === "object" && !Array.isArray(data)) {
       return data.notes || "";
     }
-    
+
     // Если пришла строка, парсим её
-    if (typeof data === 'string') {
+    if (typeof data === "string") {
       try {
         const parsed = JSON.parse(data);
         return parsed.notes || "";
@@ -44,15 +57,15 @@ export default function ManualTripsModal({
 
     const startDate = new Date(dates[0]);
     const endDate = new Date(startDate);
-    
+
     if (!isNaN(duration)) {
       // Прибавляем количество дней (duration - 1, так как первый день включен)
       endDate.setDate(startDate.getDate() + (duration - 1));
     }
 
-    const options = { day: '2-digit', month: '2-digit', year: '2-digit' };
-    const startStr = startDate.toLocaleDateString('ru-RU', options);
-    const endStr = endDate.toLocaleDateString('ru-RU', options);
+    const options = { day: "2-digit", month: "2-digit", year: "2-digit" };
+    const startStr = startDate.toLocaleDateString("ru-RU", options);
+    const endStr = endDate.toLocaleDateString("ru-RU", options);
 
     return `${startStr} — ${endStr}`;
   };
@@ -63,17 +76,12 @@ export default function ManualTripsModal({
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        
         {/* 📸 Блок с фото */}
         <div className={styles.photoWrapper}>
           {tripPhoto ? (
-            <img 
-              src={tripPhoto} 
-              alt={trip.title} 
-              className={styles.modalPhoto} 
-            />
+            <img src={tripPhoto} alt={trip.title} className={styles.modalPhoto} />
           ) : (
-            <div className={styles.tripPhotoPlaceholder} style={{ height: '250px', background: '#eee' }} />
+            <div className={styles.tripPhotoPlaceholder} style={{ height: "250px", background: "#eee" }} />
           )}
 
           <div className={styles.iconGroup}>
@@ -83,12 +91,7 @@ export default function ManualTripsModal({
               className={styles.iconBtn}
               onClick={onToggleWishlist}
             />
-            <img
-              src={closeIcon}
-              alt="close"
-              className={styles.iconBtnClose}
-              onClick={onClose}
-            />
+            <img src={closeIcon} alt="close" className={styles.iconBtnClose} onClick={onClose} />
           </div>
         </div>
 
@@ -103,29 +106,41 @@ export default function ManualTripsModal({
             <p>
               <strong>{t("inspiration.trip.cart.place")}</strong> {trip.destination || "-"}
             </p>
-            
-            {/* 📅 Диапазон дат */}
+
             <p>
               <strong>{t("inspiration.trip.cart.dates") || "Dates"}</strong> {renderDateRange()}
             </p>
-            
+
             <p>
-              <strong>{t("inspiration.trip.cart.budget")}</strong> {trip.price ? `$${trip.price}` : t("inspiration.card.contact")}
+              <strong>{t("inspiration.trip.cart.budget")}</strong>{" "}
+              {trip.price ? `$${trip.price}` : t("inspiration.card.contact")}
             </p>
           </div>
 
-          {/* 📝 Описание (из itinerary_json.notes) */}
           {descriptionText && (
-            <div className={styles.descriptionSection} style={{ marginTop: '20px' }}>
-              <h4 style={{ marginBottom: '8px' }}>{t("inspiration.trip.cart.description") || "Description"}</h4>
-              <p style={{ whiteSpace: 'pre-line', color: '#444', lineHeight: '1.5' }}>
-                {String(descriptionText)}
-              </p>
+            <div className={styles.descriptionSection} style={{ marginTop: "20px" }}>
+              <h4 style={{ marginBottom: "8px" }}>{t("inspiration.trip.cart.description") || "Description"}</h4>
+              <p style={{ whiteSpace: "pre-line", color: "#444", lineHeight: "1.5" }}>{String(descriptionText)}</p>
             </div>
           )}
+
+          <InspirationCommentsPanel
+            styles={styles}
+            isAuthed={isAuthed}
+            navigate={navigate}
+            comments={comments}
+            commentsTotalCount={commentsTotalCount}
+            commentsHasMore={commentsHasMore}
+            newComment={newComment}
+            loadingComments={loadingComments}
+            loadingMoreComments={loadingMoreComments}
+            onCommentChange={onCommentChange}
+            onAddComment={onAddComment}
+            onLoadMoreComments={onLoadMoreComments}
+            onToggleCommentLike={onToggleCommentLike}
+          />
         </div>
 
-        {/* Кнопка закрытия */}
         <button className={styles.modalClose} onClick={onClose}>
           {t("inspiration.trip.cart.close")}
         </button>

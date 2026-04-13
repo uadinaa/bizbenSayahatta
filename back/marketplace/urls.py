@@ -6,6 +6,16 @@ from . import views
 urlpatterns = [
     path("categories/", views.AdvisorCategoryListView.as_view(), name="advisor-category-list"),
     path("public/trips/", views.PublicTripListView.as_view(), name="public-trip-list"),
+    path(
+        "public/trips/<int:trip_id>/comments/<int:comment_id>/like/",
+        views.TripCommentLikeView.as_view(),
+        name="public-trip-comment-like",
+    ),
+    path(
+        "public/trips/<int:trip_id>/comments/",
+        views.TripCommentListCreateView.as_view(),
+        name="public-trip-comments",
+    ),
     path("leaderboard/", views.TripAdvisorLeaderboardView.as_view(), name="advisor-leaderboard"),
 
     path("advisor/apply/", views.TripAdvisorApplyView.as_view(), name="advisor-apply"),
