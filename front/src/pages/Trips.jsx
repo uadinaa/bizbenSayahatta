@@ -134,7 +134,11 @@ export default function TripPage() {
             <article className={s.card} key={trip.id}>
               <div className={s.photoWrapper}>
                 {trip.photoUrl ? (
-                  <img className={s.photo} src={trip.photoUrl} alt={trip.title} />
+                  <img className={s.photo} src={trip.photoUrl || "/default.jpg"} alt={trip.title}
+                    onError={(e) => {
+                      e.currentTarget.src = "/default.jpg";
+                    }}
+                  />
                 ) : (
                   <div className={s.photoPlaceholder} />
                 )}

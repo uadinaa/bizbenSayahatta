@@ -9,7 +9,7 @@ export default function DeleteChatModal({ threadTitle, onClose, onConfirm, delet
       <div className="modal planner-modal" onClick={(event) => event.stopPropagation()}>
         <div className="modal-header">
           <h3>{t("chat.deleteThisChatTitle")}</h3>
-          <button type="button" className="close-btn planner-close-btn" onClick={onClose}>
+          <button type="button" className="close-btn" onClick={onClose}>
             ×
           </button>
         </div>

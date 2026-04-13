@@ -406,10 +406,14 @@
 }
 
 /* ADD TRIP */
-
+.modal-actions .save-btn {
+  background: #9333ea !important;
+  color: white !important;
+}
 .modal-actions .save-btn:hover {
   background: #9333ea !important;
   color: white !important;
+  box-shadow: 0 0px 20px rgba(147, 51, 234, 0.8);
 }
 
 .remove-avatar {
