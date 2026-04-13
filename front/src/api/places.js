@@ -99,3 +99,5 @@ export const markPlaceAsVisited = async (placeId) => {
   );
   return response.data;
 };
+
+

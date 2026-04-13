@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
-
-export default function PublicTripsSection({ styles, loadingTrips, publicTrips }) {
+import styles from "../../styles/PublicTripsSection.module.css";
+export default function PublicTripsSection({loadingTrips, publicTrips }) {
 
   const { t } = useTranslation(); 
   
@@ -20,11 +20,13 @@ export default function PublicTripsSection({ styles, loadingTrips, publicTrips }
         <div className={styles.tripGrid}>
           {publicTrips.map((trip) => (
             <div key={trip.id} className={styles.tripCard}>
+              
               {trip.media_urls?.[0] ? (
                 <img className={styles.tripPhoto} src={trip.media_urls[0]} alt={trip.title} loading="lazy" />
               ) : (
                 <div className={styles.tripPhotoPlaceholder} />
               )}
+              
               <div className={styles.tripMeta}>
                 <span className={styles.tripBadge}>{t("inspiration.card.tripAdvisor")}</span>
                 <span className={styles.tripCategory}>{trip.category?.name || t("inspiration.card.trip")}</span>

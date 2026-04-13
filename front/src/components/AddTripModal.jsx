@@ -148,8 +148,13 @@ export default function AddTripModal({
 
         <form onSubmit={handleAddTrip}>
           <div className="modal-body">
+            <label>
+                <span>{t("Image")}</span>
             <input type="file" accept="image/*" onChange={handleTripFileUpload} />
+            </label>
 
+            <label>
+                <span>{t("advisorTrips.tripName")}</span>
             <input
               type="text"
               name="title"
@@ -158,6 +163,7 @@ export default function AddTripModal({
               onChange={handleChange}
               required
             />
+            </label>
 
               <label>
                 <span>{t("advisorTrips.category")}</span>
@@ -175,7 +181,9 @@ export default function AddTripModal({
                   ))}
                 </select>
               </label>
-
+            
+            <label>
+                <span>{t("advisorTrips.place")}</span>
             <input
               type="text"
               name="place"
@@ -184,7 +192,10 @@ export default function AddTripModal({
               onChange={handleChange}
               required
             />
-
+            </label>
+            
+            <label>
+                <span>{t("Date")}</span>
             <div className="date-row">
               <input
                 type="date"
@@ -199,7 +210,10 @@ export default function AddTripModal({
                 onChange={handleChange}
               />
             </div>
-
+            </label>
+            
+            <label>
+                <span>{t("advisorTrips.budget")}</span>
             <input
               type="number"
               name="budget"
@@ -207,7 +221,10 @@ export default function AddTripModal({
               value={newTrip.budget}
               onChange={handleChange}
             />
-
+            </label>
+            
+            <label>
+                <span>{t("advisorTrips.additionalInformation")}</span>
             <textarea
               name="comment"
               placeholder={t("advisorTrips.additionalInformation")}
@@ -215,6 +232,7 @@ export default function AddTripModal({
               value={newTrip.comment}
               onChange={handleChange}
             />
+            </label>
           </div>
 
           {submitError ? <div className="trip-form-error">{submitError}</div> : null}

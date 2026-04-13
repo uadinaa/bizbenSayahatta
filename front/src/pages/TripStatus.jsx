@@ -101,23 +101,31 @@ export default function TripStatus() {
           <div>{t("tripStatus.noTripsInStatus")}</div>
         )}
         {!loading && !error && filteredTrips.map((trip) => (
-          <div key={trip.id} className="trip-card">
-            <div className="trip-image-container">
-              <img
-                src={trip.media_urls?.[0] || "https://source.unsplash.com/600x400/?travel"}
-                alt={trip.title}
-                className="trip-image"
-              />
-            </div>
+          <div key={trip.id} className="trip-card-modern">
+          <div className="trip-image-wrapper">
+            <img
+              src={trip.media_urls?.[0] || "https://source.unsplash.com/600x400/?travel"}
+              alt={trip.title}
+              className="trip-image-modern"
+            />
 
-            <div className="trip-content">
-              <h2 className="trip-name">{trip.title}</h2>
-              <p className="trip-location">{trip.destination}</p>
-              <p className="trip-date">
-                {trip.available_dates?.[0] || t("tripStatus.dateNotSet")}
-              </p>
+            <div className="trip-overlay">
+              <h2 className="trip-title-modern">{trip.title}</h2>
             </div>
           </div>
+
+          <div className="trip-body">
+            <div className="trip-info-row">
+              <span className="trip-location-modern"> {trip.destination}</span>
+            </div>
+
+            <div className="trip-footer">
+              <span className="trip-date-modern">
+                {trip.available_dates?.[0] || t("tripStatus.dateNotSet")}
+              </span>
+            </div>
+          </div>
+        </div>
         ))}
       </div>
 

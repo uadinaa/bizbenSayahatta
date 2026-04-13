@@ -253,7 +253,7 @@ const Inspiration = () => {
         }}
       />
 
-      <PublicTripsSection styles={s} loadingTrips={loadingTrips} publicTrips={publicTrips} />
+      <PublicTripsSection styles={s} loadingTrips={loadingTrips} publicTrips={publicTrips}  setPublicTrips={setPublicTrips} />
 
       <div className={s.grid}>
         {/* Render based on sourceType filter */}
