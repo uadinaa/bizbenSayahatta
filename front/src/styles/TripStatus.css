@@ -134,7 +134,7 @@
    CARD
 ================================= */
 
-.trip-card {
+/* .trip-card {
   background: white;
   border-radius: 22px;
   overflow: hidden;
@@ -189,11 +189,60 @@
 .trip-location {
   font-size: 14px;
   color: #666;
+} */
+
+.trip-card-modern {
+  border-radius: 18px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+  transition: transform 0.2s ease;
+  cursor: pointer;
 }
 
-/* ===============================
-   MODAL
-================================= */
+.trip-card-modern:hover {
+  transform: translateY(-5px);
+}
+
+.trip-image-wrapper {
+  position: relative;
+  height: 200px;
+}
+
+.trip-image-modern {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.trip-overlay {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  padding: 10px;
+  background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
+  color: white;
+}
+
+.trip-title-modern {
+  font-size: 18px;
+  margin: 0;
+}
+
+.trip-body {
+  padding: 12px;
+}
+
+.trip-info-row {
+  font-size: 14px;
+  color: #555;
+}
+
+.trip-footer {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #888;
+}
 
 .modal-overlay {
   position: fixed;

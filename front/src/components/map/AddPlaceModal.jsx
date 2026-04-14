@@ -1,5 +1,10 @@
 import { MONTH_OPTIONS } from "../../constants/mapConstants";
 
+const capitalizeFirstLetter = (str) => {
+  if (!str) return "";
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+};
+
 export default function AddPlaceModal({ newPlace, yearOptions, onInputChange, onAdd, onClose, title = "Add New Place",
   submitLabel = "Add", }) {
   return (
@@ -7,10 +12,37 @@ export default function AddPlaceModal({ newPlace, yearOptions, onInputChange, on
       <div className="modal">
         <h3>{title}</h3>
 
-        <input type="text" name="city" placeholder="City"
-          value={newPlace.city} onChange={onInputChange} />
-        <input type="text" name="country" placeholder="Country"
-          value={newPlace.country} onChange={onInputChange} />
+        <input
+          type="text"
+          name="city"
+          placeholder="City"
+          value={newPlace.city}
+          onChange={(e) => {
+            const { name, value } = e.target;
+            const formattedValue =
+              name === "city" || name === "country"
+                ? capitalizeFirstLetter(value)
+                : value;
+
+            onInputChange({ target: { name, value: formattedValue } });
+          }}
+        />
+
+        <input
+          type="text"
+          name="country"
+          placeholder="Country"
+          value={newPlace.country}
+          onChange={(e) => {
+            const { name, value } = e.target;
+            const formattedValue =
+              name === "city" || name === "country"
+                ? capitalizeFirstLetter(value)
+                : value;
+
+            onInputChange({ target: { name, value: formattedValue } });
+          }}
+        />
 
         <div className="month-year-row">
           <select name="month" value={newPlace.month} onChange={onInputChange}>

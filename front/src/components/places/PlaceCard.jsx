@@ -2,6 +2,8 @@ import { formatCategory, formatLocation, priceTierLabel } from "../../utils/plac
 import emptyHeart from "../../assets/emptyHeart.svg";
 import redHeart from "../../assets/redHeart.svg";
 import styles from "../../styles/PlaceCard.module.css";
+import defaultStyles from "../../styles/PlaceCard.module.css";
+import { useTranslation } from "react-i18next";
 
 export default function PlaceCard({
   place,
@@ -9,10 +11,31 @@ export default function PlaceCard({
   onOpen,
   onToggleFavorite,
   isFavorited: isFavoritedProp,
+  classes,         // Optional CSS classes override
+  // New optional props (all nullable — no errors if missing)
+  source,          // "google" | "tripadvisor"
+  duration,        // e.g. "3 hours"
+  bookingUrl,      // direct booking link
+  numReviews,      // number of reviews
+  award,           // e.g. "Travelers' Choice 2024"
+  webUrl,          // TripAdvisor page link
 }) {
   const isFavorited = isFavoritedProp !== undefined ? isFavoritedProp : place?.is_must_visit;
   const isWishlist = variant === "wishlist";
   const location = isWishlist ? `${place.city || ""}${place.city && place.country ? ", " : ""}${place.country || ""}` : formatLocation(place);
+  const { t } = useTranslation();
+
+  // Support both direct props and place object fields (for TripAdvisor data)
+  const displayDuration = duration || place?.duration;
+  const displayBookingUrl = bookingUrl || place?.booking_url;
+  const displayNumReviews = numReviews || place?.num_reviews;
+  const displayAward = award || place?.award;
+  const displayWebUrl = webUrl || place?.web_url;
+  const displaySource = source || place?.source;
+  const isTripAdvisor = displaySource === "tripadvisor";
+
+  // Use provided classes or default styles
+  const s = classes || defaultStyles;
 
   return (
     <div
@@ -32,7 +55,7 @@ export default function PlaceCard({
             event.stopPropagation();
             onToggleFavorite?.();
           }}
-          aria-label={isFavorited ? "Remove from wishlist" : "Add to wishlist"}
+          aria-label={isFavorited ? t("inspiration.card.removeFromWishlist") : t("inspiration.card.addToWishlist")}
         >
           <img
             src={isFavorited ? redHeart : emptyHeart}
@@ -45,14 +68,14 @@ export default function PlaceCard({
 
         {isWishlist ? (
           <div className={styles.tags}>
-            <span className={styles.tag}>{formatCategory(place.category)} uu</span>
+            <span className={styles.tag}>{formatCategory(place.category)}</span>
           </div>
         ) : null}
       </div>
 
       <div className={styles.content}>
         <div className={styles.cardHeader}>
-          {!isWishlist ? <span className={styles.category}>{formatCategory(place.category)}uu</span> : <span />}
+          {!isWishlist ? <span className={styles.category}>{formatCategory(place.category)}</span> : <span />}
           <div className={styles.metaRow}>
             {place.rating ? <span className={styles.rating}>★ {place.rating}</span> : null}
             <span className={styles.priceTag}>{priceTierLabel(place.price_level)}</span>
@@ -70,8 +93,8 @@ export default function PlaceCard({
               event.stopPropagation();
               onOpen?.();
             }}
-          >
-            View Details →
+          > 
+          {t("inspiration.card.viewDetails")} →
           </button>
         ) : null}
       </div>

@@ -1,11 +1,12 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 const baseCards = [
   {
     title: "Kyoto",
     country: "Japan",
     trips: "2.3K",
-    categories: ["Culture", "Temples", "Cherry Blossom"],
+    categoryKeys: ["culture", "temples", "cherryBlossom"],
     image:
       "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1200&q=80",
   },
@@ -13,7 +14,7 @@ const baseCards = [
     title: "Iceland",
     country: "Iceland",
     trips: "1.8K",
-    categories: ["Nature", "Geysers", "Waterfalls"],
+    categoryKeys: ["nature", "geysers", "waterfalls"],
     image:
       "https://images.unsplash.com/photo-1531366936337-7c912a4589a7?auto=format&fit=crop&w=1200&q=80",
   },
@@ -21,7 +22,7 @@ const baseCards = [
     title: "Cinque Terre",
     country: "Italy",
     trips: "3.1K",
-    categories: ["Sea", "Food", "Romance"],
+    categoryKeys: ["sea", "food", "romance"],
     image:
       "https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=1200&q=80",
   },
@@ -29,7 +30,7 @@ const baseCards = [
     title: "Bali",
     country: "Indonesia",
     trips: "2.6K",
-    categories: ["Beach", "Surf", "Wellness"],
+    categoryKeys: ["beach", "surf", "wellness"],
     image:
       "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=1200&q=80",
   },
@@ -37,7 +38,7 @@ const baseCards = [
     title: "Marrakech",
     country: "Morocco",
     trips: "1.4K",
-    categories: ["Markets", "Architecture", "Desert"],
+    categoryKeys: ["markets", "architecture", "desert"],
     image:
       "https://images.unsplash.com/photo-1597212618440-806262de4f6b?auto=format&fit=crop&w=1200&q=80",
   },
@@ -45,70 +46,91 @@ const baseCards = [
     title: "Santorini",
     country: "Greece",
     trips: "2.9K",
-    categories: ["Sunset", "Sea", "Romance"],
+    categoryKeys: ["sunset", "sea", "romance"],
     image:
       "https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?auto=format&fit=crop&w=1200&q=80",
   },
 ];
 
 // 🔥 Дублируем для бесконечности
-const inspirationCards = [...baseCards, ...baseCards];
-
-const testimonials = [
+const testimonialsBase = [
   {
-    text: "Saved hours on planning. I was going to Japan with my family — the AI considered the interests of my kids, wife, and myself. We got the perfect balance of culture and entertainment.",
+    textKey: "david",
     name: "David Chen",
-    name: "David Chen",
-    role: "Entrepreneur",
+    roleKey: "entrepreneur",
     location: "Singapore",
-    trip: "Japan, 14 days",
+    tripKey: "japan14",
   },
   {
-    text: "Finally a trip that felt truly personal. I was traveling solo across Europe — the AI adapted every stop to my pace and interests.",
+    textKey: "sofia",
     name: "Sofia Martinez",
-    role: "Freelance Designer",
+    roleKey: "freelanceDesigner",
     location: "Spain",
-    trip: "Europe, 10 days",
+    tripKey: "europe10",
   },
   {
-    text: "Planning a honeymoon was stressful until we used this. It created a romantic, relaxed itinerary without us overthinking every detail.",
+    textKey: "ethanLily",
     name: "Ethan & Lily Carter",
-    role: "Newlyweds",
+    roleKey: "newlyweds",
     location: "USA",
-    trip: "Maldives, 7 days",
+    tripKey: "maldives7",
   },
   {
-    text: "I travel a lot for work, but this made my short stay actually enjoyable. It balanced meetings with hidden local gems I’d never find myself.",
+    textKey: "arjun",
     name: "Arjun Patel",
-    role: "Consultant",
+    roleKey: "consultant",
     location: "India",
-    trip: "Germany, 5 days",
+    tripKey: "germany5",
   },
   {
-    text: "As a student on a budget, I didn’t expect something this good. It optimized everything — cheap eats, transport, and must-see spots.",
+    textKey: "emily",
     name: "Emily Nguyen",
-    role: "Student",
+    roleKey: "student",
     location: "Vietnam",
-    trip: "South Korea, 8 days",
+    tripKey: "southKorea8",
   },
   {
-    text: "Traveling with friends can be chaotic, but this solved it. Everyone added preferences, and somehow the plan made all of us happy.",
+    textKey: "lucas",
     name: "Lucas Ribeiro",
-    role: "Photographer",
+    roleKey: "photographer",
     location: "Brazil",
-    trip: "Italy, 9 days",
+    tripKey: "italy9",
   },
   {
-    text: "I wanted something adventurous but safe — and it delivered. From hiking routes to local experiences, everything felt curated just for me.",
+    textKey: "amina",
     name: "Amina Hassan",
-    role: "Content Creator",
+    roleKey: "contentCreator",
     location: "UAE",
-    trip: "Morocco, 6 days",
+    tripKey: "morocco6",
   },
 ];
 
 export function useHomeInspirations() {
+  const { t } = useTranslation();
   const inspirationsRef = useRef(null);
+
+  const inspirationCards = useMemo(
+    () =>
+      [...baseCards, ...baseCards].map((card) => ({
+        ...card,
+        categories: card.categoryKeys.map((key) =>
+          t(`home.cardCategories.${key}`)
+        ),
+      })),
+    [t]
+  );
+
+  const testimonials = useMemo(
+    () =>
+      testimonialsBase.map((testimonial) => ({
+        text: t(`home.testimonials.text.${testimonial.textKey}`),
+        name: testimonial.name,
+        role: t(`home.testimonials.roles.${testimonial.roleKey}`),
+        location: testimonial.location,
+        trip: t(`home.testimonials.trips.${testimonial.tripKey}`),
+      })),
+    [t]
+  );
 
   const scrollInspirations = (direction) => {
     const track = inspirationsRef.current;

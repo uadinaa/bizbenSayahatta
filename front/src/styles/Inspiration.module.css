@@ -160,85 +160,6 @@
   margin-bottom: 12px;
 }
 
-.tripGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 22px;
-  margin-bottom: 32px;
-}
-
-.tripCard {
-  background: white;
-  border-radius: 18px;
-  overflow: hidden;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.06);
-  display: flex;
-  flex-direction: column;
-  padding-bottom: 14px;
-}
-
-.tripPhoto,
-.tripPhotoPlaceholder {
-  width: 100%;
-  height: 160px;
-}
-
-.tripPhoto {
-  object-fit: cover;
-}
-
-.tripPhotoPlaceholder {
-  background: linear-gradient(135deg, #f5f5f2, #e9e8e4);
-}
-
-.tripMeta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px 0;
-}
-
-.tripBadge {
-  background: #0c3b2e;
-  color: white;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 8px;
-  border-radius: 999px;
-}
-
-.tripCategory {
-  background: #eef2f6;
-  color: #344054;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 4px 8px;
-  border-radius: 999px;
-}
-
-.tripTitle {
-  padding: 8px 16px 0;
-  margin: 0;
-  font-size: 18px;
-  color: #222;
-}
-
-.tripDestination {
-  padding: 4px 16px 0;
-  margin: 0;
-  color: #777;
-  font-size: 14px;
-}
-
-.tripFooter {
-  display: flex;
-  justify-content: space-between;
-  padding: 12px 16px 0;
-  font-size: 13px;
-  color: #444;
-  font-weight: 600;
-}
-
 /* ===============================
    GRID
 ================================= */
@@ -454,7 +375,7 @@
 }
 
 .lightActionBtn {
-  padding: 12px 20px;
+  padding: 12px 70px;
   border-radius: 999px;
   border: 1px solid #e6e6e6;
   background: #f9f9f7;
@@ -639,12 +560,78 @@
   word-break: break-word;
 }
 
+.commentFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.commentLikeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #e0dfd9;
+  background: white;
+  font-size: 13px;
+  color: #4a4a48;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.commentLikeBtn:hover {
+  border-color: #c4c4be;
+  background: #fff8f8;
+}
+
+.commentLikeBtnActive {
+  border-color: #c42d2d;
+  color: #a82424;
+  background: #fff5f5;
+}
+
+.commentLikeIcon {
+  width: 18px;
+  height: 18px;
+  display: block;
+  flex-shrink: 0;
+  object-fit: contain;
+  pointer-events: none;
+}
+
 .commentDate {
   font-size: 11px;
   color: #999;
+  margin-left: auto;
+}
+
+.commentsLoadMore {
   display: block;
-  text-align: right;
-  margin-top: 4px;
+  width: 100%;
+  margin: 8px 0 12px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px dashed #d4d4d4;
+  background: #fafaf8;
+  font-size: 14px;
+  font-weight: 500;
+  color: #0c3b2e;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.commentsLoadMore:hover:not(:disabled) {
+  background: #f0f0ec;
+  border-color: #0c3b2e;
+}
+
+.commentsLoadMore:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* Форма добавления комментария */
@@ -770,4 +757,59 @@
 
 .addTripBtn:hover {
   background: #000;
+}
+
+.photoWrapper {
+  position: relative;
+}
+
+/* .modalPhoto {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 16px 16px 0 0;
+} */
+
+/* 🔥 группа */
+.iconGroup {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  gap: 10px;
+}
+
+/* 🔥 кнопки */
+.iconBtn {
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  background: rgb(255, 255, 255);
+  border-radius: 50%;
+  /* padding: 6px; */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.iconBtnClose{
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  background: rgb(255, 255, 255);
+  border-radius: 50%;
+  /* padding: 6px; */
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.iconBtnClose:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.iconBtn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.iconBtn:active {
+  transform: scale(1.25);
 }

@@ -10,7 +10,17 @@ export const getSharedMaps = async () => {
 };
 
 // Получить конкретную публичную карту пользователя
-export const getUserMap = async (userId) => {
-  const response = await api.get(`places/users/${userId}/map/`);
+export const getUserMap = async (userId, shareToken) => {
+  const params = shareToken ? { share_token: shareToken } : {};
+  const response = await api.get(`places/users/${userId}/map/`, { params });
   return response.data;
+};
+
+/**
+ * @returns {Promise<Array<{ lat: number, lng: number, name: string, country: string }>>}
+ */
+export const getPublicMapMarkers = async (userId, shareToken) => {
+  const params = shareToken ? { share_token: shareToken } : {};
+  const response = await api.get(`places/users/${userId}/map/markers/`, { params });
+  return Array.isArray(response.data) ? response.data : [];
 };

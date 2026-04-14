@@ -11,6 +11,7 @@ from .models import (
     TripMedia,
     TripVersion,
     Comment,
+    CommentLike,
     WishlistFolder,
     WishlistItem,
     UserRestriction,
@@ -238,9 +239,12 @@ class TripMediaSerializer(serializers.ModelSerializer):
             return ""
 class CommentSerializer(serializers.ModelSerializer):
     user_id = serializers.IntegerField(read_only=True)
-    place_id = serializers.IntegerField(read_only=True)
+    place_id = serializers.IntegerField(read_only=True, allow_null=True)
+    trip_id = serializers.IntegerField(read_only=True, allow_null=True)
     username = serializers.CharField(source="user.username", read_only=True)
     is_trip_advisor = serializers.SerializerMethodField()
+    likes_count = serializers.IntegerField(read_only=True)
+    liked_by_me = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
@@ -249,8 +253,11 @@ class CommentSerializer(serializers.ModelSerializer):
             "user_id",
             "username",
             "place_id",
+            "trip_id",
             "comment_text",
             "is_trip_advisor",
+            "likes_count",
+            "liked_by_me",
             "created_at",
             "updated_at",
         )
@@ -259,7 +266,10 @@ class CommentSerializer(serializers.ModelSerializer):
             "user_id",
             "username",
             "place_id",
+            "trip_id",
             "is_trip_advisor",
+            "likes_count",
+            "liked_by_me",
             "created_at",
             "updated_at",
         )
@@ -268,6 +278,15 @@ class CommentSerializer(serializers.ModelSerializer):
         from users.models import User as AppUser
 
         return getattr(obj.user, "role", None) == AppUser.Role.TRIPADVISOR
+
+    def get_liked_by_me(self, obj):
+        if getattr(obj, "liked_by_me", None) is not None:
+            return bool(obj.liked_by_me)
+        request = self.context.get("request")
+        user = getattr(request, "user", None) if request else None
+        if not user or not user.is_authenticated:
+            return False
+        return CommentLike.objects.filter(comment_id=obj.pk, user_id=user.id).exists()
 
     def validate_comment_text(self, value: str) -> str:
         if value is None:

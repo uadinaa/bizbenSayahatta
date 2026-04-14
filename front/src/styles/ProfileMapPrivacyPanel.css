@@ -1,0 +1,72 @@
+.profilePage__privacyPanel {
+  margin-top: 0;
+}
+
+.privacy-panel {
+  margin-top: -5px;
+  border: none;
+  background: none;
+  border-radius: 10px;
+  padding: 12px;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.privacy-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+/* Карта көрінуі */
+.privacy-header strong {
+  font-size: 24px;
+  color: #000000;
+}
+/* Басқа пайдаланушылар ортақ карталарда нені көретінін таңдаңыз. */
+.privacy-header span {
+  font-size: 14px;
+  color: #667085;
+}
+/* checkbox */
+.privacy-option {
+  display: flex;
+  align-items: center;
+  gap: 10px; 
+  font-size: 14px;
+  padding: 10px 10px;
+  border-radius: 10px;
+  border: 1.5px solid transparent;
+  background: transparent;
+  transition: background .2s ease, border-color .2s ease;
+}
+
+.privacy-option:hover {
+  background: transparent;
+  border-color: #75B7C1;
+}
+
+.privacy-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  accent-color: #75B7C1;
+}
+
+.privacy-option > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+/* Карта нүктелерімді бөлісу */
+.privacy-option-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #555555;
+}
+/* Саяхат картамдағы қалалар мен елдер. */
+.privacy-option-note {
+  font-size: 14px;
+  color: #667085;
+}

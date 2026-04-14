@@ -8,6 +8,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 24px;
 }
 
 .header-left {
@@ -18,7 +19,9 @@
 .header-nav {
   display: flex;
   align-items: center;
-  gap: 76px;
+  gap: 32px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 /* ===============================
@@ -72,24 +75,112 @@
   font-size: 14px;
   color: #6b7280;
   transition: opacity 0.2s ease;
-  background: none;
+  background-color: #fafafa;
   border: none;
-  padding: 0;
+  border-radius: 8px;
+  padding: 7px;
   cursor: pointer;
 }
 
 .header-link:hover {
   opacity: 0.8;
+  background-color: #FFDF00;
+  color: #000000;
 }
 
-.header-link.active {
-  color: #5a5450;
+.header-link:active {
+  color: #6b7280;
+  background-color: #FFDF00;
 }
 
 .profile-btn {
-  background: none;
+  background-color: #fafafa;
   border: none;
+  border-radius: 8px;
+  padding: 7px;
   cursor: pointer;
   font-size: 14px;
   color: #6b7280;
+}
+
+.profile-btn:hover {
+  opacity: 0.8;
+  background-color: #FFDF00;
+  color: #000000;
+}
+
+.profile-btn:active {
+  color: #6b7280;
+  background-color: #FFDF00;
+}
+
+.language-switcher {
+  position: relative;
+}
+
+.language-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: #fafaf9;
+  border-radius: 8px;
+  border: none;
+  padding: 7px 7px;
+  font-size: 14px;
+  color: #5a5450;
+  cursor: pointer;
+}
+
+.language-trigger:hover{
+  background: #FFDF00;
+  color: #000000;
+
+}
+
+.language-caret {
+  transition: transform 0.2s ease;
+}
+
+.language-caret.open {
+  transform: rotate(180deg);
+}
+
+.language-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: -2px;
+  min-width: 30px;
+  background: #fff;
+  border: 1px solid #e7e5e4;
+  border-radius: 14px;
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.12);
+  padding: 8px;
+  z-index: 20;
+}
+
+.language-option {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: #5a5450;
+  cursor: pointer;
+}
+
+.language-option:hover {
+  color: #000000;
+  background: #FFDF00;
+}
+
+@media (max-width: 960px) {
+  .header {
+    padding: 12px 20px;
+    align-items: flex-start;
+  }
+
+  .header-nav {
+    gap: 16px;
+  }
 }

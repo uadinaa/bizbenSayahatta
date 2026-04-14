@@ -102,13 +102,19 @@
   margin-left: 50px;
 }
 
+.profile-content--tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
 /* ===============================
    AVATAR
 ================================= */
 
 .avatar {
-  width: 120px;
-  height: 120px;
+  width: 200px;
+  height: 200px;
   background: #9ccbd3;
   border-radius: 50%;
   display: flex;
@@ -141,17 +147,17 @@
 }
 
 .email {
-  font-size: 16px;
+  font-size: 15px;
   color: #9a948f;
 }
 
-.username {
-  font-size: 26px;
+/* .username {
+  font-size: 24px;
   font-weight: 600;
-}
+} */
 
 .style {
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .style strong {
@@ -165,8 +171,9 @@
 .advisor-status {
   border-radius: 999px;
   padding: 4px 12px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
+  background-color: #b3b4b3;
 }
 
 .status-approved {
@@ -190,125 +197,9 @@
   color: #475467;
 }
 
-.advisor-cta {
-  width: fit-content;
-  margin-top: 2px;
-  border-radius: 20px;
-  border: 2px solid #5a5450;
-  background: #f3f2ee;
-  color: #5a5450;
-  padding: 7px 20px;
-  cursor: pointer;
-}
-
-.advisor-cta:disabled {
-  opacity: .6;
-  cursor: not-allowed;
-}
-
-.advisor-panel {
-  margin-top: 10px;
-  border: 1px solid #d0d5dd;
-  border-radius: 10px;
-  padding: 10px;
-  font-size: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-width: 420px;
-}
-
 /* ===============================
-   PRIVACY PANEL
+   TRAVELER BADGE
 ================================= */
-
-.privacy-panel {
-  margin-top: 10px;
-  border: 1px solid #d0d5dd;
-  border-radius: 10px;
-  padding: 12px;
-  max-width: 420px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  background: #fafaf9;
-}
-
-.privacy-header {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.privacy-header strong {
-  font-size: 16px;
-  color: #5a5450;
-}
-
-.privacy-header span {
-  font-size: 12px;
-  color: #667085;
-}
-
-.privacy-option {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  font-size: 14px;
-  padding: 7px 8px;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  background: transparent;
-  transition: background .2s ease, border-color .2s ease;
-}
-
-.privacy-option:hover {
-  background: #f9fafb;
-  border-color: #d0d5dd;
-}
-
-.privacy-option input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  margin-top: 2px;
-  accent-color: #5a5450;
-}
-
-.privacy-option > div {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.privacy-option-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #5a5450;
-}
-
-.privacy-option-note {
-  font-size: 12px;
-  color: #667085;
-}
-
-.level {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 1px 0;
-  color: #5a5450;
-  font-size: 17px;
-}
-
-.level button {
-  padding: 5px 20px;
-  border-radius: 20px;
-  border: none;
-  background: #f3f2ee;
-  cursor: pointer;
-  color: #5a5450;
-  margin-left: 100px;
-}
 
 .logout {
   display: block;
@@ -329,7 +220,6 @@
   cursor: pointer;
 }
 
-.level button,
 .logout {
   border: 2px solid #5a5450;
   background: #f3f2ee;
@@ -337,11 +227,11 @@
   cursor: pointer;
   color: #5a5450;
   transition: all .3s;
+  font-size: 15px;
 }
 
-.level button:hover,
 .logout:hover {
-  background: #5a5450;
+  background:  #75B7C1;
   color: #f3f2ee;
 }
 
@@ -505,25 +395,25 @@
   border-radius: 12px;
   cursor: pointer;
   font-weight: 500;
+  background: #efeff0 !important;
+  color: #111827 !important;
   transition: background 0.2s ease;
-}
-
-/* CANCEL */
-.cancel-btn {
-  background: #e5e7eb;
-  color: #111827;
 }
 
 .modal-actions .cancel-btn:hover {
   background: #9ca3af !important;
+  color: white !important;
 }
 
 /* ADD TRIP */
-
-
+.modal-actions .save-btn {
+  background: #9333ea !important;
+  color: white !important;
+}
 .modal-actions .save-btn:hover {
   background: #9333ea !important;
-  color: white;
+  color: white !important;
+  box-shadow: 0 0px 20px rgba(147, 51, 234, 0.8);
 }
 
 .remove-avatar {
@@ -538,9 +428,9 @@
   margin: 0 auto;
 }
 
-/* вариант как Cancel */
+
 .remove-avatar {
-  background: #e5e7eb;
+  background: #efeff0;
   color: #111827;
 }
 
@@ -560,6 +450,18 @@
     top: 20px;
   }
 
+  .profilePage__header {
+    flex-wrap: wrap;
+  }
+
+  .profilePage__title {
+    font-size: 28px;
+  }
+
+  .profilePage__panelCard {
+    padding: 18px;
+  }
+
   .logout {
     margin: 20px 0 0;
     width: fit-content;
@@ -573,9 +475,18 @@
   .advisor-modal {
     width: 92vw;
   }
+
 }
 
-/* advisor block */
+@media (max-width: 640px) {
+  .profilePage__tripHeader {
+    flex-direction: column;
+  }
+
+  .edit.edit--button {
+    margin-left: 0;
+  }
+}
 
 .advisor-block {
   margin-top: 12px;
@@ -706,3 +617,184 @@
   color: #667085;
   margin: 0;
 }
+
+/* profile tabs */
+
+.profilePage__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  position: relative;
+}
+
+.profilePage__headerMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.profilePage__eyebrow {
+  width: fit-content;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f3f2ee;
+  color: #5a5450;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.profilePage__title {
+  margin: 0;
+  color: #2f2a26;
+  font-size: 32px;
+  line-height: 1.1;
+}
+
+.profilePage__subtitle,
+.profilePage__joined {
+  margin: 0;
+  color: #7b746e;
+  font-size: 15px;
+}
+
+/* done with edit here */
+.edit.edit--button {
+  position: static;
+  margin-left: auto;
+  border: none;
+  border-radius: 999px;
+  background: #fff;
+  padding: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .3s;
+}
+
+.edit.edit--button:hover{
+  transform: scale(1.1);
+}
+
+.profilePage__tabBar {
+  margin-bottom: 0;
+}
+
+.profilePage__tabContent {
+  width: 100%;
+}
+/* done with edit here */
+.profilePage__panelCard {
+  border: 1px solid #d0d5dd;
+  border-radius: 20px;
+  border: none;
+  background: #fff;
+  padding: 24px;
+  box-shadow: 0 8px 20px rgba(16, 24, 40, 0.04);
+  margin-top: -30px;
+  /* for the panel card to be a little higher */
+}
+
+.profilePage__panelCard .info {
+  margin-left: 0;
+}
+
+.profilePage__panelCard .advisor-panel,
+.profilePage__panelCard .privacy-panel,
+.profilePage__panelCard .advisor-block,
+.profilePage__panelCard .advisor-tools {
+  max-width: 100%;
+}
+
+.profilePage__panelCard .level button,
+.profilePage__panelCard .logout {
+  margin-left: 0;
+}
+
+.profilePage__panelCard .logout {
+  margin-top: 24px;
+}
+
+.profilePage__bioTopRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 5px;
+  margin-top: -10px;
+}
+
+
+.profilePage__tripGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.profilePage__tripCard {
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 18px;
+  background: #fcfcfb;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profilePage__tripHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+/* done here */
+.profilePage__tripHeader h2 {
+  margin: 0;
+  color: #000000;
+}
+/* done here */
+.profilePage__tripHeader p {
+  margin: 4px 0 0;
+  color: #7b746e;
+  font-size: 16px;
+}
+
+.profilePage__tripStatus {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.profilePage__tripStatus--past {
+  background: #f3f2ee;
+  color: #5a5450;
+}
+
+.profilePage__tripStatus--active {
+  background: #e9f6ef;
+  color: #0c3b2e;
+}
+
+.profilePage__tripMeta,
+.profilePage__tripSummary {
+  margin: 0;
+  color: #5a5450;
+  font-size: 14px;
+}
+
+.profilePage__tripSummary {
+  color: #667085;
+  line-height: 1.5;
+}
+
+.profilePage__badgePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+
+

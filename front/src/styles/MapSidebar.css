@@ -1,0 +1,78 @@
+.place {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px;
+  border-radius: 12px;
+  transition: background 0.2s ease;
+}
+
+.place:hover {
+  background: #f5f5f5;
+}
+
+.place-actions {
+  display: flex;
+  gap: 8px;
+  opacity: 0;
+  transform: translateX(8px);
+  transition: all 0.2s ease;
+}
+
+.place:hover .place-actions {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.place-actions button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.place-actions button:hover {
+  background: #eaeaea;
+}
+
+.visited-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inline-add-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  margin-left: 150px;
+}
+
+.inline-add-btn:hover {
+  background: #eaeaea;
+}
+
+.visited-list {
+  padding-right: 8px;
+}
+
+/* Share map — same pill style as .shared-maps-btn (defined in Map.css) */
+.map-share-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.map-share-btn__icon {
+  flex-shrink: 0;
+  display: block;
+}
+
+.map-share-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

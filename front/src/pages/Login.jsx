@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
 import { loginUser } from "../slices/authSlice";
 import "../styles/Login.css";
 import { formatAuthError } from "../utils/formatAuthError";
@@ -8,6 +9,7 @@ import { formatAuthError } from "../utils/formatAuthError";
 export default function Login() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { loading, error } = useSelector((state) => state.auth);
 
   const [email, setEmail] = useState("");
@@ -25,7 +27,7 @@ export default function Login() {
   return (
     <div className="login-page">
       <form className="login-form" onSubmit={handleLogin}>
-        <h2>Let the journey begin!</h2>
+        <h2>{t("auth.title")}</h2>
 
         <div className="tabs-wrapper">
           <div className="tabs">
@@ -34,21 +36,21 @@ export default function Login() {
               className={activeTab === "login" ? "tab active" : "tab"}
               onClick={() => setActiveTab("login")}
             >
-              Login
+              {t("auth.login")}
             </button>
             <button
               type="button"
               className={activeTab === "signup" ? "tab active" : "tab"}
               onClick={() => navigate("/signup")}
             >
-              Sign Up
+              {t("auth.signup")}
             </button>
           </div>
         </div>
 
         {error && <p className="error">{formatAuthError(error)}</p>}
 
-        {loading && <p className="loading">Logging in...</p>}
+        {loading && <p className="loading">{t("auth.loggingIn")}</p>}
 
         <input
           type="email"
@@ -60,16 +62,16 @@ export default function Login() {
 
         <input
           type="password"
-          placeholder="Password"
+          placeholder={t("auth.password")}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
         />
 
-        <a href="#" className="forgot-password">Forgot password?</a>
+        <a href="#" className="forgot-password">{t("auth.forgotPassword")}</a>
 
         <button type="submit" className="login-btn" disabled={loading}>
-          Login
+          {t("auth.login")}
         </button>
 
       </form>

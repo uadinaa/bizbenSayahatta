@@ -1,7 +1,10 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import s from "../../styles/Trips.module.css";
 
 export default function TripCard({ trip }) {
+  const { t } = useTranslation();
+
   return (
     <article className={s.card}>
       <div className={s.photoWrapper}>
@@ -16,18 +19,18 @@ export default function TripCard({ trip }) {
         </div>
 
         <span className={`${s.statusBadge} ${trip.status === "active" ? s.statusActive : s.statusUpcoming}`}>
-          {trip.status === "active" ? "Active Now" : "Upcoming"}
+          {trip.status === "active" ? t("trips.activeNow") : t("trips.upcoming")}
         </span>
       </div>
 
       <div className={s.cardContent}>
         <div className={s.tripInfo}>
           <span>{trip.dateRange}</span>
-          <span>{trip.stopsCount} travelers</span>
+          <span>{trip.stopsCount} {t("trips.travelers")}</span>
         </div>
 
         <div className={s.budget}>
-          <label>Budget</label>
+          <label>{t("trips.budget")}</label>
           <div className={s.budgetBar}>
             <div
               className={s.budgetProgress}
@@ -44,7 +47,7 @@ export default function TripCard({ trip }) {
         </div>
 
         <Link className={s.viewTrip} to={`/chat?thread=${trip.id}`}>
-          View your trip →
+          {t("trips.viewYourTrip")} →
         </Link>
       </div>
     </article>

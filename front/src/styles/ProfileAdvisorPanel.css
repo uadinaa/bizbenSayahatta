@@ -1,0 +1,71 @@
+.profilePage__advisorPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.profilePage__advisorPanel h3 {
+  margin: 0;
+  color: #2f2a26;
+  font-size: 24px;
+}
+
+.profilePage__advisorText {
+  margin: 0;
+  max-width: 620px;
+  color: #667085;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.advisor-cta {
+  width: fit-content;
+  margin-top: 2px;
+  border-radius: 20px;
+  border: 2px solid #5a5450;
+  background: #f3f2ee;
+  color: #5a5450;
+  padding: 7px 20px;
+  cursor: pointer;
+  transition: all .3s;
+}
+
+.advisor-cta:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+.advisor-cta:hover {
+  background-color: #75B7C1;
+  color: #f3f2ee;
+}
+
+.advisor-panel {
+  /* margin-top: 10px; */
+  border: none;
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 1px;
+  display: flex;
+  /* flex-direction: row; */
+  gap: 4px;
+  max-width: 420px;
+}
+
+.checking{
+  margin-left: -10px;
+  margin-right: 5px;
+}
+
+.level {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 1px 0;
+  color: #000000;
+  font-size: 17px;
+}
+
+.checking-btn{
+    margin-left: 2px;
+}

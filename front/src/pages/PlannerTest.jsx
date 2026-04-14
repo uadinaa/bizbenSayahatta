@@ -16,6 +16,7 @@ import {
 } from "../api/chats";
 import { fetchProfile } from "../slices/authSlice";
 import "../styles/PlannerTest.css";
+import { useTranslation } from "react-i18next";
 
 const DAY_COLORS = ["#E53E3E", "#DD6B20", "#D69E2E", "#38A169", "#3182CE", "#805AD5"];
 
@@ -27,25 +28,52 @@ function applyDayColors(itinerary = []) {
   }));
 }
 
+function toLngLat(value) {
+  const n = typeof value === "string" ? parseFloat(value) : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 function decorateTripPayload(payload) {
   // Normalize trip payloads from both the trip endpoint and live AI responses.
   if (!payload) return null;
 
   const itinerary = applyDayColors(payload.itinerary || payload.plan_snapshot?.itinerary || []);
-  const route = (payload.route || itinerary.map((day, index) => ({
+
+  const routeFromStops = itinerary.map((day, index) => ({
     day: day.day,
     color: day.color || DAY_COLORS[index % DAY_COLORS.length],
     places: (day.stops || [])
-      .filter((stop) => Number.isFinite(stop.lat) && Number.isFinite(stop.lng))
-      .map((stop) => ({
-        name: stop.name,
-        lat: stop.lat,
-        lng: stop.lng,
-        address: stop.address,
-      })),
-  }))).map((day, index) => ({
+      .map((stop) => {
+        const lat = toLngLat(stop.lat);
+        const lng = toLngLat(stop.lng);
+        if (lat == null || lng == null) return null;
+        return {
+          name: stop.name,
+          lat,
+          lng,
+          address: stop.address,
+        };
+      })
+      .filter(Boolean),
+  }));
+
+  const routeRaw = payload.route?.length ? payload.route : routeFromStops;
+
+  const route = routeRaw.map((day, index) => ({
     ...day,
     color: day.color || DAY_COLORS[index % DAY_COLORS.length],
+    places: (day.places || [])
+      .map((p) => {
+        const lat = toLngLat(p.lat);
+        const lng = toLngLat(p.lng);
+        if (lat == null || lng == null) return null;
+        return {
+          ...p,
+          lat,
+          lng,
+        };
+      })
+      .filter(Boolean),
   }));
 
   return {
@@ -111,6 +139,7 @@ function MapIcon() {
 }
 
 export default function PlannerTest() {
+  const { t } = useTranslation(); 
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
@@ -134,6 +163,7 @@ export default function PlannerTest() {
   const [showArchived, setShowArchived] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [threadTitle, setThreadTitle] = useState("New trip");
 
   const messageRequestRef = useRef(0);
   const tripRequestRef = useRef(0);
@@ -173,20 +203,20 @@ const filteredArchivedThreads = useMemo(() => {
     }
   }, [dispatch, user]);
 
-  const resolveNextSelection = useCallback((activeThreads, archivedList) => {
+  const resolveNextSelection = useCallback((activeThreads, archivedList, currentSelectedId) => {
     // Pick the next visible chat after archive/delete actions.
     const requestedId = Number(threadFromUrl);
     const combined = combineThreads(activeThreads, archivedList);
-    if (selectedId && combined.some((thread) => thread.id === selectedId)) {
-      return selectedId;
+    if (currentSelectedId && combined.some((thread) => thread.id === currentSelectedId)) {
+      return currentSelectedId;
     }
     if (requestedId && combined.some((thread) => thread.id === requestedId)) {
       return requestedId;
     }
     return activeThreads[0]?.id || archivedList[0]?.id || null;
-  }, [selectedId, threadFromUrl]);
+  }, [threadFromUrl]);
 
-  const loadThreads = useCallback(async () => {
+  const loadThreads = useCallback(async (currentSelectedId) => {
     // Load active and archived chats so the sidebar can move items instantly.
     setLoadingThreads(true);
     setError("");
@@ -199,17 +229,18 @@ const filteredArchivedThreads = useMemo(() => {
       const nextArchived = archivedResponse.data || [];
       setThreads(nextThreads);
       setArchivedThreads(nextArchived);
-      setSelectedId(resolveNextSelection(nextThreads, nextArchived));
+      setSelectedId(resolveNextSelection(nextThreads, nextArchived, currentSelectedId));
     } catch (requestError) {
-      setError(requestError.response?.data?.detail || "Failed to load chats");
+      setError(requestError.response?.data?.detail || t("chat.failedToLoadChats"));
     } finally {
       setLoadingThreads(false);
     }
-  }, [resolveNextSelection]);
+  }, [resolveNextSelection, t]);
 
   useEffect(() => {
-    loadThreads();
-  }, [loadThreads]);
+    loadThreads(selectedId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     // Keep the URL in sync with the currently open chat.
@@ -240,7 +271,7 @@ const filteredArchivedThreads = useMemo(() => {
       })
       .catch((requestError) => {
         if (cancelled || messageRequestRef.current !== requestId) return;
-        setError(requestError.response?.data?.detail || "Failed to load messages");
+        setError(requestError.response?.data?.detail || t("chat.failedToLoadMessages"));
       })
       .finally(() => {
         if (cancelled || messageRequestRef.current !== requestId) return;
@@ -250,7 +281,7 @@ const filteredArchivedThreads = useMemo(() => {
     return () => {
       cancelled = true;
     };
-  }, [selectedId]);
+  }, [selectedId, t]);
 
   useEffect(() => {
     // Load the selected chat's persisted trip with cache-aware behavior.
@@ -282,7 +313,7 @@ const filteredArchivedThreads = useMemo(() => {
       })
       .catch((requestError) => {
         if (cancelled || tripRequestRef.current !== requestId) return;
-        setError(requestError.response?.data?.detail || "Failed to load trip");
+        setError(requestError.response?.data?.detail || t("chat.failedToLoadTrip"));
       })
       .finally(() => {
         if (cancelled || tripRequestRef.current !== requestId) return;
@@ -292,13 +323,14 @@ const filteredArchivedThreads = useMemo(() => {
     return () => {
       cancelled = true;
     };
-  }, [selectedId, tripCache]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, t]);
 
   const handleCreateThread = async () => {
     // Create a new planner chat and focus it immediately.
     try {
       const response = await createChatThread({
-        title: "New trip",
+        title: t("chat.newTrip"),
         kind: "planner",
       });
       const nextThread = response.data;
@@ -309,7 +341,7 @@ const filteredArchivedThreads = useMemo(() => {
       setMapOpen(false);
       setError("");
     } catch (requestError) {
-      setError(requestError.response?.data?.detail || "Failed to create chat");
+      setError(requestError.response?.data?.detail || t("chat.failedToCreateChat"));
     }
   };
 
@@ -342,7 +374,7 @@ const filteredArchivedThreads = useMemo(() => {
       if (thread.id === selectedId && !wasArchived) {
         setSelectedId(thread.id);
       }
-      setError(requestError.response?.data?.detail || "Failed to update archive");
+      setError(requestError.response?.data?.detail || t("chat.failedToUpdateArchive"));
     }
   };
 
@@ -372,11 +404,12 @@ const filteredArchivedThreads = useMemo(() => {
       setDeleteTarget(null);
       setError("");
     } catch (requestError) {
-      setError(requestError.response?.data?.detail || "Failed to delete chat");
+      setError(requestError.response?.data?.detail || t("chat.failedToDeleteChat"));
     } finally {
       setDeletingChatId(null);
     }
   };
+  
 
   const handleSendMessage = async (event) => {
     // Send a message and refresh the visible trip cache from the response.
@@ -419,7 +452,7 @@ const filteredArchivedThreads = useMemo(() => {
       )));
     } catch (requestError) {
       setMessages((previous) => previous.filter((message) => message.id !== tempMessage.id));
-      setError(requestError.response?.data?.detail || "Message failed");
+      setError(requestError.response?.data?.detail || t("chat.messageFailed"));
     } finally {
       setSendingMessage(false);
     }
@@ -438,8 +471,8 @@ const filteredArchivedThreads = useMemo(() => {
           className={`thread-item ${selectedId === thread.id ? "active" : ""}`}
           onClick={() => setSelectedId(thread.id)}
         >
-          <span className="thread-title">{thread.title || "Untitled"}</span>
-          <span className="thread-meta">{thread.city || "Planner chat"}</span>
+          <span className="thread-title">{thread.title || t("chat.untitled")}</span>
+          <span className="thread-meta">{thread.city || t("chat.plannerChat")}</span>
         </button>
 
         <div className="thread-actions">
@@ -447,8 +480,8 @@ const filteredArchivedThreads = useMemo(() => {
             type="button"
             className="thread-action-btn"
             onClick={() => handleToggleArchive(thread)}
-            aria-label={thread.is_archived ? "Unarchive chat" : "Archive chat"}
-            title={thread.is_archived ? "Unarchive" : "Archive"}
+            aria-label={thread.is_archived ? t("chat.unarchiveChat") : t("chat.archiveChat")}
+            title={thread.is_archived ? t("chat.unarchiveAction") : t("chat.archiveAction")}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M3 7h18" />
@@ -461,8 +494,8 @@ const filteredArchivedThreads = useMemo(() => {
             type="button"
             className="thread-action-btn thread-action-btn--danger"
             onClick={() => setDeleteTarget(thread)}
-            aria-label="Delete chat"
-            title="Delete"
+            aria-label={t("chat.deleteChat")}
+            title={t("chat.deleteAction")}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M3 6h18" />
@@ -482,28 +515,28 @@ const filteredArchivedThreads = useMemo(() => {
         <div className="chat-search">
           <input
             type="text"
-            placeholder="Search chats..."
+            placeholder={t("chat.searchChats")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
         <div className="sidebar-header">
           <div>
-            <h2 className="sidebar-label">Travel Chat</h2>
+            <h2 className="sidebar-label">{t("chat.travelChat")}</h2>
           </div>
           <button type="button" className="add-btn" onClick={handleCreateThread}>
             ＋
           </button>
         </div>
 
-        {loadingThreads ? <p className="sidebar-note">Loading chats...</p> : null}
+        {loadingThreads ? <p className="sidebar-note">{t("chat.loadingChats")}</p> : null}
 
         <div className="thread-section">
           <div className="thread-section-header">
             
           </div>
           <div className="thread-list">
-            {renderThreadList(filteredThreads, "No chats found.")}
+            {renderThreadList(filteredThreads, t("chat.noChatsFound") )}
           </div>
         </div>
 
@@ -514,44 +547,34 @@ const filteredArchivedThreads = useMemo(() => {
             onClick={() => setShowArchived((previous) => !previous)}
           >
             <div className="section-left">
-              <span className="section-title">Archived</span>
+              <span className="section-title">{t("chat.archived")}</span>
               <span className="section-count">{archivedThreads.length}</span>
             </div>
             <span>{showArchived ? "−" : "+"}</span>
           </button>
           {showArchived ? (
             <div className="thread-list archived-thread-list">
-              {renderThreadList(filteredArchivedThreads, "No chats found.")}
+              {renderThreadList(filteredArchivedThreads, t("chat.noChatsFound"))}
             </div>
           ) : null}
         </div>
       </aside>
 
       <section className="chat-panel">
-        <div className="chat-header">
-          <div>
-            <p className="chat-header-label">Current chat</p>
-            <h1>{selectedThread?.title || "Choose a chat"}</h1>
-          </div>
-          {selectedThread?.is_archived ? (
-            <span className="archived-pill">Archived</span>
-          ) : null}
-        </div>
-
         <div className="chat-messages">
           {!selectedThread ? (
             <div className="chat-empty-state">
-              Pick a chat from the sidebar or create a new one to start planning.
+              {t("chat.pickAChatFromTheSidebarOrCreateANewOneToStartPlanning")}
             </div>
           ) : null}
 
           {selectedThread && loadingMessages ? (
-            <div className="chat-empty-state">Loading messages...</div>
+            <div className="chat-empty-state">{t("chat.loadingMessages")}</div>
           ) : null}
 
           {selectedThread && !loadingMessages && messages.length === 0 ? (
             <div className="chat-empty-state">
-              Start the conversation and your trip summary will build on the right.
+              {t("chat.startTheConversationAndYourTripSummaryWillBuildOnTheRight")}
             </div>
           ) : null}
 
@@ -570,7 +593,7 @@ const filteredArchivedThreads = useMemo(() => {
           <textarea
             value={chatMessage}
             onChange={(event) => setChatMessage(event.target.value)}
-            placeholder={selectedThread ? "Write message..." : "Select a chat to start messaging"}
+            placeholder={selectedThread ? t("chat.writeMessage") : t("chat.selectAChatToStartMessaging") }
             disabled={!selectedThread || sendingMessage}
           />
           <button type="submit" disabled={!selectedThread || sendingMessage}>
@@ -582,12 +605,11 @@ const filteredArchivedThreads = useMemo(() => {
       <aside className="right-panel">
         <div className="right-panel-toolbar">
           <div>
-            <p className="right-panel-label">Trip tools</p>
-            <h2>{selectedThread ? "This chat's plan" : "Trip preview"}</h2>
+            <h2>{selectedThread ? t("chat.thisChatSPlan") : t("chat.tripPreview")}</h2>
           </div>
         </div>
 
-        {mapOpen && selectedThread ? (
+        {/* {mapOpen && selectedThread ? (
           <div className="map-box map-box--open">
             <div className="map-box-header">
               <span></span>
@@ -595,9 +617,16 @@ const filteredArchivedThreads = useMemo(() => {
                 ×
               </button>
             </div>
-            <TravelPlannerMap plan={currentTrip} isOpen />
+            <TravelPlannerMap key={selectedId} plan={currentTrip} isOpen />
+          </div>
+        ) : null} */}
+        {mapOpen && selectedThread ? (
+          <div className="map-box map-box--open">
+            <TravelPlannerMap key={selectedId} plan={currentTrip} isOpen />
+            {/* <button type="button" className="map-close-btn" onClick={() => setMapOpen(false)}>×</button> */}
           </div>
         ) : null}
+
 
         <div className={`final-box ${mapOpen ? "final-box--split" : ""}`}>
 
@@ -608,13 +637,13 @@ const filteredArchivedThreads = useMemo(() => {
               onClick={() => setMapOpen((previous) => !previous)}
             >
               <MapIcon />
-              <span>{mapOpen ? "Hide Map" : "Show Map"}</span>
+              <span>{mapOpen ? t("chat.hideMap") : t("chat.showMap") }</span>
             </button>
           ) : null}
 
           {!selectedThread ? (
             <div className="trip-empty-card">
-              Open a chat to view its trip summary and route.
+              {t("chat.openAChatToViewItsTripSummaryAndRoute")}
             </div>
           ) : (
             <FinalTripPanel trip={currentTrip} loading={loadingTrip} />

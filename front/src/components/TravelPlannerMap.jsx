@@ -1,8 +1,27 @@
 import { Fragment, useEffect, useMemo } from "react";
 import { MapContainer, Marker, Popup, Polyline, TileLayer, useMap } from "react-leaflet";
+import { useTranslation } from "react-i18next";
 import L from "leaflet";
 
 const fallbackCenter = [48.8566, 2.3522];
+
+function toLngLat(value) {
+  const n = typeof value === "string" ? parseFloat(value) : Number(value);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function normalizePlace(place) {
+  if (!place || typeof place !== "object") return null;
+  const lat = toLngLat(place.lat);
+  const lng = toLngLat(place.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return {
+    ...place,
+    lat,
+    lng,
+    name: place.name ?? "",
+  };
+}
 
 const defaultMarker = new L.Icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -18,18 +37,40 @@ function FitRouteBounds({ points }) {
   const map = useMap();
 
   useEffect(() => {
-    if (points.length) {
+    if (points.length === 1) {
+      map.setView(points[0], 14);
+    } else if (points.length > 1) {
       const bounds = L.latLngBounds(points.map(([lat, lng]) => L.latLng(lat, lng)));
       map.fitBounds(bounds, { padding: [28, 28] });
     } else {
       map.setView(fallbackCenter, 12);
     }
+    map.invalidateSize();
   }, [map, points]);
 
   return null;
 }
 
+/** Leaflet measures 0×0 when the container was hidden; refit after layout. */
+function InvalidateMapSize({ trigger }) {
+  const map = useMap();
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        map.invalidateSize();
+      });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [map, trigger]);
+  return null;
+}
+
+function routeSignature(plan, pointCount) {
+  return `${plan?.city ?? ""}-${pointCount}`;
+}
+
 export default function TravelPlannerMap({ plan, isOpen }) {
+  const { t } = useTranslation();
   const route = useMemo(() => plan?.route || [], [plan]);
 
   const hasRoute = route.some((day) => (day.places || []).length > 0);
@@ -38,13 +79,9 @@ export default function TravelPlannerMap({ plan, isOpen }) {
     try {
       return route.map((day) => ({
         ...day,
-        places: (day.places || []).filter((place) => {
-          const valid = Number.isFinite(place.lat) && Number.isFinite(place.lng);
-          if (!valid) {
-            console.error("MAP ERROR:", new Error(`Invalid coordinates for ${place.name || "unknown place"}`));
-          }
-          return valid;
-        }),
+        places: (day.places || [])
+          .map((place) => normalizePlace(place))
+          .filter(Boolean),
       }));
     } catch (e) {
       console.error("MAP ERROR:", e);
@@ -65,12 +102,12 @@ export default function TravelPlannerMap({ plan, isOpen }) {
       <div className="trip-map-shell">
         {isOpen ? (
           <>
-            <p className="map-fallback">Map unavailable</p>
+            <p className="map-fallback">{t("chat.mapUnavailable")}</p>
             <div className="text-directions">
               {(plan?.itinerary || []).map((day) => (
                 <div key={day.day} className="text-direction-day">
                   <span className="day-dot" style={{ backgroundColor: day.color || "#E53E3E" }} />
-                  <strong>Day {day.day}</strong>
+                  <strong>{t("chat.day")} {day.day}</strong>
                   <span>{(day.stops || []).map((stop) => stop.name).join(" -> ")}</span>
                 </div>
               ))}
@@ -90,6 +127,7 @@ export default function TravelPlannerMap({ plan, isOpen }) {
         className="trip-map-canvas"
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <InvalidateMapSize trigger={routeSignature(plan, allPoints.length)} />
         <FitRouteBounds points={allPoints} />
 
         {preparedRoute.map((day) => {

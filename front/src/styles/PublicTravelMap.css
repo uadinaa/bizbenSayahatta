@@ -1,0 +1,79 @@
+.public-map-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem 1.25rem 2rem;
+}
+
+.public-map-fallback {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem 1.25rem 2rem;
+}
+
+.public-map-page--message {
+  text-align: center;
+  padding-top: 3rem;
+}
+
+.public-map-header h1 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+}
+
+/* Full-height layout matches Map page (.map-page from Map.css) */
+.public-travel-map-page.map-page {
+  max-width: none;
+  margin: 0;
+}
+
+.public-map-user {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.public-map-user__avatar {
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #e8e8e8;
+  flex-shrink: 0;
+}
+
+.public-map-user__name {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1d1d1f;
+  line-height: 1.25;
+}
+
+.public-map-user__subtitle {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  color: #667085;
+}
+
+.public-map-sidebar__heading {
+  margin-top: 0;
+}
+
+.public-map-badges {
+  margin-top: 14px;
+}
+
+.public-map-badges h3 {
+  font-size: 0.95rem;
+  margin: 0 0 8px;
+}
+
+.public-map-badges__list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+  color: #344054;
+  line-height: 1.5;
+}

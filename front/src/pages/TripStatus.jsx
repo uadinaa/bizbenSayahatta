@@ -2,8 +2,10 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import "../styles/TripStatus.css";
 import api from "../api/axios";
 import AddTripModal from "../components/AddTripModal";
+import { useTranslation } from "react-i18next";
 
 export default function TripStatus() {
+  const { t } = useTranslation();
   const [activeFilter, setActiveFilter] = useState("PENDING");
   const [trips, setTrips] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -24,12 +26,12 @@ export default function TripStatus() {
       const list = Array.isArray(res.data) ? res.data : res.data?.results || [];
       setTrips(list);
     } catch (err) {
-      const detail = err?.response?.data?.detail || err?.userMessage || "Failed to load trips.";
+      const detail = err?.response?.data?.detail || err?.userMessage || t("tripStatus.failedToLoadTrips");
       setError(detail);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadTrips();
@@ -61,61 +63,69 @@ export default function TripStatus() {
     <div className="trip-page">
       <div className="trip-header-row">
         <div>
-          <h1 className="trip-title">Trips Status</h1>
+          <h1 className="trip-title">{t("tripStatus.title")}</h1>
 
           <div className="trip-filters">
             <button
               className={activeFilter === "APPROVED" ? "approved active" : ""}
               onClick={() => setActiveFilter("APPROVED")}
             >
-              Approved
+              {t("tripStatus.approved")}
             </button>
 
             <button
               className={activeFilter === "PENDING" ? "in-progress active" : ""}
               onClick={() => setActiveFilter("PENDING")}
             >
-              Pending
+              {t("tripStatus.pending")}
             </button>
 
             <button
               className={activeFilter === "REJECTED" ? "rejected active" : ""}
               onClick={() => setActiveFilter("REJECTED")}
             >
-              Rejected
+              {t("tripStatus.rejected")}
             </button>
           </div>
         </div>
 
         <button className="add-trip-btn" onClick={() => setIsModalOpen(true)}>
-          + Add New Trip
+          + {t("tripStatus.addNewTrip")}
         </button>
       </div>
 
       <div className="trip-grid">
-        {loading && <div>Loading trips...</div>}
+        {loading && <div>{t("tripStatus.loadingTrips")}</div>}
         {!loading && error && <div>{error}</div>}
         {!loading && !error && filteredTrips.length === 0 && (
-          <div>No trips in this status yet.</div>
+          <div>{t("tripStatus.noTripsInStatus")}</div>
         )}
         {!loading && !error && filteredTrips.map((trip) => (
-          <div key={trip.id} className="trip-card">
-            <div className="trip-image-container">
-              <img
-                src={trip.media_urls?.[0] || "https://source.unsplash.com/600x400/?travel"}
-                alt={trip.title}
-                className="trip-image"
-              />
-            </div>
+          <div key={trip.id} className="trip-card-modern">
+          <div className="trip-image-wrapper">
+            <img
+              src={trip.media_urls?.[0] || "https://source.unsplash.com/600x400/?travel"}
+              alt={trip.title}
+              className="trip-image-modern"
+            />
 
-            <div className="trip-content">
-              <h2 className="trip-name">{trip.title}</h2>
-              <p className="trip-location">{trip.destination}</p>
-              <p className="trip-date">
-                {trip.available_dates?.[0] || "Date not set"}
-              </p>
+            <div className="trip-overlay">
+              <h2 className="trip-title-modern">{trip.title}</h2>
             </div>
           </div>
+
+          <div className="trip-body">
+            <div className="trip-info-row">
+              <span className="trip-location-modern"> {trip.destination}</span>
+            </div>
+
+            <div className="trip-footer">
+              <span className="trip-date-modern">
+                {trip.available_dates?.[0] || t("tripStatus.dateNotSet")}
+              </span>
+            </div>
+          </div>
+        </div>
         ))}
       </div>
 

@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 
 from places.models import Place
@@ -168,18 +169,72 @@ class Comment(models.Model):
     place = models.ForeignKey(
         Place,
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="comments",
+    )
+    trip = models.ForeignKey(
+        "Trip",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         related_name="comments",
     )
     comment_text = models.TextField(max_length=1000)
     is_deleted = models.BooleanField(default=False, db_index=True)
+    likes_count = models.PositiveIntegerField(default=0, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    Q(place__isnull=False, trip__isnull=True)
+                    | Q(place__isnull=True, trip__isnull=False)
+                ),
+                name="marketplace_comment_place_xor_trip",
+            ),
+        ]
         indexes = [
             models.Index(fields=["place", "created_at"]),
+            models.Index(fields=["place", "likes_count", "created_at"]),
+            models.Index(
+                fields=["trip", "created_at"],
+                name="marketplace_trip_id_3008a2_idx",
+            ),
+            models.Index(
+                fields=["trip", "likes_count", "created_at"],
+                name="marketplace_trip_id_0edf97_idx",
+            ),
             models.Index(fields=["user", "created_at"]),
+        ]
+
+
+class CommentLike(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="comment_likes",
+    )
+    comment = models.ForeignKey(
+        "Comment",
+        on_delete=models.CASCADE,
+        related_name="likes",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "comment"],
+                name="marketplace_commentlike_user_comment_uniq",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["comment", "created_at"]),
         ]
 
 

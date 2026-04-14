@@ -14,13 +14,22 @@ from .trip_planner import build_trip_plan
 
 
 DAY_COLORS = ["#E53E3E", "#DD6B20", "#D69E2E", "#38A169", "#3182CE", "#805AD5"]
-DAY_EMOJIS = ["🔴", "🟠", "🟡", "🟢", "🔵", "🟣"]
+DAY_EMOJIS = ["🔴", "🟠", "🟡", "🟢", "🔵", "🟣", "⚪️", "⚫️", "🟥", "🟧", "🟨", "🟩", "🟦", "🟪", "🟫"]
+
 STYLE_KEYWORDS = {
     "adventure": {"adventure", "hiking", "active", "outdoor", "explore"},
     "relaxation": {"relax", "relaxing", "relaxation", "spa", "beach", "chill"},
     "culture": {"culture", "cultural", "museum", "history", "historic", "art"},
     "food": {"food", "foodie", "restaurant", "cuisine", "local food", "street food"},
     "mix": {"mix", "mixed", "everything", "bit of everything"},
+}
+
+HOTEL_STYLE_KEYWORDS = {
+    "active": {"active", "hiking", "mountain", "nature", "outdoor", "trekking", "climbing"},
+    "relaxed": {"relax", "relaxing", "relaxation", "spa", "beach", "chill", "peaceful"},
+    "cultural": {"culture", "cultural", "museum", "history", "historic", "art", "city center"},
+    "budget": {"budget", "cheap", "affordable", "low cost", "economical"},
+    "family": {"family", "kids", "children", "child-friendly", "family rooms"},
 }
 
 TRAVEL_TYPE_QUESTIONS = {
@@ -45,6 +54,17 @@ class TripRequirements:
     has_kids: bool = False
     kids_age_band: str = ""
     citizenship: str = ""
+
+@dataclass
+class HotelSearchParams:
+    """Parameters extracted from user message for hotel search."""
+    city: Optional[str] = None
+    checkin: Optional[str] = None
+    checkout: Optional[str] = None
+    budget_per_night: Optional[float] = None
+    adults: Optional[int] = None
+    children: Optional[int] = None
+    travel_style: Optional[str] = None
 
 
 def _normalize_text(value: str | None) -> str:
@@ -185,6 +205,147 @@ def _extract_citizenship(text: str, fallback: str = "") -> str:
     }
     return mapping.get(match.group(1), fallback)
 
+def _extract_hotel_dates(text: str) -> tuple[Optional[str], Optional[str]]:
+    """
+    Extract check-in and check-out dates from user message.
+    Returns (checkin, checkout) as YYYY-MM-DD strings, or (None, None) if not found.
+    """
+    lowered = text.lower()
+
+    # Pattern 1: Explicit ISO dates (2025-06-01 to 2025-06-05)
+    date_match = re.search(
+        r"(\d{4}-\d{2}-\d{2})\s*(?:to|-)\s*(\d{4}-\d{2}-\d{2})",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if date_match:
+        return date_match.group(1), date_match.group(2)
+
+    # Pattern 2: Relative dates (next Friday, tomorrow, etc.)
+    # For simplicity, we'll return None for these - LLM can handle relative references
+    # A more advanced implementation could use dateparser library
+
+    # Pattern 3: Duration-based (5 days, 3 nights) - infer from context
+    duration_match = re.search(r"(\d{1,2})\s*(day|days|night|nights)\b", lowered)
+    if duration_match:
+        days = int(duration_match.group(1))
+        # Default to today + 1 for checkin, then + days for checkout
+        # In production, you'd want to use actual dates
+        from datetime import timedelta
+        today = date.today()
+        checkin = today + timedelta(days=1)
+        checkout = checkin + timedelta(days=days)
+        return checkin.isoformat(), checkout.isoformat()
+
+    return None, None
+
+
+def _extract_hotel_budget(text: str, total_budget: Optional[int] = None, duration_days: Optional[int] = None) -> Optional[float]:
+    """
+    Extract hotel budget per night from user message.
+
+    Budget logic:
+    - If user says "$1000 for 5 days" → daily budget = $200
+    - Hotel budget should be ~40-60% of daily budget
+    - So budget_per_night = daily_budget * 0.5 ( midpoint)
+    """
+    # First try to extract explicit hotel budget
+    hotel_budget_match = re.search(
+        r"(hotel|accommodation|stay|sleep)[^0-9]{0,20}(\$?\s*(\d{2,4}))",
+        text.lower(),
+        flags=re.IGNORECASE,
+    )
+    if hotel_budget_match:
+        return float(hotel_budget_match.group(3))
+
+    # Use total budget and duration if provided
+    if total_budget and duration_days:
+        daily_budget = total_budget / duration_days
+        # Hotel should be ~50% of daily budget (leave room for food, activities)
+        return daily_budget * 0.5
+
+    # Extract from general budget mention
+    budget = _extract_budget(text)
+    if budget:
+        # Assume it's total budget, need duration to calculate per-night
+        # Default to 3 days if not specified
+        days = duration_days or 3
+        daily = budget / days
+        return daily * 0.5
+
+    return None
+
+
+def _extract_hotel_travel_style(text: str, fallback: str = "") -> str:
+    """
+    Extract travel style specifically for hotel search.
+    Maps user preferences to hotel location/amenity preferences.
+    """
+    lowered = text.lower()
+    for style, keywords in HOTEL_STYLE_KEYWORDS.items():
+        if any(keyword in lowered for keyword in keywords):
+            return style
+    return fallback
+
+
+def extract_hotel_search_params(
+    user_message: str,
+    user_profile: Optional[dict] = None,
+    chat_history: Optional[list] = None,
+    fallback_city: str = "",
+    fallback_budget: Optional[float] = None,
+    fallback_duration: Optional[int] = None,
+) -> HotelSearchParams:
+    """
+    Extract hotel search parameters from user message + profile context.
+
+    Returns HotelSearchParams with:
+    - city: destination city from message or trip context
+    - checkin: parse from message ("next Friday", "June 5", etc.)
+    - checkout: parse end date or checkin + duration
+    - budget_per_night: total_budget / trip_days * 0.5
+    - adults: number of adults, default 1
+    - children: 0 unless user mentioned kids
+    - travel_style: from user profile or message keywords
+
+    Returns None for any field that cannot be determined.
+    """
+    # Extract destination city
+    city = _extract_destination(user_message, fallback_city=fallback_city)
+
+    # Extract dates
+    checkin, checkout = _extract_hotel_dates(user_message)
+
+    # Extract budget
+    total_budget = _extract_budget(user_message) or fallback_budget
+    duration_days = _extract_duration_days(user_message) or fallback_duration
+    budget_per_night = _extract_hotel_budget(user_message, total_budget, duration_days)
+
+    # Extract travelers
+    travelers = _extract_travelers(user_message)
+    adults = travelers if travelers else 1
+    _, has_kids = _extract_traveler_type(user_message)
+    children = 0
+    if has_kids:
+        # Count kids from message
+        child_mentions = len(re.findall(r"(\d+)-year-old|kids|children|child|toddler|teen", user_message.lower()))
+        children = max(1, child_mentions) if child_mentions else 1
+
+    # Extract travel style
+    travel_style = _extract_hotel_travel_style(user_message)
+    if not travel_style and user_profile:
+        travel_style = user_profile.get("travel_style", "")
+
+    return HotelSearchParams(
+        city=city or None,
+        checkin=checkin,
+        checkout=checkout,
+        budget_per_night=budget_per_night,
+        adults=adults,
+        children=children,
+        travel_style=travel_style or None,
+    )
+
 
 def collect_trip_requirements(
     *,
@@ -236,6 +397,69 @@ def build_missing_details_response(missing: Iterable[str]) -> str:
             lines.append(f"- {question}")
     lines.append("Let me know and I'll get started! 🗺️")
     return "\n".join(lines)
+
+
+def _norm_key(value: str | None) -> str:
+    return (value or "").strip().lower()
+
+
+def trip_plan_should_refresh(
+    thread,
+    requirements: TripRequirements,
+    user_message: str,
+) -> bool:
+    """True when the conversation implies the structured trip should be rebuilt."""
+    lowered = user_message.lower()
+    if any(
+        kw in lowered
+        for kw in ("regenerate", "rebuild", "update trip", "new trip", "refresh trip")
+    ):
+        return True
+    plan = thread.plan_json or {}
+    if not plan:
+        return True
+    if bool(plan.get("has_kids")) != bool(requirements.has_kids):
+        return True
+    if requirements.has_kids and plan.get("kids_age_band") and requirements.kids_age_band:
+        if _norm_key(requirements.kids_age_band) != _norm_key(str(plan.get("kids_age_band"))):
+            return True
+    if requirements.destination and _norm_key(requirements.destination) != _norm_key(
+        str(plan.get("city") or "")
+    ):
+        return True
+    if requirements.travelers is not None and plan.get("travelers") is not None:
+        if int(requirements.travelers) != int(plan["travelers"]):
+            return True
+    if requirements.duration_days is not None:
+        prev = plan.get("duration_days")
+        if prev is None:
+            prev = plan.get("days_requested")
+        if prev is not None and int(requirements.duration_days) != int(prev):
+            return True
+    if requirements.budget_total is not None and plan.get("budget_total") is not None:
+        if int(requirements.budget_total) != int(plan["budget_total"]):
+            return True
+    if requirements.travel_style and plan.get("travel_style"):
+        if _norm_key(requirements.travel_style) != _norm_key(str(plan.get("travel_style"))):
+            return True
+    if requirements.traveler_type and plan.get("traveler_type"):
+        if _norm_key(requirements.traveler_type) != _norm_key(str(plan.get("traveler_type"))):
+            return True
+    return False
+
+
+def strip_trip_sources_from_markdown(full_markdown: str) -> str:
+    """Remove the Sources section for chat; keep safety and the rest (sources stay on FinalTrip)."""
+    marker_sources = "## 📚 Sources"
+    marker_safety = "## ⚠️ Safety"
+    if marker_sources not in full_markdown:
+        return full_markdown
+    head, tail = full_markdown.split(marker_sources, 1)
+    head = head.rstrip()
+    if marker_safety in tail:
+        _, after_safety = tail.split(marker_safety, 1)
+        return f"{head}\n\n{marker_safety}{after_safety}".strip()
+    return head.strip()
 
 
 def _budget_to_price_level(total_budget: Optional[int], days: int) -> Optional[int]:
@@ -468,6 +692,58 @@ def _build_route(plan: Dict[str, object]) -> List[Dict[str, object]]:
     return route
 
 
+def _trip_summary_lines(plan: Dict[str, object]) -> List[str]:
+    out: List[str] = []
+    travelers = plan.get("travelers")
+    if travelers is not None:
+        out.append(f"- **Travelers:** {travelers}")
+    dur = plan.get("duration_days")
+    if dur is None:
+        dur = plan.get("days_requested")
+    if dur is not None:
+        out.append(f"- **Trip length:** {dur} day(s)")
+    start, end = plan.get("start_date"), plan.get("end_date")
+    if start and end:
+        out.append(f"- **Dates:** {start} → {end}")
+    elif start:
+        out.append(f"- **Start date:** {start}")
+    elif end:
+        out.append(f"- **End date:** {end}")
+    else:
+        out.append("- **Dates:** (set start/end on the chat if you have fixed dates)")
+
+    bt = plan.get("budget_total")
+    dbpp = plan.get("daily_budget_per_person")
+    daily_b = plan.get("daily_budget")
+    if bt is not None:
+        line = f"- **Budget:** ${int(bt)} total"
+        if dbpp is not None:
+            line += f" (~${int(dbpp)}/person/day)"
+        out.append(line)
+    elif daily_b is not None:
+        try:
+            out.append(f"- **Daily budget (estimate):** ${int(daily_b)}/person/day")
+        except (TypeError, ValueError):
+            out.append("- **Budget:** not specified")
+    else:
+        pl = plan.get("budget")
+        if pl is not None:
+            out.append(
+                f"- **Budget filter:** Google price level ≤ {pl} (planner constraint on places)"
+            )
+        else:
+            out.append("- **Budget:** not specified")
+
+    style = plan.get("travel_style") or ""
+    ttype = plan.get("traveler_type") or plan.get("trip_type") or ""
+    if style or ttype:
+        out.append(
+            "- **Trip profile:** "
+            + ", ".join(part for part in (ttype, style) if part)
+        )
+    return out
+
+
 def _format_trip_response(plan: Dict[str, object]) -> str:
     lines = []
     history_line = plan.get("history_line")
@@ -476,10 +752,10 @@ def _format_trip_response(plan: Dict[str, object]) -> str:
         lines.append("")
 
     lines.append(f"## Final Trip for {plan.get('city')}")
-    lines.append(
-        f"{plan.get('travelers')} traveler(s), {plan.get('duration_days')} days, "
-        f"{plan.get('travel_style')} style"
-    )
+    lines.append("")
+    lines.append("### Trip summary")
+    for row in _trip_summary_lines(plan):
+        lines.append(row)
     lines.append("")
 
     if plan.get("family_note"):
@@ -494,12 +770,19 @@ def _format_trip_response(plan: Dict[str, object]) -> str:
             lines.append(f"- {stop['name']} — {stop['address']}")
         lines.append("")
 
+    country = plan.get("country") or _country_for_destination(str(plan.get("city") or ""))
+    citizenship = ""
+    sources = plan.get("sources")
+    if not sources:
+        sources = _build_sources(plan, country, citizenship)
+    items = sources.get("items") or []
+
     lines.append("## 📚 Sources & Useful Links")
     lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
-    for item in plan["sources"]["items"]:
+    for item in items:
         lines.append(f"📍 [{item['label']}]({item['url']}) — {item['provider']}")
 
-    visa = plan["sources"]["visa"]
+    visa = sources["visa"]
     if visa["status"] == "required":
         lines.append(f"🛂 {visa['label']} → [link]({visa['url']})")
     elif visa["status"] == "not_required":
@@ -509,7 +792,7 @@ def _format_trip_response(plan: Dict[str, object]) -> str:
     else:
         lines.append(f"🛂 {visa['label']}")
     lines.append(
-        f"📋 [{plan['sources']['advisory']['label']}]({plan['sources']['advisory']['url']})"
+        f"📋 [{sources['advisory']['label']}]({sources['advisory']['url']})"
     )
     lines.append("")
 
@@ -529,7 +812,62 @@ def _format_trip_response(plan: Dict[str, object]) -> str:
     return "\n".join(lines).strip()
 
 
-def generate_trip_payload(*, user, requirements: TripRequirements) -> Dict[str, object]:
+def enrich_thread_plan_for_final_trip(
+    *, user, thread, plan: Dict[str, object]
+) -> Dict[str, object]:
+    """Turn a raw `build_trip_plan` dict into a full payload for FinalTrip + markdown."""
+    city = plan.get("city") or thread.city or ""
+    country = _country_for_destination(city)
+    days = int(plan.get("days_requested") or plan.get("days_generated") or 1)
+    travelers = plan.get("travelers")
+    if travelers is None and thread.plan_json:
+        travelers = thread.plan_json.get("travelers")
+    travelers = travelers or 1
+
+    merged: Dict[str, object] = {**plan}
+    merged["country"] = country
+    merged["travelers"] = travelers
+    merged["duration_days"] = days
+    merged["travel_style"] = merged.get("travel_style") or ""
+    merged["traveler_type"] = merged.get("traveler_type") or ""
+    merged["family_note"] = (
+        "Family-friendly filters applied ✅" if merged.get("has_kids") else ""
+    )
+
+    prev = thread.plan_json or {}
+    merged["budget_total"] = prev.get("budget_total")
+    merged["daily_budget_per_person"] = prev.get("daily_budget_per_person")
+
+    if thread.start_date:
+        merged["start_date"] = thread.start_date.isoformat()
+    if thread.end_date:
+        merged["end_date"] = thread.end_date.isoformat()
+
+    for index, day in enumerate(merged.get("itinerary", [])):
+        if isinstance(day, dict):
+            day["color"] = DAY_COLORS[index % len(DAY_COLORS)]
+            day["color_emoji"] = DAY_EMOJIS[index % len(DAY_EMOJIS)]
+
+    citizenship = ""
+    prefs = getattr(user, "preferences", None)
+    if prefs:
+        citizenship = prefs.citizenship or ""
+
+    merged["route"] = _build_route(merged)
+    merged["safety_tips"] = _safety_tips(city, country, bool(merged.get("has_kids")))
+    merged["sources"] = _build_sources(merged, country, citizenship)
+    merged["needs_citizenship"] = (
+        merged["sources"]["visa"]["status"] == "citizenship_needed"
+    )
+    merged["partial_note"] = ""
+    merged["history_line"] = None
+    merged["response_markdown"] = _format_trip_response(merged)
+    return merged
+
+
+def generate_trip_payload(
+    *, user, requirements: TripRequirements, thread=None
+) -> Dict[str, object]:
     days = requirements.duration_days or 3
     price_level_budget = _budget_to_price_level(requirements.budget_total, days)
     pace = "slow" if requirements.has_kids else "medium"
@@ -597,5 +935,22 @@ def generate_trip_payload(*, user, requirements: TripRequirements) -> Dict[str, 
         "partial_note": partial_note,
         "generated_at": datetime.utcnow().isoformat(),
     }
+    payload["budget_total"] = requirements.budget_total
+
+    daily_budget_per_person = None
+    if requirements.budget_total is not None and days and requirements.travelers:
+        try:
+            daily_budget_per_person = int(round(requirements.budget_total / days / requirements.travelers))
+        except Exception:
+            daily_budget_per_person = None
+    payload["daily_budget_per_person"] = daily_budget_per_person
+
+    payload["trip_type"] = requirements.traveler_type or requirements.travel_style or ""
+
+    if thread is not None:
+        if thread.start_date:
+            payload["start_date"] = thread.start_date.isoformat()
+        if thread.end_date:
+            payload["end_date"] = thread.end_date.isoformat()
     payload["response_markdown"] = _format_trip_response(payload)
     return payload

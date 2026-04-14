@@ -106,3 +106,112 @@
 .footer-links a:hover {
   color: #111827;
 }
+
+/* ===============================
+   FOOTER RESPONSIVE
+================================= */
+
+/* 📱 TABLET (<= 1024px) */
+@media (max-width: 1024px) {
+
+  .footer {
+    padding: 20px 40px 30px;
+  }
+
+  .footer-container {
+    flex-direction: column;
+    gap: 40px;
+  }
+
+  .footer-links {
+    gap: 80px;
+    flex-wrap: wrap;
+  }
+
+  .footer-brand {
+    max-width: 100%;
+  }
+
+  .footer-bottom {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+}
+
+/* 📱 MOBILE (<= 768px) */
+@media (max-width: 768px) {
+
+  .footer {
+    padding: 20px 20px 30px;
+  }
+
+  .footer-container {
+    gap: 30px;
+  }
+
+  /* ссылки в 2 колонки */
+  .footer-links {
+    gap: 40px;
+    justify-content: space-between;
+  }
+
+  .footer-links div {
+    gap: 12px;
+  }
+
+  .footer-links h4 {
+    font-size: 13px;
+  }
+
+  .footer-links a {
+    font-size: 13px;
+  }
+
+  /* бренд по центру */
+  .footer-brand {
+    text-align: center;
+  }
+
+  .brand-top {
+    justify-content: center;
+  }
+
+  .footer-logo-img {
+    height: 45px;
+  }
+}
+
+/* 📱 SMALL MOBILE (<= 480px) */
+@media (max-width: 480px) {
+
+  .footer {
+    padding: 16px 14px 24px;
+  }
+
+  /* ссылки в 1 колонку */
+  .footer-links {
+    flex-direction: column;
+    gap: 24px;
+    align-items: center;
+    text-align: center;
+  }
+
+  .footer-links div {
+    align-items: center;
+  }
+
+  /* текст компактнее */
+  .footer-brand p {
+    font-size: 13px;
+  }
+
+  .footer-bottom {
+    font-size: 12px;
+    gap: 6px;
+  }
+
+  .footer-logo-img {
+    height: 40px;
+  }
+}

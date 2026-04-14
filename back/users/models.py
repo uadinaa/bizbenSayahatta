@@ -31,6 +31,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     status_level = models.CharField(max_length=16, default="BRONZE")
     date_joined = models.DateTimeField(auto_now_add=True)
     deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    # Travel map: when True, anyone can load map data without share_token (subject to per-section prefs).
+    is_map_public = models.BooleanField(default=False, db_index=True)
+    # Secret segment for private maps; required as ?share_token= when is_map_public is False.
+    map_share_token = models.CharField(max_length=64, null=True, blank=True, unique=True, db_index=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []

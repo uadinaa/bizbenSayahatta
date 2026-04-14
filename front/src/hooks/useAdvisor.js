@@ -2,13 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchProfile } from "../slices/authSlice";
 import api from "../api/axios";
-
-const STATUS_LABELS = {
-  PENDING: "Pending review",
-  APPROVED: "Approved",
-  REJECTED: "Rejected",
-  MORE_INFO: "More info required",
-};
+import i18n from "../i18n";
 
 function toList(data) {
   if (Array.isArray(data)) return data;
@@ -66,14 +60,24 @@ export function useAdvisor() {
   }, [applications]);
 
   const advisorStatus = useMemo(() => {
-    if (user?.role === "TRIPADVISOR") return { code: "APPROVED", label: "Active TripAdvisor" };
+    if (user?.role === "TRIPADVISOR") {
+      return { code: "APPROVED", label: i18n.t("profile.activeTripAdvisor") };
+    }
     if (latestApplication?.status) {
+      const keyMap = {
+        PENDING: "profile.pendingReview",
+        APPROVED: "profile.approved",
+        REJECTED: "profile.rejected",
+        MORE_INFO: "profile.moreInfoRequired",
+      };
       return {
         code: latestApplication.status,
-        label: STATUS_LABELS[latestApplication.status] || latestApplication.status,
+        label: i18n.t(keyMap[latestApplication.status], {
+          defaultValue: latestApplication.status,
+        }),
       };
     }
-    return { code: "NONE", label: "Not applied" };
+    return { code: "NONE", label: i18n.t("profile.notApplied") };
   }, [user, latestApplication]);
 
   useEffect(() => {
@@ -121,16 +125,14 @@ export function useAdvisor() {
 
       const checkoutUrl = payRes.data?.checkout_url;
       if (!checkoutUrl) {
-        setAdvisorError(
-          "Application saved but payment link is missing. Check STRIPE_PAYMENT_LINK_URL on the server.",
-        );
+        setAdvisorError(i18n.t("profile.paymentLinkMissing"));
         const applicationsRes = await api.get("marketplace/advisor/applications/");
         setApplications(toList(applicationsRes.data));
         return;
       }
 
       setAdvisorModalOpen(false);
-      setAdvisorSuccess("Redirecting to payment…");
+      setAdvisorSuccess(i18n.t("profile.redirecting"));
       window.location.assign(checkoutUrl);
     } catch (err) {
       const status = err?.response?.status;
@@ -142,11 +144,10 @@ export function useAdvisor() {
             ? backend
             : err?.userMessage || "Request failed";
       if (typeof msg !== "string") {
-        msg = JSON.stringify(backend || "Request failed");
+        msg = JSON.stringify(backend || i18n.t("errors.requestFailed"));
       }
       if (status === 404 && String(err?.config?.url || "").includes("payments")) {
-        msg =
-          "Payment API not found (404). Restart the backend and open /api/payments/create/ with a trailing slash.";
+        msg = i18n.t("profile.paymentApiNotFound");
       }
       setAdvisorError(msg);
     } finally {

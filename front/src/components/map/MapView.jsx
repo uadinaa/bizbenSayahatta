@@ -1,8 +1,9 @@
 import { MapContainer, TileLayer, Popup, CircleMarker, GeoJSON, Pane } from "react-leaflet";
+import { useTranslation } from "react-i18next";
 
-export default function MapView({ places, countriesData, onOpenModal }) {
+export default function MapView({ places, countriesData, onOpenModal, showAddButton = true }) {
   const visitedCountries = places.map((p) => p.country.toLowerCase().trim());
-
+  const { t } = useTranslation(); 
   const countryStyle = (feature) => {
     const name = String(feature.properties?.name || feature.properties?.ADMIN || "")
       .toLowerCase().trim();
@@ -39,22 +40,24 @@ export default function MapView({ places, countriesData, onOpenModal }) {
       </MapContainer>
 
       {/* ADD VISITED PLACE */}
-      <button className="add-place-btn" onClick={onOpenModal}>+ Add Visited Place</button>
+      {showAddButton ? (
+        <button className="add-place-btn" onClick={onOpenModal}>+ {t("map.addVisitedPlace")}</button>
+      ) : null}
 
       {/* LEGEND BOX */}
       <div className="map-legend">
-        <h4>Legend</h4>
+        <h4>{t("map.legend")}</h4>
         <div className="legend-item">
           <span className="legend-color visited-country"></span>
-          Visited Countries
+          {t("map.visitedCountries")}
         </div>
         <div className="legend-item">
           <span className="legend-color unexplored-country"></span>
-          Unexplored
+          {t("map.unexplored")}
         </div>
         <div className="legend-item">
           <span className="legend-color visited-city"></span>
-          City Visited
+          {t("map.cityVisited")}
         </div>
       </div>
 

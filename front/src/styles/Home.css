@@ -13,7 +13,7 @@
 .home-content {
   display: flex;
   gap: 60px;
-  max-width: 1400px;
+  max-width: 1400px; 
   width: 100%;
   align-items: center;
 }
@@ -316,12 +316,12 @@
   max-width: 500px;
 }
 
-/* GRID */
+/* GRID — почти без изменений */
 .features-grid {
   margin-top: 40px;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  grid-auto-rows: 160px;
+  grid-auto-rows: 170px; /* было 160 → +10px всего */
   gap: 20px;
 }
 
@@ -329,11 +329,11 @@
 .feature-card {
   background: white;
   border-radius: 20px;
-  padding: 24px;
+  padding: 26px 26px; /* было 24 → +2px */
   border: 1px solid #f1f1f1;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px; /* было 10 → чуть больше воздуха */
   transition: all 0.2s ease;
 }
 
@@ -347,6 +347,7 @@
   grid-column: span 2;
   background: #D5DE60;
   color: black;
+  padding: 28px;
 }
 
 .feature-card.big button {
@@ -371,16 +372,19 @@
 .feature-card h3 {
   font-size: 24px;
   margin: 0;
+  max-width: 95%;
 }
 
 .feature-card h4 {
   font-size: 16px;
   margin: 0;
+  max-width: 95%;
 }
 
 .feature-card p {
-  font-size: 14px;
+font-size: 14px;
   color: #6b7280;
+  max-width: 92%; 
 }
 
 .feature-icon {
@@ -484,6 +488,7 @@
   border: 1px solid #e5e7eb;
   background: #fff;
   transition: all 0.2s ease;
+  
 }
 
 .step-card.active {
@@ -520,7 +525,8 @@
 .how-preview {
   flex: 1;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  justify-content: flex-start;
 }
 
 .how-chat {
@@ -528,11 +534,92 @@
   border-radius: 20px;
   padding: 24px;
   width: 100%;
-  max-width: 600px;
+  height: 100%;
+  max-width: 680px;
   display: flex;
   flex-direction: column;
   gap: 14px;
   box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+}
+/* 1. Родительский контейнер */
+.steps-wrapper {
+  display: grid;
+  /* Левая колонка гибкая, правая — строго под ширину карты */
+  grid-template-columns: 1fr 320px; 
+  gap: 15px;
+  width: 100%;
+  align-items: start; /* Чтобы карточки не растягивались по высоте картинки */
+}
+
+/* Чат сверху на обе колонки */
+.how-chat {
+  grid-column: 1 / 3; 
+  margin-bottom: 10px;
+}
+
+/* 2. Левая колонка (Карточки) */
+.trip-card {
+  grid-column: 1 / 2;
+  grid-row: 2 / 3;
+  
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border-radius: 20px;
+  border: 1px solid #f1f1f1;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+  height: fit-content;
+  animation: slideIn 0.5s ease-out forwards;
+}
+
+.sources-card {
+  grid-column: 1 / 2;
+  grid-row: 3 / 4; /* Строго под trip-card */
+  margin-top: 10px; /* Небольшой отступ между ними */
+
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border-radius: 20px;
+  border: 1px solid #f1f1f1;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+  height: fit-content;
+  animation: slideIn 0.5s ease-out forwards;
+}
+
+/* 3. Правая колонка (Карта) */
+.map-card-preview {
+  grid-column: 2 / 3;
+  grid-row: 2 / 4; /* Занимает пространство напротив обеих карточек */
+  height: fit-content;
+  min-height: 340px; /* Минимальная высота, чтобы не была слишком мелкой */
+  animation: slideIn 0.6s ease-out 0.1s both;
+}
+
+.map-card-img {
+  width: 320px;
+  height: 100%; /* Заполнит высоту, выделенную grid-row 2/4 */
+  min-height: 340px; /* Минимальная высота, чтобы не была слишком мелкой */
+  border-radius: 20px;
+  object-fit: cover;
+  display: block;
+}
+
+/* --- Стили текста (дублируем дизайн) --- */
+.trip-card h4, 
+.sources-card p:first-child { 
+  margin: 15px 12px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.trip-card p, 
+.sources-card p {
+  font-size: 13px;
+  color: #57585c;
+  margin: 8px 12px;
+  line-height: 1.4;
 }
 
 /* ===== HOW RIGHT SIDE IMPROVEMENTS ===== */
@@ -839,7 +926,7 @@
 }
 
 .testimonial-header-label {
-  font-size: 34px;
+  font-size: 28px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 2px;
@@ -848,7 +935,7 @@
 }
 
 .testimonial-text {
-  font-size:28px;
+  font-size:24px;
   line-height: 1.6;
   font-weight: 500;
   color: #e3edf0;
@@ -914,3 +1001,376 @@
   transform: scale(1.1);
 }
 
+
+/* ===== CONTACT SECTION ===== */
+
+.contact-section {
+  margin-top: 120px;
+  padding: 80px 20px;
+  background: #f9f9f7;
+}
+
+.contact-container {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.contact-container h2 {
+  font-size: 32px;
+  margin-bottom: 12px;
+}
+
+.contact-subtitle {
+  color: #666;
+  margin-bottom: 40px;
+  font-size: 15px;
+}
+
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.contact-row {
+  display: flex;
+  gap: 16px;
+}
+
+.contact-row input {
+  width: 100%;
+}
+
+.contact-form input,
+.contact-form textarea {
+  padding: 14px 16px;
+  border-radius: 32px;
+  border: 1px solid #e6e6e6;
+  font-size: 14px;
+  outline: none;
+  transition: 0.2s ease;
+}
+
+.contact-form input:focus,
+.contact-form textarea:focus {
+  border-color: rgba(117, 183, 193, 0.426);
+}
+
+.contact-btn {
+  margin-top: 10px;
+  padding: 14px;
+  border-radius: 999px;
+  border: none;
+  background:  rgba(117, 183, 193, 0.7);
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: 0.25s ease;
+}
+
+.contact-btn:hover {
+  opacity: 0.9;
+}
+
+/* ===============================
+   RESPONSIVE (MOBILE FIRST FIX)
+================================= */
+
+@media (max-width: 1024px) {
+  .home-content {
+    flex-direction: column;
+    gap: 40px;
+    text-align: center;
+  }
+
+  .home-left h1 {
+    font-size: 42px;
+  }
+
+  .home-center .globe-img {
+    width: 280px;
+  }
+
+  .home-right .chat-card {
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .how-content {
+    flex-direction: column;
+  }
+
+  .wide-preview {
+    width: 100%;
+  }
+
+  .features-grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: auto;
+  }
+
+  .feature-card.big,
+  .feature-card.wide,
+  .map-card {
+    grid-column: span 2 !important;
+    grid-row: auto !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .home-page {
+    padding: 40px 16px;
+  }
+
+  .home-wrapper {
+    gap: 80px;
+  }
+
+  .home-left h1 {
+    font-size: 32px;
+  }
+
+  .home-left p {
+    font-size: 14px;
+  }
+
+  .features-section h2,
+  .how-section h2 {
+    font-size: 28px;
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .feature-card {
+    grid-column: span 1 !important;
+  }
+
+  .how-section h2 {
+    margin-bottom: 60px;
+  }
+
+  .step-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .inspiration-card {
+    flex: 0 0 80%;
+  }
+
+  .testimonial-card {
+    padding: 40px 20px;
+  }
+
+  .testimonial-text {
+    font-size: 16px;
+  }
+
+  .testimonial-header-label {
+    font-size: 18px;
+  }
+
+  .contact-row {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .home-left h1 {
+    font-size: 26px;
+  }
+
+  .create-trip-btn {
+    width: 100%;
+  }
+
+  .chat-actions {
+    flex-direction: column;
+  }
+
+  .chat-actions button {
+    width: 100%;
+  }
+
+  .inspiration-card {
+    flex: 0 0 90%;
+  }
+
+  .contact-container h2 {
+    font-size: 24px;
+  }
+
+  .contact-form input,
+  .contact-form textarea {
+    font-size: 13px;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px); /* Появление чуть снизу */
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===============================
+   EXTRA RESPONSIVE FIXES
+================================= */
+
+/* 📱 TABLET (<= 1024px) */
+@media (max-width: 1024px) {
+
+  /* steps-wrapper → в колонку */
+  .steps-wrapper {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .how-chat {
+    grid-column: auto;
+  }
+
+  .trip-card,
+  .sources-card,
+  .map-card-preview {
+    grid-column: auto;
+    grid-row: auto;
+    width: 100%;
+  }
+
+  .map-card-img {
+    width: 100%;
+    height: 260px;
+  }
+
+  /* чуть компактнее чат */
+  .how-chat {
+    padding: 20px;
+  }
+
+  /* inspiration */
+  .inspiration-head {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .inspiration-head h2 {
+    font-size: 36px;
+  }
+
+  /* testimonials кнопки внутрь */
+  .testimonial-btn:first-child {
+    left: 10px;
+  }
+
+  .testimonial-btn:last-child {
+    right: 10px;
+  }
+}
+
+/* 📱 MOBILE (<= 768px) */
+@media (max-width: 768px) {
+
+  /* hero */
+  .home-content {
+    gap: 30px;
+  }
+
+  .home-center .globe-img {
+    width: 220px;
+  }
+
+  /* chat card */
+  .home-right .chat-card {
+    padding: 18px;
+  }
+
+  /* chat bubbles */
+  .ai-bubble,
+  .user-bubble {
+    max-width: 90%;
+    font-size: 13px;
+  }
+
+  /* шаги */
+  .step-card {
+    padding: 18px;
+  }
+
+  .step-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  /* how preview */
+  .how-chat {
+    border-radius: 16px;
+  }
+
+  /* inspiration */
+  .inspiration-card img {
+    height: 180px;
+  }
+
+  /* testimonials */
+  .testimonial-card {
+    padding: 30px 16px;
+  }
+
+  .testimonial-text {
+    font-size: 15px;
+  }
+}
+
+/* 📱 SMALL MOBILE (<= 480px) */
+@media (max-width: 480px) {
+
+  /* hero */
+  .home-page {
+    padding: 30px 12px;
+  }
+
+  .home-left h1 {
+    line-height: 1.2;
+  }
+
+  /* кнопка */
+  .create-trip-btn {
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  /* chat */
+  .chat-info {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+
+  /* tags */
+  .tags span {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+
+  /* inspiration */
+  .inspiration-head h2 {
+    font-size: 26px;
+  }
+
+  /* testimonial */
+  .testimonial-header-label {
+    font-size: 16px;
+  }
+
+  /* contact */
+  .contact-section {
+    padding: 50px 12px;
+  }
+}

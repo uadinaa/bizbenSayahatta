@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api from "../api/axios";
+import { useTranslation } from "react-i18next";
 
 export default function AddTripModal({
   isOpen,
@@ -10,6 +11,7 @@ export default function AddTripModal({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState("");
+  const { t } = useTranslation(); 
   const [uploadPreview, setUploadPreview] = useState("");
   const [newTrip, setNewTrip] = useState({
     title: "",
@@ -18,6 +20,7 @@ export default function AddTripModal({
     endDate: "",
     budget: "",
     comment: "",
+    category_id: "",
   });
 
   useEffect(() => {
@@ -38,6 +41,7 @@ export default function AddTripModal({
       endDate: "",
       budget: "",
       comment: "",
+      category_id: "",
     });
     setUploadPreview("");
   };
@@ -99,7 +103,7 @@ export default function AddTripModal({
     try {
       const createPayload = {
         title: newTrip.title.trim(),
-        category_id: Number(firstCategoryId),
+        category_id: Number(newTrip.category_id),
         destination: newTrip.place.trim(),
         duration_days,
         available_dates,
@@ -111,15 +115,23 @@ export default function AddTripModal({
 
       const createRes = await api.post("marketplace/advisor/trips/", createPayload);
       const createdId = createRes.data?.id;
-      if (!createdId) throw new Error("Trip creation failed.");
-      await api.post(`marketplace/advisor/trips/${createdId}/submit/`);
 
+      console.log("CREATED:", createRes.data);
+
+      const submitRes = await api.post(`marketplace/advisor/trips/${createdId}/submit/`);
+
+      console.log("SUBMIT SUCCESS:", submitRes.data);
       setSubmitSuccess("Trip submitted for review. Status: PENDING.");
       resetForm();
-      if (onTripCreated) await onTripCreated();
+
+
     } catch (err) {
       const responseData = err?.response?.data;
+      console.log("SUBMIT ERROR FULL:", err?.response?.data); // 🔥 ВОТ ЭТО ГЛАВНОЕ
       const detail = responseData?.detail || err?.userMessage || "Failed to submit trip.";
+      console.log(
+        "REAL ERROR:", err?.response?.data?.error?.details?.non_field_errors
+      );
       setSubmitError(detail);
     } finally {
       setSubmitting(false);
@@ -130,32 +142,60 @@ export default function AddTripModal({
     <div className="modal-overlay" onClick={handleClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Add New Trip</h2>
+          <h2>{t("inspiration.addNewTrip")}</h2>
           <span className="close-btn" onClick={handleClose}>✕</span>
         </div>
 
         <form onSubmit={handleAddTrip}>
           <div className="modal-body">
+            <label>
+                <span>{t("Image")}</span>
             <input type="file" accept="image/*" onChange={handleTripFileUpload} />
+            </label>
 
+            <label>
+                <span>{t("advisorTrips.tripName")}</span>
             <input
               type="text"
               name="title"
-              placeholder="Trip Name"
+              placeholder={t("advisorTrips.tripName")}
               value={newTrip.title}
               onChange={handleChange}
               required
             />
+            </label>
 
+              <label>
+                <span>{t("advisorTrips.category")}</span>
+                <select
+                  name="category_id"
+                  value={newTrip.category_id}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">{t("advisorTrips.selectCategory")}</option>
+                  {tripCategories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            
+            <label>
+                <span>{t("advisorTrips.place")}</span>
             <input
               type="text"
               name="place"
-              placeholder="Place"
+              placeholder={t("advisorTrips.place")}
               value={newTrip.place}
               onChange={handleChange}
               required
             />
-
+            </label>
+            
+            <label>
+                <span>{t("Date")}</span>
             <div className="date-row">
               <input
                 type="date"
@@ -170,22 +210,29 @@ export default function AddTripModal({
                 onChange={handleChange}
               />
             </div>
-
+            </label>
+            
+            <label>
+                <span>{t("advisorTrips.budget")}</span>
             <input
               type="number"
               name="budget"
-              placeholder="Budget"
+              placeholder={t("advisorTrips.budget")}
               value={newTrip.budget}
               onChange={handleChange}
             />
-
+            </label>
+            
+            <label>
+                <span>{t("advisorTrips.additionalInformation")}</span>
             <textarea
               name="comment"
-              placeholder="Additional information"
+              placeholder={t("advisorTrips.additionalInformation")}
               rows={3}
               value={newTrip.comment}
               onChange={handleChange}
             />
+            </label>
           </div>
 
           {submitError ? <div className="trip-form-error">{submitError}</div> : null}
@@ -193,10 +240,10 @@ export default function AddTripModal({
 
           <div className="modal-actions">
             <button type="button" className="cancel-btn" onClick={handleClose}>
-              Cancel
+              {t("advisorTrips.cancel")}
             </button>
             <button type="submit" className="save-btn" disabled={submitting}>
-              {submitting ? "Submitting..." : "Add Trip"}
+              {submitting ? t("advisorTrips.submitting") : t("advisorTrips.addTrip")}
             </button>
           </div>
         </form>

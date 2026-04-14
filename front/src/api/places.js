@@ -35,15 +35,35 @@ export const fetchInspirationPlaces = async (
 
     const data = response.data;
 
-    // если API возвращает массив — приводим к одному формату
+    // Handle new format with places and tours
+    if (data && typeof data === "object") {
+      return {
+        places: data.places || [],
+        tours: data.tours || [],
+        next: data.next || null,
+        previous: data.previous || null,
+      };
+    }
+
+    // Fallback for old array format
     return Array.isArray(data)
-      ? { results: data, next: null, previous: null }
-      : data;
+      ? { places: data, tours: [], next: null, previous: null }
+      : { places: [], tours: [], next: null, previous: null };
   } catch (err) {
     console.error(err);
-    return { results: [], next: null, previous: null };
+    return { places: [], tours: [], next: null, previous: null };
   }
 };
+
+    // если API возвращает массив — приводим к одному формату
+//     return Array.isArray(data)
+//       ? { results: data, next: null, previous: null }
+//       : data;
+//   } catch (err) {
+//     console.error(err);
+//     return { results: [], next: null, previous: null };
+//   }
+// };
 
 export const toggleMustVisit = async (placeId, isMustVisit) => {
   const payload =
@@ -63,6 +83,11 @@ export const createMapPlace = async (payload) => {
   return response.data;
 };
 
+export const updateMapPlace = async (placeId, payload) => {
+  const response = await api.patch(`places/map-places/${placeId}/`, payload);
+  return response.data;
+};
+
 export const deleteMapPlace = async (placeId) => {
   await api.delete(`places/map-places/${placeId}/`);
 };
@@ -74,3 +99,5 @@ export const markPlaceAsVisited = async (placeId) => {
   );
   return response.data;
 };
+
+

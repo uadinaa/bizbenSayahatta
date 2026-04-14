@@ -16,6 +16,8 @@ MAX_MUSEUMS_PER_DAY = 2
 MAX_FOOD_STOPS_PER_DAY = 1
 FAR_DISTANCE_KM = 8.0
 NEARBY_DISTANCE_KM = 3.5
+DUPLICATE_DISTANCE_KM = 0.2  # 200m - places closer than this are considered duplicates
+MAX_DAY_SPREAD_KM = 1.5  # Max distance between any two places on the same day
 
 DEFAULT_INTEREST_TYPE_MAP = {
     "cute museums": ["museum", "art_gallery"],
@@ -205,6 +207,44 @@ def _distance_between_places_km(source: Place, target: Place) -> float:
     return _distance_km(source.lat, source.lng, target.lat, target.lng)
 
 
+def _deduplicate_nearby_places(places: List[Place]) -> List[Place]:
+    """
+    Remove duplicate places that are within 200m of each other.
+    Keeps the higher-rated place when duplicates are found.
+
+    This prevents the "Duomo / Piazza del Duomo / Galleria" tripling problem.
+    """
+    if not places:
+        return []
+
+    # Sort by rating (highest first) so we keep the best one
+    sorted_places = sorted(places, key=lambda p: p.rating or 0, reverse=True)
+    result = []
+
+    for place in sorted_places:
+        if place.lat is None or place.lng is None:
+            result.append(place)
+            continue
+
+        # Check if this place is too close to any already-selected place
+        is_duplicate = False
+        for selected in result:
+            if selected.lat is None or selected.lng is None:
+                continue
+            distance = _distance_km(
+                place.lat, place.lng,
+                selected.lat, selected.lng
+            )
+            if distance <= DUPLICATE_DISTANCE_KM:
+                is_duplicate = True
+                break
+
+        if not is_duplicate:
+            result.append(place)
+
+    return result
+
+
 def _price_level_to_number(price_level: Optional[str]) -> Optional[int]:
     if price_level is None:
         return None
@@ -252,13 +292,37 @@ def _apply_preferences(
     return merged_budget, merged_interests, merged_travel_style
 
 
+def _day_spread_within_limit(day_stops: List[ScoredPlace], new_place: Place) -> bool:
+    """
+    Check if adding new_place keeps all day stops within MAX_DAY_SPREAD_KM (1.5km).
+    Returns True if the new place is within the allowed spread from all existing stops.
+    """
+    if not day_stops:
+        return True
+
+    for stop in day_stops:
+        distance = _distance_between_places_km(stop.place, new_place)
+        if distance > MAX_DAY_SPREAD_KM:
+            return False
+    return True
+
+
 def _build_day_stops(
     *,
     candidates: List[ScoredPlace],
     used_ids: set,
     stops_per_day: int,
     centroid: Optional[tuple],
+    require_food_stop: bool = True,
 ) -> List[ScoredPlace]:
+    """
+    Build a day's worth of stops with proximity enforcement.
+
+    Rules:
+    - All stops must be within MAX_DAY_SPREAD_KM (1.5km) of each other (walkable or 1 metro stop)
+    - Must include at least one food stop (cafe/restaurant) per day
+    - Museums limited to 2 per day, food stops limited to 1 per day
+    """
     day_stops: List[ScoredPlace] = []
     museum_count = 0
     food_count = 0
@@ -295,11 +359,16 @@ def _build_day_stops(
         )
     )
 
-    # First pass: keep walkable cluster around anchor.
+    # PROXIMITY ENFORCEMENT: First pass - keep walkable cluster around anchor.
+    # All places must be within 1.5km of each other (not just the anchor)
     for item in available_items:
         place = item.place
         distance_from_anchor = _distance_between_places_km(anchor_place, place)
         if distance_from_anchor > NEARBY_DISTANCE_KM:
+            continue
+
+        # Check proximity to ALL existing day stops, not just anchor
+        if not _day_spread_within_limit(day_stops, place):
             continue
 
         is_food = _is_food_place(place)
@@ -321,12 +390,33 @@ def _build_day_stops(
         if len(day_stops) >= day_capacity:
             break
 
+    # MANDATORY FOOD STOP: Ensure each day has at least one cafe/restaurant
+    if require_food_stop and food_count == 0:
+        for item in available_items:
+            place = item.place
+            if place.id in used_ids:
+                continue
+            if not _is_food_place(place):
+                continue
+            # Still enforce proximity
+            if not _day_spread_within_limit(day_stops, place):
+                continue
+            day_stops.append(item)
+            used_ids.add(place.id)
+            food_count += 1
+            break
+
     # Second pass: fill remaining slots by nearest distance if needed.
     if len(day_stops) < day_capacity:
         for item in available_items:
             place = item.place
             if place.id in used_ids:
                 continue
+
+            # Proximity check
+            if not _day_spread_within_limit(day_stops, place):
+                continue
+
             is_food = _is_food_place(place)
             is_museum = _is_museum_place(place)
 
@@ -416,6 +506,9 @@ def build_trip_plan(
 
     if filtered_places:
         places = filtered_places
+
+    # DEDUPLICATION: Remove places within 200m of each other
+    places = _deduplicate_nearby_places(places)
 
     scored_places = [
         ScoredPlace(

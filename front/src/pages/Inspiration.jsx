@@ -1,24 +1,42 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import AddTripModal from "../components/AddTripModal";
 import PublicTripsSection from "../components/inspiration/PublicTripsSection";
 import PlaceDetailModal from "../components/inspiration/PlaceDetailModal";
+import ManualTripsModal from "../components/inspiration/ManualTripsModal";
 import PlaceCard from "../components/places/PlaceCard";
 import PlaceFilters from "../components/places/PlaceFilters";
 import { fetchProfile } from "../slices/authSlice";
 import {
   closeTripModal,
   handleAddComment,
+  handleAddTripComment,
   handleCreateTrip,
+  handleToggleCommentLike,
+  handleToggleTripCommentLike,
   handleToggleMustVisit,
   loadComments,
+  loadMoreComments,
+  loadMoreTripComments,
   loadPlaces,
   loadPublicTrips,
   loadTripCategories,
+  loadTripComments,
   openTripModal,
 } from "../service/placeService";
+import { toggleMustVisit } from "../api/places";
 import s from "../styles/Inspiration.module.css";
+
+// Helper to map TripAdvisor price amount to Google Places price_level format
+function mapPriceToLevel(amount) {
+  if (!amount) return null;
+  if (amount < 20) return "PRICE_LEVEL_INEXPENSIVE";
+  if (amount < 50) return "PRICE_LEVEL_MODERATE";
+  if (amount < 100) return "PRICE_LEVEL_EXPENSIVE";
+  return "PRICE_LEVEL_VERY_EXPENSIVE";
+}
 
 const Inspiration = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -30,22 +48,35 @@ const Inspiration = () => {
   const [priceFilter, setPriceFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  
+  // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTripModalOpen, setIsTripModalOpen] = useState(false);
+  const [isManualTripModalOpen, setIsManualTripModalOpen] = useState(false);
+  
+  // Selection state
   const [selectedPlace, setSelectedPlace] = useState(null);
+  const [selectedTrip, setSelectedTrip] = useState(null);
+  
   const [tripCategories, setTripCategories] = useState([]);
-
   const [comments, setComments] = useState([]);
+  const [commentsMeta, setCommentsMeta] = useState({ count: 0, hasMore: false });
+  const [commentsPage, setCommentsPage] = useState(1);
   const [newComment, setNewComment] = useState("");
   const [loadingComments, setLoadingComments] = useState(false);
+  const [loadingMoreComments, setLoadingMoreComments] = useState(false);
   const [publicTrips, setPublicTrips] = useState([]);
   const [loadingTrips, setLoadingTrips] = useState(false);
 
+  const [sourceType, setSourceType] = useState("all"); // "all" | "places" | "tours"
+  const [tours, setTours] = useState([]);
+  
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user, isAuthenticated } = useSelector((state) => state.auth);
   const isAuthed = isAuthenticated;
   const isTripAdvisor = user?.role === "TRIPADVISOR" || user?.role === "ADMIN";
+  const { t } = useTranslation(); 
 
   const preferenceFilters = useMemo(() => {
     const prefs = user?.preferences || {};
@@ -58,6 +89,17 @@ const Inspiration = () => {
     };
   }, [user]);
 
+  // Logic to close modals on ESC
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key !== "Escape") return;
+      if (isManualTripModalOpen) closeManualTripModal();
+      if (isModalOpen) closePlaceModal();
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isManualTripModalOpen, isModalOpen]);
+
   useEffect(() => {
     loadPlaces({
       page,
@@ -68,6 +110,7 @@ const Inspiration = () => {
       dateFrom,
       dateTo,
       setPlaces,
+      setTours,
       setNext,
     });
   }, [page, search, category, preferenceFilters, priceFilter, dateFrom, dateTo]);
@@ -103,15 +146,37 @@ const Inspiration = () => {
   const openPlaceModal = (place) => {
     setSelectedPlace(place);
     setIsModalOpen(true);
+    setCommentsPage(1);
+    setNewComment("");
     loadComments({
       placeId: place.id,
       setLoadingComments,
       setComments,
+      setCommentsMeta,
     });
   };
 
   const closePlaceModal = () => {
     setIsModalOpen(false);
+    setSelectedPlace(null);
+  };
+
+  const openManualTripModal = (trip) => {
+    setSelectedTrip(trip);
+    setIsManualTripModalOpen(true);
+    setCommentsPage(1);
+    setNewComment("");
+    loadTripComments({
+      tripId: trip.id,
+      setLoadingComments,
+      setComments,
+      setCommentsMeta,
+    });
+  };
+
+  const closeManualTripModal = () => {
+    setIsManualTripModalOpen(false);
+    setSelectedTrip(null);
   };
 
   const handleTripCreated = async () => {
@@ -119,26 +184,45 @@ const Inspiration = () => {
   };
 
   const handleToggleFavoriteInPlace = async (placeId) => {
-    const place = places.find((item) => item.id === placeId);
+    if (!isAuthed) {
+      navigate("/login");
+      return;
+    }
+
+    const place = places.find((p) => p.id === placeId);
     if (!place) return;
-    await handleToggleMustVisit({
-      placeId,
-      currentValue: place.is_must_visit,
-      isAuthed,
-      navigate,
-      setPlaces,
-      setSelectedPlace,
-    });
+
+    const newValue = !place.is_must_visit;
+
+    // Optimistic update
+    setPlaces((prev) =>
+      prev.map((p) => p.id === placeId ? { ...p, is_must_visit: newValue } : p)
+    );
+    if (selectedPlace?.id === placeId) {
+      setSelectedPlace((prev) => ({ ...prev, is_must_visit: newValue }));
+    }
+
+    try {
+      await toggleMustVisit(placeId, newValue);
+    } catch (err) {
+      setPlaces((prev) =>
+        prev.map((p) => p.id === placeId ? { ...p, is_must_visit: !newValue } : p)
+      );
+      if (selectedPlace?.id === placeId) {
+        setSelectedPlace((prev) => ({ ...prev, is_must_visit: !newValue }));
+      }
+      console.error("Failed to toggle favorite:", err);
+    }
   };
 
   return (
     <div className={s.page}>
-      <h1 className={s.title}>Inspiration</h1>
+      <h1 className={s.title}>{t("inspiration.inspiration")}</h1> 
 
       <div className={s.searchRow}>
         <input
           className={s.search}
-          placeholder="Search destination..."
+          placeholder={t("inspiration.searchDestination")}
           value={search}
           onChange={(e) => handleSearchChange(e.target.value)}
         />
@@ -154,8 +238,8 @@ const Inspiration = () => {
                 setIsTripModalOpen,
               })
             }
-          >
-            + Add New Trip
+          > 
+          + {t("inspiration.addNewTrip")}
           </button>
         )}
       </div>
@@ -182,26 +266,100 @@ const Inspiration = () => {
           setPage(1);
           setDateTo(value);
         }}
+        sourceType={sourceType}
+        onSourceTypeChange={(value) => {
+          setPage(1);
+          setSourceType(value);
+        }}
       />
 
-      <PublicTripsSection styles={s} loadingTrips={loadingTrips} publicTrips={publicTrips} />
+      <PublicTripsSection 
+        styles={s} 
+        loadingTrips={loadingTrips} 
+        publicTrips={publicTrips}  
+        setPublicTrips={setPublicTrips} 
+        onOpenTrip={openManualTripModal}
+      />
 
       <div className={s.grid}>
-        {places.map((place) => (
-          <PlaceCard
-            key={place.id}
-            place={place}
-            variant="inspiration"
-            isFavorited={place.is_must_visit}
-            onOpen={() => openPlaceModal(place)}
-            onToggleFavorite={() => handleToggleFavoriteInPlace(place.id)}
-          />
-        ))}
+        {(sourceType === "all" || sourceType === "places") &&
+          places.map((place) => (
+            <PlaceCard
+              key={`place-${place.id}`}
+              place={place}
+              variant="inspiration"
+              isFavorited={place.is_must_visit}
+              classes={{
+                card: s.card,
+                photo: s.photo,
+                photoPlaceholder: s.photoPlaceholder,
+                cardHeader: s.cardHeader,
+                category: s.category,
+                metaRow: s.metaRow,
+                rating: s.rating,
+                priceTag: s.priceTag,
+                name: s.name,
+                location: s.location,
+                heartBtn: s.heartBtn,
+                heartActive: s.heartActive,
+                heartImg: s.heartImg,
+              }}
+              onOpen={() => openPlaceModal(place)}
+              onToggleFavorite={() => handleToggleFavoriteInPlace(place.id)}
+            />
+          ))}
+
+        {(sourceType === "all" || sourceType === "tours") &&
+          tours.map((tour, index) => (
+            <PlaceCard
+              key={`tour-${tour.id || index}`}
+              place={{
+                id: `tour-${tour.id}`,
+                name: tour.name,
+                description: tour.description,
+                photo_url: tour.photo_url,
+                rating: tour.rating,
+                category: tour.category || "tour",
+                city: tour.city || search || "",
+                price_level: tour.price_amount ? mapPriceToLevel(tour.price_amount) : null,
+                is_must_visit: false,
+              }}
+              variant="inspiration"
+              isFavorited={false}
+              source="tripadvisor"
+              duration={tour.duration}
+              bookingUrl={tour.booking_url}
+              numReviews={tour.num_reviews}
+              award={tour.award}
+              webUrl={tour.web_url}
+              classes={{
+                card: s.card,
+                photo: s.photo,
+                photoPlaceholder: s.photoPlaceholder,
+                cardHeader: s.cardHeader,
+                category: s.category,
+                metaRow: s.metaRow,
+                rating: s.rating,
+                priceTag: s.priceTag,
+                name: s.name,
+                location: s.location,
+                heartBtn: s.heartBtn,
+                heartActive: s.heartActive,
+                heartImg: s.heartImg,
+                duration: s.duration,
+                award: s.award,
+                reviews: s.reviews,
+                bookBtn: s.bookBtn,
+              }}
+              onOpen={() => openPlaceModal({ ...tour, id: `tour-${tour.id}` })}
+              onToggleFavorite={() => {}}
+            />
+          ))}
       </div>
 
       {next && (
         <button className={s.loadMore} onClick={() => setPage((prev) => prev + 1)}>
-          Load more
+          {t("inspiration.loadMore")}
         </button>
       )}
 
@@ -211,8 +369,11 @@ const Inspiration = () => {
           place={selectedPlace}
           isAuthed={isAuthed}
           comments={comments}
-          newComment={newComment}
+          commentsTotalCount={commentsMeta.count}
+          commentsHasMore={commentsMeta.hasMore}
           loadingComments={loadingComments}
+          loadingMoreComments={loadingMoreComments}
+          newComment={newComment}
           navigate={navigate}
           onClose={closePlaceModal}
           onToggleMustVisit={() =>
@@ -227,7 +388,8 @@ const Inspiration = () => {
           }
           onCreateTrip={() => handleCreateTrip({ isAuthed, navigate })}
           onCommentChange={setNewComment}
-          onAddComment={() =>
+          onAddComment={() => {
+            setCommentsPage(1);
             handleAddComment({
               placeId: selectedPlace.id,
               newComment,
@@ -235,6 +397,81 @@ const Inspiration = () => {
               navigate,
               setComments,
               setNewComment,
+              setLoadingComments,
+              setCommentsMeta,
+            });
+          }}
+          onLoadMoreComments={() =>
+            loadMoreComments({
+              placeId: selectedPlace.id,
+              page: commentsPage + 1,
+              setLoadingMoreComments,
+              setComments,
+              setCommentsMeta,
+              onSuccess: () => setCommentsPage((p) => p + 1),
+            })
+          }
+          onToggleCommentLike={(comment) =>
+            handleToggleCommentLike({
+              placeId: selectedPlace.id,
+              commentId: comment.id,
+              liked: Boolean(comment.liked_by_me),
+              isAuthed,
+              navigate,
+              setComments,
+            })
+          }
+        /> 
+      ) : null}
+
+      {isManualTripModalOpen && selectedTrip ? (
+        <ManualTripsModal
+          styles={s}
+          trip={selectedTrip}
+          onClose={closeManualTripModal}
+          onToggleWishlist={() => {
+            console.log("toggle wishlist", selectedTrip.id);
+          }}
+          isAuthed={isAuthed}
+          navigate={navigate}
+          comments={comments}
+          commentsTotalCount={commentsMeta.count}
+          commentsHasMore={commentsMeta.hasMore}
+          newComment={newComment}
+          loadingComments={loadingComments}
+          loadingMoreComments={loadingMoreComments}
+          onCommentChange={setNewComment}
+          onAddComment={() => {
+            setCommentsPage(1);
+            handleAddTripComment({
+              tripId: selectedTrip.id,
+              newComment,
+              isAuthed,
+              navigate,
+              setComments,
+              setNewComment,
+              setLoadingComments,
+              setCommentsMeta,
+            });
+          }}
+          onLoadMoreComments={() =>
+            loadMoreTripComments({
+              tripId: selectedTrip.id,
+              page: commentsPage + 1,
+              setLoadingMoreComments,
+              setComments,
+              setCommentsMeta,
+              onSuccess: () => setCommentsPage((p) => p + 1),
+            })
+          }
+          onToggleCommentLike={(comment) =>
+            handleToggleTripCommentLike({
+              tripId: selectedTrip.id,
+              commentId: comment.id,
+              liked: Boolean(comment.liked_by_me),
+              isAuthed,
+              navigate,
+              setComments,
             })
           }
         />

@@ -3,11 +3,22 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchProfile } from "../slices/authSlice";
 import api from "../api/axios";
 import "../styles/managerReview.css";
+import { useTranslation } from "react-i18next";
+import TabBar from "../components/TabBar/TabBar";
+import TripPostsModal from "../components/managerTab/TripPostsModal";
+import s from "../styles/Inspiration.module.css";
+
+const MANAGER_TABS = [
+  { id: "applications", labelKey: "manager.applications" },
+  { id: "trips", labelKey: "manager.tripPosts" },
+  { id: "history", labelKey: "manager.history" },
+];
 
 export default function ManagerAdvisorReview() {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
-  // Состояние для управления вкладками
+  const { t } = useTranslation();
+  
   const [activeTab, setActiveTab] = useState("applications"); 
   const [apps, setApps] = useState([]);
   const [trips, setTrips] = useState([]);
@@ -16,12 +27,23 @@ export default function ManagerAdvisorReview() {
   const [error, setError] = useState("");
   const [reasons, setReasons] = useState({});
 
+  // Состояния для модалки деталей поста
+  const [selectedTrip, setSelectedTrip] = useState(null);
+  const [isTripModalOpen, setIsTripModalOpen] = useState(false);
+
   const toList = (data) =>
     Array.isArray(data)
       ? data
       : Array.isArray(data?.results)
       ? data.results
       : [];
+
+  const getHistoryActionLabel = (action) => {
+    if (!action) return t("manager.noReason");
+    const translated = t(`manager.historyActions.${action}`);
+    if (translated !== `manager.historyActions.${action}`) return translated;
+    return action.split(".").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
+  };
 
   useEffect(() => {
     if (!user && localStorage.getItem("access")) {
@@ -42,7 +64,7 @@ export default function ManagerAdvisorReview() {
       setTrips(toList(tripsRes.data));
       setLogs(toList(logsRes.data));
     } catch (err) {
-      setError(err.response?.data?.detail || "Cannot load data");
+      setError(err.response?.data?.detail || t("manager.cannotLoadData"));
     } finally {
       setLoading(false);
     }
@@ -54,6 +76,16 @@ export default function ManagerAdvisorReview() {
     }
   }, [user]);
 
+  const openTripDetails = (trip) => {
+    setSelectedTrip(trip);
+    setIsTripModalOpen(true);
+  };
+
+  const closeTripDetails = () => {
+    setSelectedTrip(null);
+    setIsTripModalOpen(false);
+  };
+
   const moderate = async (id, status) => {
     try {
       await api.post(`marketplace/manager/applications/${id}/review/`, {
@@ -62,7 +94,7 @@ export default function ManagerAdvisorReview() {
       });
       await loadQueue();
     } catch (err) {
-      alert(err.response?.data?.detail || "Failed moderation action");
+      alert(err.response?.data?.detail || t("manager.failedModerationAction"));
     }
   };
 
@@ -74,64 +106,56 @@ export default function ManagerAdvisorReview() {
       });
       await loadQueue();
     } catch (err) {
-      alert(err.response?.data?.detail || "Failed trip moderation");
+      alert(err.response?.data?.detail || t("manager.failedTripModeration"));
     }
   };
 
   if (user?.role !== "MANAGER" && user?.role !== "ADMIN") {
-    return <p style={{ padding: 20 }}>Manager access only.</p>;
+    return <p style={{ padding: 20 }}>{t("manager.accessOnly")}</p>;
   }
 
   return (
     <div className="manager-review">
-      <h1 className="manager-main-title">Management Dashboard</h1>
+      <h1 className="manager-main-title">{t("manager.dashboard")}</h1>
 
-      {/* Переключатели вкладок */}
-      <div className="tabs-container">
-        <button 
-          className={`tab-button ${activeTab === "applications" ? "active" : ""}`}
-          onClick={() => setActiveTab("applications")}
-        >
-          Applications ({apps.length})
-        </button>
-        <button 
-          className={`tab-button ${activeTab === "trips" ? "active" : ""}`}
-          onClick={() => setActiveTab("trips")}
-        >
-          Trip Posts ({trips.length})
-        </button>
-        <button 
-          className={`tab-button ${activeTab === "history" ? "active" : ""}`}
-          onClick={() => setActiveTab("history")}
-        >
-          History
-        </button>
-      </div>
+      <TabBar
+        tabs={MANAGER_TABS.map((tab) => ({
+          id: tab.id,
+          label:
+            tab.id === "applications"
+              ? `${t(tab.labelKey)} (${apps.length})`
+              : tab.id === "trips"
+              ? `${t(tab.labelKey)} (${trips.length})`
+              : t(tab.labelKey),
+        }))}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
 
       <div className="tab-content">
-        {loading && <p className="manager-loading">Loading...</p>}
+        {loading && <p className="manager-loading">{t("manager.loading")}</p>}
         {error && <p className="manager-error">{error}</p>}
 
         {/* Секция Заявок */}
         {activeTab === "applications" && !loading && (
           <div className="fade-in">
-            <h2 className="manager-title">TripAdvisor Applications</h2>
-            {!apps.length && <p>No pending applications.</p>}
+            <h2 className="manager-title">{t("manager.advisorApplications")}</h2>
+            {!apps.length && <p>{t("manager.noPendingApplications")}</p>}
             {apps.map((app) => (
               <div key={app.id} className="application-card">
-                <p><strong>User:</strong> {app.user_email}</p>
-                <p><strong>Plan:</strong> {app.subscription_plan || "-"}</p>
-                <p><strong>Portfolio:</strong> {(app.portfolio_links || []).join(", ") || "-"}</p>
+                <p><strong>{t("manager.user")}:</strong> {app.user_email}</p>
+                <p><strong>{t("manager.plan")}:</strong> {app.subscription_plan || "-"}</p>
+                <p><strong>{t("manager.portfolio")}:</strong> {(app.portfolio_links || []).join(", ") || "-"}</p>
                 <input
                   className="reason-input"
                   type="text"
-                  placeholder="Reason (optional)"
+                  placeholder={t("manager.reasonOptional")}
                   value={reasons[app.id] || ""}
                   onChange={(e) => setReasons(prev => ({ ...prev, [app.id]: e.target.value }))}
                 />
                 <div className="actions">
-                  <button onClick={() => moderate(app.id, "APPROVED")}>Approve</button>
-                  <button onClick={() => moderate(app.id, "REJECTED")}>Reject</button>
+                  <button onClick={() => moderate(app.id, "APPROVED")}>{t("manager.approve")}</button>
+                  <button onClick={() => moderate(app.id, "REJECTED")}>{t("manager.reject")}</button>
                 </div>
               </div>
             ))}
@@ -141,22 +165,31 @@ export default function ManagerAdvisorReview() {
         {/* Секция Постов */}
         {activeTab === "trips" && !loading && (
           <div className="fade-in">
-            <h2 className="manager-title">Trip Posts</h2>
-            {!trips.length && <p>No pending trips.</p>}
+            <h2 className="manager-title">{t("manager.tripPosts")}</h2>
+            {!trips.length && <p>{t("manager.noPendingTrips")}</p>}
             {trips.map((trip) => (
-              <div key={trip.id} className="application-card">
-                <p><strong>Title:</strong> {trip.title}</p>
-                <p><strong>Destination:</strong> {trip.destination}</p>
-                <input
-                  className="reason-input"
-                  type="text"
-                  placeholder="Reason (optional)"
-                  value={reasons[`trip-${trip.id}`] || ""}
-                  onChange={(e) => setReasons(prev => ({ ...prev, [`trip-${trip.id}`]: e.target.value }))}
-                />
-                <div className="actions">
-                  <button onClick={() => moderateTrip(trip.id, "APPROVED")}>Approve</button>
-                  <button onClick={() => moderateTrip(trip.id, "REJECTED")}>Reject</button>
+              <div 
+                key={trip.id} 
+                className="application-card" 
+                style={{ cursor: 'pointer' }}
+                onClick={() => openTripDetails(trip)}
+              >
+                <p><strong>{t("manager.title")}:</strong> {trip.title}</p>
+                <p><strong>{t("manager.destination")}:</strong> {trip.destination}</p>
+                
+                {/* Остановка всплытия события, чтобы клик по инпуту или кнопкам не открывал модалку */}
+                <div onClick={(e) => e.stopPropagation()}>
+                  <input
+                    className="reason-input"
+                    type="text"
+                    placeholder={t("manager.reasonOptional")}
+                    value={reasons[`trip-${trip.id}`] || ""}
+                    onChange={(e) => setReasons(prev => ({ ...prev, [`trip-${trip.id}`]: e.target.value }))}
+                  />
+                  <div className="actions">
+                    <button onClick={() => moderateTrip(trip.id, "APPROVED")}>{t("manager.approve")}</button>
+                    <button onClick={() => moderateTrip(trip.id, "REJECTED")}>{t("manager.reject")}</button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -166,21 +199,30 @@ export default function ManagerAdvisorReview() {
         {/* Секция Истории */}
         {activeTab === "history" && !loading && (
           <div className="fade-in">
-            <h2 className="manager-title">Moderation History</h2>
-            {!logs.length && <p>No moderation history yet.</p>}
+            <h2 className="manager-title">{t("manager.moderationHistory")}</h2>
+            {!logs.length && <p>{t("manager.noModerationHistory")}</p>}
 
             <div className="history-grid">
               {logs.map((log) => (
                 <div key={log.id} className="history-card">
-                  <p><strong>Action:</strong> {log.action}</p>
-                  <p><strong>At:</strong> {new Date(log.created_at).toLocaleString()}</p>
-                  <p><strong>Reason:</strong> {log.reason || "-"}</p>
+                  <p><strong>{t("manager.action")}:</strong> {getHistoryActionLabel(log.action)}</p>
+                  <p><strong>{t("manager.at")}:</strong> {new Date(log.created_at).toLocaleString()}</p>
+                  <p><strong>{t("manager.reason")}:</strong> {log.reason || t("manager.noReason")}</p>
                 </div>
               ))}
             </div>
           </div>
         )}
       </div>
+
+      {/* Модалка для просмотра деталей трипа */}
+      {isTripModalOpen && selectedTrip && (
+        <TripPostsModal
+          styles={s}
+          trip={selectedTrip}
+          onClose={closeTripDetails}
+        />
+      )}
     </div>
   );
 }

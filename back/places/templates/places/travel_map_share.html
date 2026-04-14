@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title }}</title>
+    <meta name="description" content="{{ description }}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="{{ title }}" />
+    <meta property="og:description" content="{{ description }}" />
+    <meta property="og:url" content="{{ og_url }}" />
+    <meta property="og:image" content="{{ og_image }}" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{{ title }}" />
+    <meta name="twitter:description" content="{{ description }}" />
+    <meta name="twitter:image" content="{{ og_image }}" />
+    <meta http-equiv="refresh" content="0;url={{ redirect_url }}" />
+  </head>
+  <body>
+    <p><a href="{{ redirect_url }}">Open travel map</a></p>
+    <script>
+      location.replace("{{ redirect_url|escapejs }}");
+    </script>
+  </body>
+</html>

@@ -1,4 +1,6 @@
 from rest_framework import serializers
+import secrets
+
 from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.exceptions import InvalidToken
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
@@ -61,6 +63,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         validated_data.pop("password2")
 
         user = User.objects.create_user(password=password, **validated_data)
+        user.map_share_token = secrets.token_urlsafe(32)
+        user.save(update_fields=["map_share_token"])
         UserPreferences.objects.create(user=user)
 
         if referral_code:
@@ -99,10 +103,12 @@ class UserSerializer(serializers.ModelSerializer):
     traveler_level = serializers.SerializerMethodField()
     badges = serializers.SerializerMethodField()
     history_summary = serializers.SerializerMethodField()
+    map_share_token = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = (
+            "id",
             "email",
             "avatar",
             "cover",
@@ -114,11 +120,19 @@ class UserSerializer(serializers.ModelSerializer):
             "ranking_score",
             "status_level",
             "is_blocked",
+            "is_map_public",
+            "map_share_token",
             "preferences",
             "traveler_level",
             "badges",
             "history_summary",
         )
+
+    def get_map_share_token(self, obj):
+        request = self.context.get("request")
+        if request and request.user.is_authenticated and request.user.id == obj.id:
+            return obj.map_share_token
+        return None
 
     def _profile(self, obj):
         return self.context.get("traveler_profile") or {}
@@ -136,4 +150,4 @@ class UserSerializer(serializers.ModelSerializer):
 class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("username", "avatar", "cover")
+        fields = ("username", "avatar", "cover", "is_map_public")

@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { fetchProfile, logoutUser } from "../slices/authSlice";
 import api from "../api/axios";
+import i18n from "../i18n";
 import profileIcon from "../assets/profile.svg";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
@@ -19,11 +20,11 @@ export function useProfile() {
   const { user } = useSelector((state) => state.auth);
   const defaultAvatar = profileIcon;
 
-  const [username, setUsername] = useState("Username");
+  const [username, setUsername] = useState(i18n.t("profile.defaultUsername"));
   const [avatar, setAvatar] = useState(defaultAvatar);
   const [cover, setCover] = useState(null);
-  const [email, setEmail] = useState("user@email.com");
-  const [travelStyle, setTravelStyle] = useState("Not set");
+  const [email, setEmail] = useState(i18n.t("profile.defaultEmail"));
+  const [travelStyle, setTravelStyle] = useState(i18n.t("profile.notSet"));
 
   const [tempUsername, setTempUsername] = useState(username);
   const [tempAvatar, setTempAvatar] = useState(avatar);
@@ -34,6 +35,7 @@ export function useProfile() {
     share_map: false,
     share_visited_places: false,
     share_badges: false,
+    is_map_public: false,
   });
   const [privacySaving, setPrivacySaving] = useState(false);
 
@@ -43,9 +45,9 @@ export function useProfile() {
 
   useEffect(() => {
     if (!user) return;
-    setEmail(user.email || "user@email.com");
-    setUsername(user.username || "Username");
-    setTravelStyle(user.preferences?.travel_style || "Not set");
+    setEmail(user.email || i18n.t("profile.defaultEmail"));
+    setUsername(user.username || i18n.t("profile.defaultUsername"));
+    setTravelStyle(user.preferences?.travel_style || i18n.t("profile.notSet"));
     const resolvedAvatar = resolveMediaUrl(user.avatar, defaultAvatar);
     setAvatar(resolvedAvatar);
     setTempAvatar(resolvedAvatar);
@@ -54,6 +56,7 @@ export function useProfile() {
       share_map: Boolean(user.preferences?.share_map),
       share_visited_places: Boolean(user.preferences?.share_visited_places),
       share_badges: Boolean(user.preferences?.share_badges),
+      is_map_public: Boolean(user.is_map_public),
     });
   }, [user]);
 
@@ -77,7 +80,7 @@ export function useProfile() {
     try {
       const profileRes = await api.put("users/profile/", {
         username: tempUsername,
-        travel_style: tempStyle === "Not set" ? null : tempStyle,
+        travel_style: tempStyle === i18n.t("profile.notSet") ? null : tempStyle,
       });
       let updatedUserData = profileRes.data;
       if (avatarFile) {
@@ -87,14 +90,18 @@ export function useProfile() {
         updatedUserData = avatarRes.data;
       }
       const resolvedAvatar = resolveMediaUrl(updatedUserData.avatar, defaultAvatar);
-      setUsername(updatedUserData.username || "Username");
-      setTravelStyle(updatedUserData.preferences?.travel_style || "Not set");
+      setUsername(updatedUserData.username || i18n.t("profile.defaultUsername"));
+      setTravelStyle(updatedUserData.preferences?.travel_style || i18n.t("profile.notSet"));
       setAvatar(resolvedAvatar);
       setAvatarFile(null);
       setIsEditOpen(false);
     } catch (err) {
       const backendError = err?.response?.data;
-      alert(typeof backendError === "string" ? backendError : JSON.stringify(backendError || "Failed to save profile"));
+      alert(
+        typeof backendError === "string"
+          ? backendError
+          : JSON.stringify(backendError || i18n.t("profile.saveProfileFailed"))
+      );
     }
   };
 
@@ -125,12 +132,17 @@ export function useProfile() {
         share_map: Boolean(res.data?.share_map),
         share_visited_places: Boolean(res.data?.share_visited_places),
         share_badges: Boolean(res.data?.share_badges),
+        is_map_public: Boolean(res.data?.is_map_public),
       });
       await dispatch(fetchProfile());
     } catch (err) {
       setPrivacySettings((prev) => ({ ...prev, [field]: !value }));
       const backendError = err?.response?.data;
-      alert(typeof backendError === "string" ? backendError : JSON.stringify(backendError || "Failed to update privacy"));
+      alert(
+        typeof backendError === "string"
+          ? backendError
+          : JSON.stringify(backendError || i18n.t("profile.updatePrivacyFailed"))
+      );
     } finally {
       setPrivacySaving(false);
     }
