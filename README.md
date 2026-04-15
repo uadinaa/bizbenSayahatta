@@ -105,6 +105,8 @@ Backend runs at **http://127.0.0.1:8000/**.
    npm install react-i18next i18next                  
    npm install @emailjs/browser                       # if needed
    npm install react-leaflet leaflet                  # if using maps
+   npm install dom-to-image-more                      # if using maps
+   npm install jspdf html2canvas                      # if using maps
    ```
 
 3. Create a `.env` in `front/` if needed (e.g. `VITE_API_BASE=http://127.0.0.1:8000`). Do not commit `.env` to git.

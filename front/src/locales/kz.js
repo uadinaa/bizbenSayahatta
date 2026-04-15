@@ -326,6 +326,24 @@ const kz = {
       location: "Орналасқан жері:",
       status: "Статус:",
     },
+    trip: {
+  cart: {
+    dates: "Күндер:",
+    budget: "Бюджет:",
+    description: "Сипаттама:",
+    noDescription: "Сипаттама жоқ",
+    additionalInformation: "Қосымша ақпарат",
+    noAdditionalInformation: "Қосымша ақпарат жоқ",
+    place: "Мекен-жай:",
+    destination: "Бағыт:",
+    durationDays: "Ұзақтығы:",
+    // Ключи ниже уже есть в card, но в EN они продублированы в trip.cart
+    removeFromWishlist: "Таңдаулылардан алып тастау",
+    addToWishlist: "Таңдаулыларға қосу",
+    viewDetails: "Толығырақ",
+    // ... и так далее
+  }
+}
   },
   chat: {
     searchChats: "Чаттарды іздеу...",
@@ -448,6 +466,8 @@ const kz = {
     userDoesNotShare: "Пайдаланушы картасын бөліспейді",
     userNotFound: "Пайдаланушы табылмады",
     errorLoadingMap: "Картаны жүктеу қатесі",
+    exporting: "Экспорттау...",
+    downloadPdf: "PDF-ті жүктеу",
   },
   manager: {
     cannotLoadData: "Деректерді жүктеу мүмкін болмады",

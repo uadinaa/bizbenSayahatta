@@ -9,6 +9,8 @@ import {
   Pane,
 } from "react-leaflet";
 import { useTranslation } from "react-i18next";
+import domtoimage from "dom-to-image-more"; 
+import { jsPDF } from "jspdf";
 import { getPublicMapMarkers, getUserMap } from "../api/map";
 import { LEVELS_LIST } from "../constants/mapConstants";
 import worldIcon from "../assets/world.svg";
@@ -73,6 +75,7 @@ export default function PublicTravelMap() {
   const [mapMeta, setMapMeta] = useState(null);
   const [countriesData, setCountriesData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false); 
   const [error, setError] = useState(null);
 
   const pinPlacesForStats = useMemo(() => {
@@ -100,24 +103,53 @@ export default function PublicTravelMap() {
     return t("publicMap.traveler");
   }, [displayUser, t]);
 
+  
+  const exportToPdf = async () => {
+    const element = document.querySelector(".public-travel-map-page");
+    if (!element) return;
+
+    setIsExporting(true);
+
+    try {
+      
+      const dataUrl = await domtoimage.toPng(element, {
+        bgcolor: "#ffffff",
+        width: element.offsetWidth,
+        height: element.offsetHeight,
+        filter: (node) => {
+          
+          if (node.tagName === "BUTTON") return false;
+          if (node.classList && node.classList.contains("leaflet-control-container")) return false;
+          return true;
+        }
+      });
+
+      const pdf = new jsPDF({
+        orientation: element.offsetWidth > element.offsetHeight ? "landscape" : "portrait",
+        unit: "px",
+        format: [element.offsetWidth, element.offsetHeight]
+      });
+
+      pdf.addImage(dataUrl, "PNG", 0, 0, element.offsetWidth, element.offsetHeight);
+      pdf.save(`${displayName}-travel-map.pdf`);
+    } catch (err) {
+      console.error("PDF Export Error:", err);
+      alert(t("publicMap.exportError", "Ошибка при создании PDF"));
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const avatarSrc = resolveMediaUrl(displayUser?.avatar, profileIcon);
 
   const visitedCountriesForGeo = useMemo(() => {
     return pinPlacesForStats
-      .map((p) =>
-        String(p.country || "")
-          .toLowerCase()
-          .trim(),
-      )
+      .map((p) => String(p.country || "").toLowerCase().trim())
       .filter(Boolean);
   }, [pinPlacesForStats]);
 
   const countryStyle = (feature) => {
-    const name = String(
-      feature.properties?.name || feature.properties?.ADMIN || "",
-    )
-      .toLowerCase()
-      .trim();
+    const name = String(feature.properties?.name || feature.properties?.ADMIN || "").toLowerCase().trim();
     const isVisited = visitedCountriesForGeo.includes(name);
     return {
       fillColor: isVisited ? "#FDD835" : "#E0E0E0",
@@ -176,111 +208,41 @@ export default function PublicTravelMap() {
     };
   }, [userId, shareToken]);
 
-  if (!userId) {
-    return (
-      <div className="public-map-page public-map-fallback">
-        {t("publicMap.invalidLink")}
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="public-map-page public-map-fallback">
-        {t("publicMap.loading")}
-      </div>
-    );
-  }
-
-  if (error === "private") {
-    return (
-      <div className="public-map-page public-map-page--message public-map-fallback">
-        <p>{t("publicMap.private")}</p>
-        <Link to="/">{t("publicMap.home")}</Link>
-      </div>
-    );
-  }
-
-  if (error === "notfound") {
-    return (
-      <div className="public-map-page public-map-page--message public-map-fallback">
-        <p>{t("publicMap.notFound")}</p>
-        <Link to="/">{t("publicMap.home")}</Link>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="public-map-page public-map-page--message public-map-fallback">
-        <p>{t("publicMap.error")}</p>
-        <Link to="/">{t("publicMap.home")}</Link>
-      </div>
-    );
-  }
-
-  if (!markers.length) {
-    return (
-      <div className="public-map-page public-map-page--message public-map-fallback">
-        <p>{t("publicMap.empty")}</p>
-        <Link to="/">{t("publicMap.home")}</Link>
-      </div>
-    );
-  }
+  if (!userId) return <div className="public-map-page public-map-fallback">{t("publicMap.invalidLink")}</div>;
+  if (loading) return <div className="public-map-page public-map-fallback">{t("publicMap.loading")}</div>;
+  if (error === "private") return <div className="public-map-page--message public-map-fallback"><p>{t("publicMap.private")}</p><Link to="/">{t("publicMap.home")}</Link></div>;
+  if (error === "notfound") return <div className="public-map-page--message public-map-fallback"><p>{t("publicMap.notFound")}</p><Link to="/">{t("publicMap.home")}</Link></div>;
+  if (error) return <div className="public-map-page--message public-map-fallback"><p>{t("publicMap.error")}</p><Link to="/">{t("publicMap.home")}</Link></div>;
+  if (!markers.length) return <div className="public-map-page--message public-map-fallback"><p>{t("publicMap.empty")}</p><Link to="/">{t("publicMap.home")}</Link></div>;
 
   return (
     <div className="map-page public-travel-map-page">
       <aside className="map-sidebar">
         <div className="map-sidebar__scroll">
           <div className="public-map-user">
-            <img
-              src={avatarSrc}
-              alt=""
-              className="public-map-user__avatar"
-              width={56}
-              height={56}
-            />
+            <img src={avatarSrc} alt="" className="public-map-user__avatar" width={56} height={56} />
             <div className="public-map-user__text">
               <h2 className="public-map-user__name">{displayName}</h2>
-              <p className="public-map-user__subtitle">
-                {t("publicMap.sharedTravelMap")}
-              </p>
+              <p className="public-map-user__subtitle">{t("publicMap.sharedTravelMap")}</p>
             </div>
           </div>
 
-          <h3 className="public-map-sidebar__heading">
-            {t("map.travelerLevel")}
-          </h3>
+          <h3 className="public-map-sidebar__heading">{t("map.travelerLevel")}</h3>
 
           <div className="badge-scroll">
             {LEVELS_LIST.map((lvl, i) => {
               const isCurrent = lvl.name === stats.level.name;
-              const isCompleted =
-                lvl.next != null
-                  ? stats.pinCount >= lvl.next
-                  : stats.pinCount >= lvl.min;
-              const progressPercent = lvl.next
-                ? ((stats.pinCount - lvl.min) / (lvl.next - lvl.min)) * 100
-                : 100;
+              const isCompleted = lvl.next != null ? stats.pinCount >= lvl.next : stats.pinCount >= lvl.min;
+              const progressPercent = lvl.next ? ((stats.pinCount - lvl.min) / (lvl.next - lvl.min)) * 100 : 100;
               return (
-                <div
-                  key={i}
-                  className={`badge-card ${isCurrent ? "current" : isCompleted ? "completed" : "locked"}`}
-                >
+                <div key={i} className={`badge-card ${isCurrent ? "current" : isCompleted ? "completed" : "locked"}`}>
                   <div className="badge-icon">🧭</div>
-                  <strong>
-                    {t(`map.levels.${lvl.name}`, { defaultValue: lvl.name })}
-                  </strong>
+                  <strong>{t(`map.levels.${lvl.name}`, { defaultValue: lvl.name })}</strong>
                   {lvl.next ? (
                     <div className="mini-progress">
-                      <div
-                        className="mini-bar"
-                        style={{ width: `${Math.min(progressPercent, 100)}%` }}
-                      />
+                      <div className="mini-bar" style={{ width: `${Math.min(progressPercent, 100)}%` }} />
                     </div>
-                  ) : (
-                    <span className="max-label">MAX</span>
-                  )}
+                  ) : <span className="max-label">MAX</span>}
                 </div>
               );
             })}
@@ -288,12 +250,7 @@ export default function PublicTravelMap() {
 
           <div className="level-dots">
             {LEVELS_LIST.map((_, i) => (
-              <div
-                key={i}
-                className={`level-dot ${i <= stats.level.index ? "active" : ""}`}
-              >
-                {i + 1}
-              </div>
+              <div key={i} className={`level-dot ${i <= stats.level.index ? "active" : ""}`}>{i + 1}</div>
             ))}
           </div>
 
@@ -314,16 +271,32 @@ export default function PublicTravelMap() {
             </div>
           </section>
 
-          {Array.isArray(mapMeta?.badges) && mapMeta.badges.length > 0 ? (
+          {Array.isArray(mapMeta?.badges) && mapMeta.badges.length > 0 && (
             <section className="public-map-badges">
               <h3>{t("publicMap.badgesHeading")}</h3>
               <ul className="public-map-badges__list">
-                {mapMeta.badges.map((b) => (
-                  <li key={b.code}>{b.label}</li>
-                ))}
+                {mapMeta.badges.map((b) => <li key={b.code}>{b.label}</li>)}
               </ul>
             </section>
-          ) : null}
+          )}
+
+          <button 
+            onClick={exportToPdf} 
+            disabled={isExporting}
+            className="export-button"
+            style={{ 
+              margin: '20px 10px', 
+              padding: '12px', 
+              cursor: isExporting ? 'not-allowed' : 'pointer',
+              backgroundColor: '#511eb0',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: 'bold'
+            }}
+          >
+            {isExporting ? t("sharedMaps.exporting") : t("sharedMaps.downloadPdf")}
+          </button>
         </div>
       </aside>
 
@@ -331,19 +304,20 @@ export default function PublicTravelMap() {
         <MapContainer
           center={center}
           zoom={2}
+          preferCanvas={true} 
           style={{ height: "100%", width: "100%" }}
         >
           <TileLayer
             url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
             attribution="&copy; OpenStreetMap &copy; CARTO"
           />
-          {countriesData ? (
+          {countriesData && (
             <GeoJSON
               data={countriesData}
               style={countryStyle}
               interactive={false}
             />
-          ) : null}
+          )}
           <Pane name="labels" style={{ zIndex: 650, pointerEvents: "none" }}>
             <TileLayer
               url="https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png"
@@ -360,12 +334,7 @@ export default function PublicTravelMap() {
             >
               <Popup>
                 <strong>{m.name}</strong>
-                {m.country ? (
-                  <>
-                    <br />
-                    {m.country}
-                  </>
-                ) : null}
+                {m.country && <><br />{m.country}</>}
               </Popup>
             </CircleMarker>
           ))}

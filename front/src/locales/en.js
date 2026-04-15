@@ -485,6 +485,8 @@ const en = {
     userDoesNotShare: "The user does not share the map",
     userNotFound: "The user was not found",
     errorLoadingMap: "Error loading the map",
+    exporting: "Exporting...",
+    downloadPdf: "Download PDF",
   },
   manager: {
     cannotLoadData: "Cannot load data",
