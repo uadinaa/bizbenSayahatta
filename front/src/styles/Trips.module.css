@@ -21,6 +21,7 @@
   color: #666;
   font-size: 15px;
 }
+/* article className={s.card} */
 
 .tabs {
   display: flex;
@@ -297,6 +298,7 @@
   border-radius: 18px;
   overflow: hidden;
   border: 1px solid #ece9e1;
+  gap: 20px;
 
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.06);
 
@@ -311,6 +313,7 @@
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.08);
   border-color: #d6d3cb;
 }
+
 .photoWrapper {
   position: relative;
   width: 100%;

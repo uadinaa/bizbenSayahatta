@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import editIcon from "../assets/edit.svg";
 import ReactMarkdown from "react-markdown";
 import TravelPlannerMap from "../components/TravelPlannerMap";
 import DeleteChatModal from "../components/chat/DeleteChatModal";
@@ -11,6 +12,7 @@ import {
   fetchChatMessages,
   fetchChats,
   fetchChatTrip,
+  patchChatThread,
   sendChatMessage,
   toggleChatArchive,
 } from "../api/chats";
@@ -79,6 +81,12 @@ function decorateTripPayload(payload) {
   return {
     city: payload.city || payload.plan_snapshot?.city || "",
     country: payload.country || payload.plan_snapshot?.country || "",
+    travelers: payload.travelers ?? payload.plan_snapshot?.travelers ?? null,
+    daily_budget: payload.daily_budget ?? payload.plan_snapshot?.daily_budget ?? null,
+    start_date: payload.start_date ?? payload.plan_snapshot?.start_date ?? null,
+    end_date: payload.end_date ?? payload.plan_snapshot?.end_date ?? null,
+    safety_tips: payload.safety_tips ?? payload.plan_snapshot?.safety_tips ?? [],
+    sources: payload.sources ?? payload.plan_snapshot?.sources ?? null,
     itinerary,
     route,
     response_markdown: payload.response_markdown || payload.plan_snapshot?.response_markdown || "",
@@ -163,7 +171,9 @@ export default function PlannerTest() {
   const [showArchived, setShowArchived] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [threadTitle, setThreadTitle] = useState("New trip");
+  const [titleEditOpen, setTitleEditOpen] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [savingTitle, setSavingTitle] = useState(false);
 
   const messageRequestRef = useRef(0);
   const tripRequestRef = useRef(0);
@@ -326,11 +336,42 @@ const filteredArchivedThreads = useMemo(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, t]);
 
+  useEffect(() => {
+    if (!selectedThread) {
+      setTitleDraft("");
+      setTitleEditOpen(false);
+      return;
+    }
+    if (!titleEditOpen) {
+      setTitleDraft(selectedThread.title || "");
+    }
+  }, [selectedThread?.id, selectedThread?.title, titleEditOpen]);
+
+  const applyThreadPatch = useCallback((patch) => {
+    if (!patch?.id) return;
+    setThreads((prev) => prev.map((th) => (th.id === patch.id ? { ...th, ...patch } : th)));
+    setArchivedThreads((prev) => prev.map((th) => (th.id === patch.id ? { ...th, ...patch } : th)));
+  }, []);
+
+  const handleSaveThreadTitle = async () => {
+    if (!selectedId) return;
+    setSavingTitle(true);
+    setError("");
+    try {
+      const response = await patchChatThread(selectedId, { title: titleDraft });
+      applyThreadPatch(response.data);
+      setTitleEditOpen(false);
+    } catch (requestError) {
+      setError(requestError.response?.data?.detail || t("chat.failedToRenameChat"));
+    } finally {
+      setSavingTitle(false);
+    }
+  };
+
   const handleCreateThread = async () => {
     // Create a new planner chat and focus it immediately.
     try {
       const response = await createChatThread({
-        title: t("chat.newTrip"),
         kind: "planner",
       });
       const nextThread = response.data;
@@ -445,11 +486,15 @@ const filteredArchivedThreads = useMemo(() => {
         setCurrentTrip(nextTrip);
       }
 
-      setThreads((previous) => previous.map((thread) => (
-        thread.id === selectedId
-          ? { ...thread, updated_at: new Date().toISOString() }
-          : thread
-      )));
+      if (response.data.thread) {
+        applyThreadPatch(response.data.thread);
+      } else {
+        setThreads((previous) => previous.map((thread) => (
+          thread.id === selectedId
+            ? { ...thread, updated_at: new Date().toISOString() }
+            : thread
+        )));
+      }
     } catch (requestError) {
       setMessages((previous) => previous.filter((message) => message.id !== tempMessage.id));
       setError(requestError.response?.data?.detail || t("chat.messageFailed"));
@@ -472,7 +517,7 @@ const filteredArchivedThreads = useMemo(() => {
           onClick={() => setSelectedId(thread.id)}
         >
           <span className="thread-title">{thread.title || t("chat.untitled")}</span>
-          <span className="thread-meta">{thread.city || t("chat.plannerChat")}</span>
+          {/* <span className="thread-meta">{thread.city || t("chat.plannerChat")}</span> */}
         </button>
 
         <div className="thread-actions">
@@ -561,6 +606,71 @@ const filteredArchivedThreads = useMemo(() => {
       </aside>
 
       <section className="chat-panel">
+        {selectedThread ? (
+          <div className="chat-thread-header">
+            {titleEditOpen ? (
+              <div className="chat-title-edit">
+                <input
+                  className="chat-title-input"
+                  value={titleDraft}
+                  onChange={(e) => setTitleDraft(e.target.value)}
+                  maxLength={100}
+                  placeholder={t("chat.titlePlaceholder")}
+                  disabled={savingTitle}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleSaveThreadTitle();
+                    }
+                    if (e.key === "Escape") {
+                      setTitleEditOpen(false);
+                      setTitleDraft(selectedThread.title || "");
+                    }
+                  }}
+                />
+                <div className="chat-title-edit-actions">
+                  <div className="chat-title-char-count">
+                    {titleDraft.length}/100
+                  </div>
+                  <button
+                    type="button"
+                    className="chat-title-btn chat-title-btn--ghost"
+                    onClick={() => {
+                      setTitleEditOpen(false);
+                      setTitleDraft(selectedThread.title || "");
+                    }}
+                    disabled={savingTitle}
+                  >
+                    {t("chat.cancelRename")}
+                  </button>
+                  <button
+                    type="button"
+                    className="chat-title-btn chat-title-btn--primary"
+                    onClick={handleSaveThreadTitle}
+                    disabled={savingTitle || !titleDraft.trim() || titleDraft.length > 100}
+                  >
+                    {savingTitle ? "…" : t("chat.saveTitle")}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="chat-title-row">
+                <h2 className="chat-title-display">
+                  {selectedThread.title || t("chat.untitled")}
+                </h2>
+                <button
+                  type="button"
+                  className="chat-rename-btn"
+                  onClick={() => setTitleEditOpen(true)}
+                  aria-label={t("chat.renameChat")}
+                ><img src={editIcon} alt={t("common.edit")} width="25" height="25" />
+                </button>
+              </div>
+            )}
+          </div>
+        ) : null}
+
         <div className="chat-messages">
           {!selectedThread ? (
             <div className="chat-empty-state">

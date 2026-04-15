@@ -16,6 +16,8 @@ export const fetchInspirationPlaces = async (
 
     if (search) {
       params.append("search", search);
+      // Also send as explicit city hint for TripAdvisor tour fetching
+      params.append("city", search);
     }
 
     if (category && category !== "all") {
@@ -40,6 +42,7 @@ export const fetchInspirationPlaces = async (
       return {
         places: data.places || [],
         tours: data.tours || [],
+        events: data.events || [],
         next: data.next || null,
         previous: data.previous || null,
       };
@@ -47,11 +50,11 @@ export const fetchInspirationPlaces = async (
 
     // Fallback for old array format
     return Array.isArray(data)
-      ? { places: data, tours: [], next: null, previous: null }
-      : { places: [], tours: [], next: null, previous: null };
+      ? { places: data, tours: [], events: [], next: null, previous: null }
+      : { places: [], tours: [], events: [], next: null, previous: null };
   } catch (err) {
     console.error(err);
-    return { places: [], tours: [], next: null, previous: null };
+    return { places: [], tours: [], events: [], next: null, previous: null };
   }
 };
 
@@ -68,7 +71,12 @@ export const fetchInspirationPlaces = async (
 export const toggleMustVisit = async (placeId, isMustVisit) => {
   const payload =
     typeof isMustVisit === "boolean" ? { is_must_visit: isMustVisit } : {};
-  const response = await api.post(`places/places/${placeId}/must-visit/`, payload);
+  const response = await api.post(`places/${placeId}/must-visit/`, payload);
+  return response.data;
+};
+
+export const toggleExternalMustVisit = async (payload) => {
+  const response = await api.post("places/external/must-visit/", payload);
   return response.data;
 };
 
@@ -94,7 +102,7 @@ export const deleteMapPlace = async (placeId) => {
 
 export const markPlaceAsVisited = async (placeId) => {
   const response = await api.post(
-    `places/places/${placeId}/visited/`,
+    `${placeId}/visited/`,
     {}
   );
   return response.data;

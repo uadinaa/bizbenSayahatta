@@ -63,7 +63,7 @@ export default function Header() {
           <button type="button" className="header-link" onClick={() => navigateProtected("/manager/advisors")}>{t("header.manager")}</button>
         ) : null}
         {user?.role === "TRIPADVISOR" && (
-          <button type="button" className="header-link" onClick={() => navigateProtected("/tripstatus")}>{t("TripAdvisor")}</button>
+          <button type="button" className="header-link" onClick={() => navigateProtected("/tripstatus")}>Trip Advisor</button>
         ) }
 
         <button className="profile-btn" onClick={() => navigateProtected("/profile")}>{t("header.profile")}</button>

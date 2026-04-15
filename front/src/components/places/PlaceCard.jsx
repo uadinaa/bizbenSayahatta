@@ -28,11 +28,26 @@ export default function PlaceCard({
   // Support both direct props and place object fields (for TripAdvisor data)
   const displayDuration = duration || place?.duration;
   const displayBookingUrl = bookingUrl || place?.booking_url;
-  const displayNumReviews = numReviews || place?.num_reviews;
-  const displayAward = award || place?.award;
+  const displayNumReviews = numReviews ?? place?.num_reviews;
+  const displayAward = award ?? place?.award;
   const displayWebUrl = webUrl || place?.web_url;
   const displaySource = source || place?.source;
   const isTripAdvisor = displaySource === "tripadvisor";
+
+  // const awardLabel = (() => {
+  //   if (!displayAward) return null;
+  //   if (typeof displayAward === "object") {
+  //     return [displayAward.award_name, displayAward.year].filter(Boolean).join(" ");
+  //   }
+  //   return String(displayAward);
+  // })();
+
+  // const reviewsLabel = (() => {
+  //   if (!displayNumReviews || displayNumReviews <= 0) return null;
+  //   return displayNumReviews >= 1000
+  //     ? `(${(displayNumReviews / 1000).toFixed(1)}k)`
+  //     : `(${displayNumReviews})`;
+  // })();
 
   // Use provided classes or default styles
   const s = classes || defaultStyles;
@@ -47,6 +62,10 @@ export default function PlaceCard({
           <img className={styles.photo} src={place.photo_url} alt={place.name} loading="lazy" />
         ) : (
           <div className={styles.photoPlaceholder} />
+        )}
+
+        {isTripAdvisor && (
+          <div className={styles.sourceBadge}>TripAdvisor</div>
         )}
 
         <button
@@ -80,10 +99,22 @@ export default function PlaceCard({
             {place.rating ? <span className={styles.rating}>★ {place.rating}</span> : null}
             <span className={styles.priceTag}>{priceTierLabel(place.price_level)}</span>
           </div>
+          {/* <div className={styles.metaRow}>
+            {place.rating ? (
+              <span className={styles.rating}>
+                ★ {place.rating}
+                {reviewsLabel && <span className={styles.reviewCount}> {reviewsLabel}</span>}
+              </span>
+            ) : null}
+            <span className={styles.priceTag}>{priceTierLabel(place.price_level)}</span>
+          </div> */}
         </div>
 
         <h3 className={styles.name}>{place.name}</h3>
         <p className={styles.location}>{location}</p>
+{/* 
+        {displayDuration && <p className={styles.duration}>⏱ {displayDuration}</p>}
+        {awardLabel && <p className={styles.awardBadge}>🏆 {awardLabel}</p>} */}
 
         {isWishlist ? (
           <button
@@ -93,10 +124,22 @@ export default function PlaceCard({
               event.stopPropagation();
               onOpen?.();
             }}
-          > 
+          >
           {t("inspiration.card.viewDetails")} →
           </button>
         ) : null}
+
+        {/* {isTripAdvisor && displayBookingUrl && (
+          <a
+            href={displayBookingUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.bookBtn}
+            onClick={(e) => e.stopPropagation()}
+          >
+            Book →
+          </a>
+        )} */}
       </div>
     </div>
   );

@@ -16,6 +16,9 @@ export function createChatThread(payload) {
   return api.post("llm/threads/", payload);
 }
 
+export function patchChatThread(threadId, payload){
+  return api.patch(`llm/threads/${threadId}/`, payload);
+}
 /** Send a message to the selected chat. */
 export function sendChatMessage(threadId, message) {
   return api.post(`llm/threads/${threadId}/messages/`, { message });

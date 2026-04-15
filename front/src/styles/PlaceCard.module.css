@@ -212,3 +212,62 @@
 .detailsLink:hover {
   color: #333;
 }
+
+/* TripAdvisor source badge — overlaid top-left on image */
+/* .sourceBadge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  padding: 4px 10px;
+  background: #00aa6c;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  letter-spacing: 0.3px;
+  pointer-events: none;
+} */
+
+/* Small muted review count next to the star rating */
+/* .reviewCount {
+  color: #999;
+  font-size: 12px;
+  font-weight: 400;
+} */
+
+/* Duration line below the location */
+/* .duration {
+  margin: 4px 0 0;
+  color: #777;
+  font-size: 13px;
+  line-height: 1.4;
+} */
+
+/* Award badge below duration */
+/* .awardBadge {
+  margin: 4px 0 0;
+  color: #b8860b;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+} */
+
+/* Book CTA button for TripAdvisor tours */
+/* .bookBtn {
+  display: inline-block;
+  margin-top: auto;
+  padding: 9px 16px;
+  background: #0c3b2e;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 999px;
+  transition: background 0.2s ease;
+  align-self: flex-start;
+}
+
+.bookBtn:hover {
+  background: #0f4d3a;
+} */

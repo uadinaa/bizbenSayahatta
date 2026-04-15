@@ -93,7 +93,7 @@
   color: #333;
 }
 
-/* .heartBtn {
+.heartBtn {
   position: absolute;
   top: 12px;
   right: 12px;
@@ -135,4 +135,54 @@
 
 .heartActive .heartImg {
   filter: drop-shadow(0 1px 2px rgba(229, 57, 53, 0.3));
-} */
+}
+
+/* ===============================
+   BOOKING UI
+================================= */
+
+.availabilityInfo {
+  padding: 0 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.spotsLeft {
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+}
+
+.alreadyBookedBadge {
+  font-size: 12px;
+  color: #059669;
+  font-weight: 600;
+  background: #d1fae5;
+  padding: 4px 10px;
+  border-radius: 999px;
+  align-self: flex-start;
+}
+
+.bookBtn {
+  margin: 0 16px 16px;
+  padding: 12px 20px;
+  border-radius: 10px;
+  border: none;
+  background: #1a1a1a;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bookBtn:hover {
+  background: #333;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.bookBtn:active {
+  transform: translateY(0);
+}

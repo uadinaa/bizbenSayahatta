@@ -370,3 +370,194 @@
   background: #9333ea !important;
   color: white;
 }
+
+/* ===============================
+   SPOTS INFO
+================================= */
+.trip-spots {
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+}
+
+.trip-spots-left {
+  font-size: 13px;
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.trip-spots-left.full {
+  color: #ef4444;
+}
+
+/* ===============================
+   VIEW BOOKINGS BUTTON
+================================= */
+.view-bookings-btn {
+  margin-top: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  background: #7c3aed;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.2s ease;
+}
+
+.view-bookings-btn:hover {
+  background: #6d28d9;
+}
+
+/* ===============================
+   BOOKINGS MODAL
+================================= */
+.modal-content {
+  background: white;
+  width: 800px;
+  max-height: 85vh;
+  border-radius: 20px;
+  padding: 30px;
+  overflow-y: auto;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.modal-header h2 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 28px;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.modal-close:hover {
+  background: #f1f1f1;
+}
+
+/* ===============================
+   BOOKINGS TABLE
+================================= */
+.bookings-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.bookings-table th {
+  text-align: left;
+  padding: 12px 8px;
+  background: #f9fafb;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.bookings-table td {
+  padding: 12px 8px;
+  border-bottom: 1px solid #e5e7eb;
+  color: #1f2937;
+}
+
+.bookings-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+/* ===============================
+   STATUS BADGES
+================================= */
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-confirmed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-cancelled {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-completed {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+/* ===============================
+   TABLE ACTIONS
+================================= */
+.bookings-table .cancel-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  min-width: auto;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.bookings-table .cancel-btn:hover {
+  background: #dc2626;
+}
+
+.bookings-table .confirm-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  min-width: auto;
+  background: #22c55e;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.bookings-table .confirm-btn:hover {
+  background: #16a34a;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

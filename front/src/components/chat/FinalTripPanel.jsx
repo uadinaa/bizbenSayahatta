@@ -72,7 +72,7 @@ export default function FinalTripPanel({ trip, loading }) {
       <div className="right-panel-heading">
         <div>
           <p className="right-panel-label">{t("chat.finalTrip")}</p>
-          <h3>{trip.city || t("chat.plannedRoute")}</h3>
+          <h2>{trip.city || t("chat.plannedRoute")}</h2>
         </div>
       </div>
 
@@ -88,7 +88,7 @@ export default function FinalTripPanel({ trip, loading }) {
           </div>
         )}
 
-        {trip.daily_budget && (
+        {trip.daily_budget != null && (
           <div className="trip-stat">
             <span className="stat-icon">💰</span>
             <div className="stat-content">
@@ -119,34 +119,6 @@ export default function FinalTripPanel({ trip, loading }) {
         )}
       </div>
 
-      {/* Safety Tips */}
-      {trip.safety_tips && trip.safety_tips.length > 0 && (
-        <div className="trip-safety-tips">
-          <h4 className="trip-section-title">
-            <span>⚠️</span> {t("chat.safetyTips")}
-          </h4>
-          <ul className="safety-list">
-            {trip.safety_tips.map((tip, index) => (
-              <li key={index} className="safety-item">{tip}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Sources */}
-      {sources && sources.length > 0 && (
-        <div className="trip-sources">
-          <h4 className="trip-section-title">
-            <span>📚</span> {t("chat.sources")}
-          </h4>
-          <ul className="sources-list">
-            {sources.map((source, index) => (
-              <li key={index} className="source-item">{source}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
       {/* Itinerary */}
       <div className="final-trip-days">
         {trip.itinerary.map((day, index) => (
@@ -174,6 +146,36 @@ export default function FinalTripPanel({ trip, loading }) {
           </details>
         ))}
       </div>
+
+            {/* Safety Tips */}
+      {trip.safety_tips && trip.safety_tips.length > 0 && (
+        <div className="trip-safety-tips">
+          <h4 className="trip-section-title">
+            <span>⚠️</span> {t("chat.safetyTips")}
+          </h4>
+          <ul className="safety-list">
+            {trip.safety_tips.map((tip, index) => (
+              <li key={index} className="safety-item">{tip}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Sources */}
+      {sources && sources.length > 0 && (
+        <div className="trip-sources">
+          <h4 className="trip-section-title">
+            <span>📚</span> {t("chat.sources")}
+          </h4>
+          <ul className="sources-list">
+            {sources.map((source, index) => (
+              <li key={index} className="source-item">{source}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+
     </section>
   );
 }

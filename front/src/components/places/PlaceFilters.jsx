@@ -11,6 +11,7 @@ export default function PlaceFilters({
   dateFrom,
   onDateFromChange,
   sourceType = "all",
+  onSourceTypeChange,
   dateTo,
   onDateToChange,
 }) {

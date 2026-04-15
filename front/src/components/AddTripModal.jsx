@@ -21,6 +21,7 @@ export default function AddTripModal({
     budget: "",
     comment: "",
     category_id: "",
+    maxTravelers: 10,
   });
 
   useEffect(() => {
@@ -42,6 +43,7 @@ export default function AddTripModal({
       budget: "",
       comment: "",
       category_id: "",
+      maxTravelers: 10,
     });
     setUploadPreview("");
   };
@@ -111,6 +113,7 @@ export default function AddTripModal({
         itinerary_json: newTrip.comment ? { notes: newTrip.comment.trim() } : {},
         media_urls,
         visibility: "PUBLIC",
+        max_travelers: newTrip.maxTravelers || 10,
       };
 
       const createRes = await api.post("marketplace/advisor/trips/", createPayload);
@@ -222,7 +225,20 @@ export default function AddTripModal({
               onChange={handleChange}
             />
             </label>
-            
+
+            <label>
+                <span>{t("advisorTrips.maxTravelers")}</span>
+            <input
+              type="number"
+              name="maxTravelers"
+              placeholder={t("advisorTrips.maxTravelers")}
+              value={newTrip.maxTravelers}
+              onChange={handleChange}
+              min="1"
+              max="100"
+            />
+            </label>
+
             <label>
                 <span>{t("advisorTrips.additionalInformation")}</span>
             <textarea

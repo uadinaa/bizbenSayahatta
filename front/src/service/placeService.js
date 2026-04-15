@@ -36,8 +36,16 @@ export async function loadPlaces({
   let filteredPlaces = filterByPrice(data.places || [], priceFilter);
   filteredPlaces = filterByDate(filteredPlaces, dateFrom, dateTo);
 
-  // Tours are not filtered by price/date (they have their own data)
-  const filteredTours = data.tours || [];
+  // Tours/events are not filtered by price/date (they have their own data)
+  const normalizedTours = (data.tours || []).map((tour) => ({
+    ...tour,
+    source: tour.source || "tripadvisor",
+  }));
+  const normalizedEvents = (data.events || []).map((event) => ({
+    ...event,
+    source: "ticketmaster",
+  }));
+  const filteredTours = [...normalizedTours, ...normalizedEvents];
 
   setPlaces((prev) => (page === 1 ? filteredPlaces : [...prev, ...filteredPlaces]));
   if (setTours) {

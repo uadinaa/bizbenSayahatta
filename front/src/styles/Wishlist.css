@@ -228,3 +228,128 @@
   border-color: #0c3b2e;
   transform: translateY(-2px);
 }
+
+/* ===============================
+   TABS
+================================= */
+
+.wishlist-tabs {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 0;
+}
+
+.wishlist-tab {
+  padding: 12px 20px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: -1px;
+}
+
+.wishlist-tab:hover {
+  color: #1a1a1a;
+}
+
+.wishlist-tab.active {
+  color: #1a1a1a;
+  border-bottom-color: #1a1a1a;
+}
+
+/* ===============================
+   BOOKED TRIPS LIST
+================================= */
+
+.booked-trips-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.booked-trip-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.2s ease;
+}
+
+.booked-trip-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.booked-trip-info h3 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.booked-trip-info p {
+  margin: 4px 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.booked-trip-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-badge.status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge.status-confirmed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge.status-cancelled {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-badge.status-completed {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+/* ===============================
+   RESPONSIVE FOR BOOKED TRIPS
+================================= */
+
+@media (max-width: 768px) {
+  .booked-trip-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .booked-trip-actions {
+    width: 100%;
+  }
+
+  .booked-trip-actions button {
+    flex: 1;
+  }
+}

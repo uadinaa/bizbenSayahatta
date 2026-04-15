@@ -26,7 +26,8 @@ import {
   loadTripComments,
   openTripModal,
 } from "../service/placeService";
-import { toggleMustVisit } from "../api/places";
+import { toggleExternalMustVisit, toggleMustVisit } from "../api/places";
+import { toggleSavedTrip } from "../api/trips";
 import s from "../styles/Inspiration.module.css";
 
 // Helper to map TripAdvisor price amount to Google Places price_level format
@@ -148,12 +149,72 @@ const Inspiration = () => {
     setIsModalOpen(true);
     setCommentsPage(1);
     setNewComment("");
-    loadComments({
-      placeId: place.id,
-      setLoadingComments,
-      setComments,
-      setCommentsMeta,
-    });
+    // TripAdvisor tours are not stored in the DB — skip comment loading
+    const isExternal = place.source === "tripadvisor" || place.source === "ticketmaster";
+    if (!isExternal) {
+      loadComments({
+        placeId: place.id,
+        setLoadingComments,
+        setComments,
+        setCommentsMeta,
+      });
+    } else {
+      setComments([]);
+      setCommentsMeta({ count: 0, hasMore: false });
+    }
+  };
+
+  const externalFavoriteKey = (item) =>
+    item.external_favorite_key || `${item.source || "tripadvisor"}:${item.external_id || item.id}`;
+
+  const toggleExternalFavorite = async (item) => {
+    if (!isAuthed) {
+      navigate("/login");
+      return;
+    }
+    const nextValue = !Boolean(item.is_must_visit);
+    const payload = {
+      source: item.source,
+      external_id: String(item.external_id || item.id),
+      is_must_visit: nextValue,
+      name: item.name,
+      category: item.category,
+      city: item.city,
+      country: item.country || "",
+      description: item.description || "",
+      photo_url: item.photo_url || "",
+      rating: item.rating,
+      price_level: item.price_level,
+      booking_url: item.booking_url || "",
+      web_url: item.web_url || "",
+      duration: item.duration || "",
+      venue: item.venue || "",
+      start_date: item.start_date || "",
+      price_amount: item.price_amount,
+      price_currency: item.price_currency || "",
+    };
+    try {
+      await toggleExternalMustVisit(payload);
+      setTours((prev) =>
+        prev.map((tour) => {
+          const source = tour.source || "tripadvisor";
+          const currentExternalId = String(tour.id || "");
+          if (source === payload.source && currentExternalId === payload.external_id) {
+            return { ...tour, is_must_visit: nextValue };
+          }
+          return tour;
+        })
+      );
+      if (
+        selectedPlace &&
+        selectedPlace.source === payload.source &&
+        String(selectedPlace.external_id || selectedPlace.id) === payload.external_id
+      ) {
+        setSelectedPlace((old) => ({ ...old, is_must_visit: nextValue }));
+      }
+    } catch (err) {
+      console.error("Failed to toggle external favorite:", err);
+    }
   };
 
   const closePlaceModal = () => {
@@ -215,6 +276,37 @@ const Inspiration = () => {
     }
   };
 
+  const handleToggleSavedTrip = async (trip) => {
+    if (!isAuthed) {
+      navigate("/login");
+      return;
+    }
+
+    const currentValue = trip.is_saved || false;
+    const newValue = !currentValue;
+
+    // Optimistic update
+    setPublicTrips((prev) =>
+      prev.map((t) => t.id === trip.id ? { ...t, is_saved: newValue } : t)
+    );
+    if (selectedTrip?.id === trip.id) {
+      setSelectedTrip((prev) => ({ ...prev, is_saved: newValue }));
+    }
+
+    try {
+      await toggleSavedTrip(trip.id, currentValue);
+    } catch (err) {
+      // Revert on error
+      setPublicTrips((prev) =>
+        prev.map((t) => t.id === trip.id ? { ...t, is_saved: currentValue } : t)
+      );
+      if (selectedTrip?.id === trip.id) {
+        setSelectedTrip((prev) => ({ ...prev, is_saved: currentValue }));
+      }
+      console.error("Failed to toggle saved trip:", err);
+    }
+  };
+
   return (
     <div className={s.page}>
       <h1 className={s.title}>{t("inspiration.inspiration")}</h1> 
@@ -273,12 +365,15 @@ const Inspiration = () => {
         }}
       />
 
-      <PublicTripsSection 
-        styles={s} 
-        loadingTrips={loadingTrips} 
-        publicTrips={publicTrips}  
-        setPublicTrips={setPublicTrips} 
+      <PublicTripsSection
+        styles={s}
+        loadingTrips={loadingTrips}
+        publicTrips={publicTrips}
+        setPublicTrips={setPublicTrips}
         onOpenTrip={openManualTripModal}
+        onToggleSavedTrip={handleToggleSavedTrip}
+        isAuthed={isAuthed}
+        navigate={navigate}
       />
 
       <div className={s.grid}>
@@ -311,10 +406,16 @@ const Inspiration = () => {
 
         {(sourceType === "all" || sourceType === "tours") &&
           tours.map((tour, index) => (
-            <PlaceCard
-              key={`tour-${tour.id || index}`}
-              place={{
-                id: `tour-${tour.id}`,
+            (() => {
+              const source = tour.source || "tripadvisor";
+              const syntheticId = `${source}-${tour.id || index}`;
+              const externalId = String(tour.id || index);
+              const favoriteKey = `${source}:${externalId}`;
+              const isFav = Boolean(tour.is_must_visit);
+              const mappedPlace = {
+                id: syntheticId,
+                external_id: externalId,
+                external_favorite_key: favoriteKey,
                 name: tour.name,
                 description: tour.description,
                 photo_url: tour.photo_url,
@@ -322,11 +423,26 @@ const Inspiration = () => {
                 category: tour.category || "tour",
                 city: tour.city || search || "",
                 price_level: tour.price_amount ? mapPriceToLevel(tour.price_amount) : null,
-                is_must_visit: false,
-              }}
+                is_must_visit: isFav,
+                source,
+                num_reviews: tour.num_reviews,
+                booking_url: tour.booking_url,
+                award: tour.award,
+                web_url: tour.web_url,
+                duration: tour.duration,
+                venue: tour.venue,
+                start_date: tour.start_date,
+                price_amount: tour.price_amount,
+                price_currency: tour.price_currency,
+              };
+
+              return (
+            <PlaceCard
+              key={syntheticId}
+              place={mappedPlace}
               variant="inspiration"
-              isFavorited={false}
-              source="tripadvisor"
+              isFavorited={isFav}
+              source={source}
               duration={tour.duration}
               bookingUrl={tour.booking_url}
               numReviews={tour.num_reviews}
@@ -351,9 +467,11 @@ const Inspiration = () => {
                 reviews: s.reviews,
                 bookBtn: s.bookBtn,
               }}
-              onOpen={() => openPlaceModal({ ...tour, id: `tour-${tour.id}` })}
-              onToggleFavorite={() => {}}
+              onOpen={() => openPlaceModal(mappedPlace)}
+              onToggleFavorite={() => toggleExternalFavorite(mappedPlace)}
             />
+              );
+            })()
           ))}
       </div>
 
@@ -377,14 +495,16 @@ const Inspiration = () => {
           navigate={navigate}
           onClose={closePlaceModal}
           onToggleMustVisit={() =>
-            handleToggleMustVisit({
-              placeId: selectedPlace.id,
-              currentValue: selectedPlace.is_must_visit,
-              isAuthed,
-              navigate,
-              setPlaces,
-              setSelectedPlace,
-            })
+            selectedPlace.source === "tripadvisor" || selectedPlace.source === "ticketmaster"
+              ? toggleExternalFavorite(selectedPlace)
+              : handleToggleMustVisit({
+                  placeId: selectedPlace.id,
+                  currentValue: selectedPlace.is_must_visit,
+                  isAuthed,
+                  navigate,
+                  setPlaces,
+                  setSelectedPlace,
+                })
           }
           onCreateTrip={() => handleCreateTrip({ isAuthed, navigate })}
           onCommentChange={setNewComment}
@@ -429,9 +549,7 @@ const Inspiration = () => {
           styles={s}
           trip={selectedTrip}
           onClose={closeManualTripModal}
-          onToggleWishlist={() => {
-            console.log("toggle wishlist", selectedTrip.id);
-          }}
+          onToggleWishlist={() => handleToggleSavedTrip(selectedTrip)}
           isAuthed={isAuthed}
           navigate={navigate}
           comments={comments}

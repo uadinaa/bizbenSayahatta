@@ -12,25 +12,45 @@ function formatDateRange(startDate, endDate, t) {
   return startDate || endDate;
 }
 
-function buildTripCard(thread, t, isArchived = false) {
-  const itinerary = thread.plan_json?.itinerary || [];
+function hasTripContent(thread, finalTrip) {
+  if (finalTrip != null && typeof finalTrip === "object") return true;
+  const p = thread.plan_json;
+  if (p == null || typeof p !== "object") return false;
+  return Object.keys(p).length > 0;
+}
+
+function buildTripCard(thread, finalTrip, t, isArchived = false) {
+  const plan = thread.plan_json || {};
+  const itinerary = plan.itinerary || finalTrip?.itinerary || [];
   const firstStop = itinerary[0]?.stops?.[0];
-  const daysGenerated = thread.plan_json?.days_generated || itinerary.length || 0;
+  const daysGenerated = plan.days_generated || itinerary.length || 0;
   const stopsCount = itinerary.reduce((acc, day) => acc + (day.stops?.length || 0), 0);
   const status = isArchived ? "past" : "active";
+
+  // Use FinalTrip data if available, otherwise fallback to thread.plan_json
+  const travelers = finalTrip?.travelers || plan.travelers || 1;
+  const dailyBudget = finalTrip?.daily_budget || plan.daily_budget_per_person || plan.budget || 0;
+  const tripLength = finalTrip?.trip_length || finalTrip?.duration_days || daysGenerated;
+  const tripType = finalTrip?.trip_type || plan.trip_type || plan.traveler_type || "";
+  const totalBudget = finalTrip?.daily_budget && tripLength ? finalTrip.daily_budget * tripLength : (plan.budget_total || tripLength * 1000);
 
   return {
     id: thread.id,
     title:
       thread.title ||
       (thread.city ? `${thread.city} ${t("trips.tripSuffix")}` : t("trips.untitledTrip")),
-    city: thread.city || thread.plan_json?.city || t("trips.unknownCity"),
+    city: thread.city || plan.city || t("trips.unknownCity"),
     dateRange: formatDateRange(thread.start_date, thread.end_date, t),
-    daysGenerated,
+    daysGenerated: tripLength,
     stopsCount,
     status,
     photoUrl: firstStop?.photo_url || null,
     summary: itinerary[0]?.summary || t("trips.tripPlanReady"),
+    travelers,
+    dailyBudget,
+    tripLength,
+    tripType,
+    totalBudget,
   };
 }
 
@@ -46,24 +66,43 @@ export default function TripPage() {
     setLoading(true);
     setError("");
     try {
+      // Fetch active threads
       const resActive = await api.get("llm/threads/");
-      const activeDetails = await Promise.all(
-        resActive.data.map(thread => api.get(`llm/threads/${thread.id}/`))
+      // Fetch FinalTrip data for each active thread
+      const activeTripsWithFinal = await Promise.all(
+        resActive.data.map(async (thread) => {
+          try {
+            const finalTripRes = await api
+              .get(`chats/${thread.id}/trip/`)
+              .catch(() => ({ data: null }));
+            return { thread, finalTrip: finalTripRes.data };
+          } catch {
+            return { thread, finalTrip: null };
+          }
+        })
       );
-      const activeTrips = activeDetails
-        .map(detail => detail.data)
-        .filter(thread => thread.plan_json) // только созданные
-        .map(thread => buildTripCard(thread, t, false))
+      const activeTrips = activeTripsWithFinal
+        .filter(({ thread, finalTrip }) => hasTripContent(thread, finalTrip))
+        .map(({ thread, finalTrip }) => buildTripCard(thread, finalTrip, t, false))
         .sort((a, b) => b.id - a.id);
 
+      // Fetch archived threads
       const resArchived = await api.get("llm/threads/?archived=true");
-      const archivedDetails = await Promise.all(
-        resArchived.data.map(thread => api.get(`llm/threads/${thread.id}/`))
+      const archivedTripsWithFinal = await Promise.all(
+        resArchived.data.map(async (thread) => {
+          try {
+            const finalTripRes = await api
+              .get(`chats/${thread.id}/trip/`)
+              .catch(() => ({ data: null }));
+            return { thread, finalTrip: finalTripRes.data };
+          } catch {
+            return { thread, finalTrip: null };
+          }
+        })
       );
-      const pastTrips = archivedDetails
-        .map(detail => detail.data)
-        .filter(thread => thread.plan_json) // только созданные
-        .map(thread => buildTripCard(thread, t, true))
+      const pastTrips = archivedTripsWithFinal
+        .filter(({ thread, finalTrip }) => hasTripContent(thread, finalTrip))
+        .map(({ thread, finalTrip }) => buildTripCard(thread, finalTrip, t, true))
         .sort((a, b) => b.id - a.id);
 
       setTrips([...activeTrips, ...pastTrips]);
@@ -142,8 +181,7 @@ export default function TripPage() {
                 ) : (
                   <div className={s.photoPlaceholder} />
                 )}
-                <span
-                  className={`${s.statusBadge} ${
+                <span className={`${s.statusBadge} ${
                     trip.status === "active" ? s.statusActive : s.statusUpcoming
                   }`}
                 >
@@ -152,14 +190,24 @@ export default function TripPage() {
               </div>
 
               <div className={s.cardContent}>
-                
                 <p className={s.tripLocation}>{trip.city}</p>
 
                 <div className={s.tripInfo}>
                   <span>{trip.dateRange}</span>
                   <span>
-                    {trip.stopsCount} {t("trips.travelers")}
+                    👥 {trip.travelers} {t("trips.travelers")}
                   </span>
+                </div>
+
+                <div className={s.tripInfo}>
+                  <span>
+                    📅 {trip.tripLength} {t("trips.days")}
+                  </span>
+                  {trip.tripType && (
+                    <span className={s.tripType}>
+                      {trip.tripType}
+                    </span>
+                  )}
                 </div>
 
                 <div className={s.budget}>
@@ -167,10 +215,10 @@ export default function TripPage() {
                   <div className={s.budgetBar}>
                     <div
                       className={s.budgetProgress}
-                      style={{ width: `${(trip.daysGenerated / 10) * 100}%` }}
+                      style={{ width: `${Math.min(100, (trip.totalBudget / 4000) * 100)}%` }}
                     ></div>
                   </div>
-                  <span>${trip.daysGenerated * 1000} / $4,000</span>
+                  <span>${trip.totalBudget} {t("trips.total")} (~${trip.dailyBudget}/{t("trips.day")})</span>
                 </div>
 
                 <div className={s.chipContainer}>

@@ -22,7 +22,7 @@ export default function InspirationCommentsPanel({
   return (
     <div className={styles.commentsSection}>
       <h3>
-        Comments
+        {t("inspiration.card.comments")}
         {(commentsTotalCount > 0 || comments.length > 0) && (
           <span className={styles.commentCount}>
             {commentsTotalCount || comments.length}
@@ -110,8 +110,8 @@ export default function InspirationCommentsPanel({
           className={styles.commentsLoadMore}
           onClick={onLoadMoreComments}
           disabled={loadingMoreComments}
-        >
-          {loadingMoreComments ? "Loading…" : "Load more comments"}
+        > 
+          {loadingMoreComments ? t("manager.loading") : t("inspiration.card.loadingComments")}
         </button>
       ) : null}
 
