@@ -22,6 +22,7 @@ class ChatThread(models.Model):
     plan_json = models.JSONField(null=True, blank=True)
     is_archived = models.BooleanField(default=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    auto_title = models.BooleanField(default=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
@@ -72,6 +73,7 @@ class FinalTrip(models.Model):
     trip_type = models.CharField(max_length=50, null=True, blank=True)
     travelers = models.IntegerField(null=True, blank=True)
     daily_budget = models.IntegerField(null=True, blank=True)
+    trip_length = models.IntegerField(null=True, blank=True, help_text="Duration of trip in days")
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
     safety_tips = models.JSONField(default=list, blank=True)

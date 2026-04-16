@@ -76,5 +76,6 @@ class WishlistFlowTests(TestCase):
         self.assertEqual(response.data["places"][0]["id"], self.place.id)
         self.assertTrue(response.data["places"][0]["is_must_visit"])
         self.assertIn("tours", response.data)
+        self.assertIn("events", response.data)
         self.assertIn("next", response.data)
         self.assertIn("previous", response.data)

@@ -19,6 +19,7 @@ class TravelChatFlowTests(APITestCase):
             user=self.user,
             kind="planner",
             title="Tokyo trip",
+            auto_title=False,
         )
 
         self._create_city_places("Tokyo", "Japan")
@@ -72,6 +73,8 @@ class TravelChatFlowTests(APITestCase):
         self.assertIn("Family-friendly filters applied", response.data["response"])
         self.assertEqual(response.data["plan"]["traveler_type"], "family")
         self.assertTrue(response.data["plan"]["route"][0]["places"])
+        self.assertIn("thread", response.data)
+        self.assertEqual(response.data["thread"]["id"], self.thread.id)
 
     def test_sources_include_visa_requirement(self):
         response = self.client.post(
@@ -115,6 +118,7 @@ class ChatThreadManagementTests(APITestCase):
             user=self.user,
             kind="planner",
             title="Almaty trip",
+            auto_title=False,
         )
         self.other_thread = ChatThread.objects.create(
             user=self.other_user,
@@ -127,6 +131,18 @@ class ChatThreadManagementTests(APITestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(response.data)
+
+    def test_patch_thread_title_strips_and_disables_auto_title(self):
+        response = self.client.patch(
+            reverse("chat-thread-detail", args=[self.thread.id]),
+            {"title": "  Summer in Almaty  "},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["title"], "Summer in Almaty")
+        self.thread.refresh_from_db()
+        self.assertFalse(self.thread.auto_title)
 
     def test_trip_patch_creates_final_trip(self):
         payload = {

@@ -16,7 +16,7 @@ from .serializers import (
     FinalTripUpdateSerializer,
 )
 from .models import ChatMessage, ChatThread, ChatEntry, FinalTrip
-from .services.openai_service import ask_travel_ai, polish_trip_plan
+from .services.openai_service import ask_travel_ai, polish_trip_plan, detect_language
 from .services.final_trip import sync_final_trip
 from .services.travel_chat import (
     HotelSearchParams,
@@ -24,6 +24,7 @@ from .services.travel_chat import (
     collect_trip_requirements,
     enrich_thread_plan_for_final_trip,
     extract_hotel_search_params,
+    generate_auto_title,
     generate_trip_payload,
     get_missing_requirements,
     strip_trip_sources_from_markdown,
@@ -247,9 +248,26 @@ def _generate_thread_trip_response(thread, user, message: str):
                     "sources": [],
                 }
             raise
+
+        # Generate auto title if thread doesn't have one or still uses default
+        should_update_title = (
+            thread.auto_title or
+            not thread.title or
+            thread.title == "New chat" or
+            thread.title == f"{thread.city} trip"
+        )
+
         thread.plan_json = payload
         thread.city = payload.get("city") or thread.city
-        thread.save(update_fields=["plan_json", "city", "updated_at"])
+
+        if should_update_title:
+            city = payload.get("city") or requirements.destination or thread.city
+            travelers = payload.get("travelers") or requirements.travelers
+            traveler_type = payload.get("traveler_type") or requirements.traveler_type
+            new_title = generate_auto_title(city, travelers, traveler_type)
+            thread.title = new_title
+
+        thread.save(update_fields=["plan_json", "city", "title", "updated_at"])
         sync_final_trip(thread, payload)
         full_md = payload["response_markdown"]
         sources_already = ChatEntry.objects.filter(
@@ -264,6 +282,11 @@ def _generate_thread_trip_response(thread, user, message: str):
             "response": chat_md,
             "plan": payload,
             "sources": [item["label"] for item in payload["sources"]["items"]],
+            "thread": {
+                "id": thread.id,
+                "title": thread.title,
+                "auto_title": thread.auto_title,
+            },
         }
 
     return None
@@ -394,9 +417,13 @@ class TravelChatView(APIView):
             part for part in [places_context, hotel_context, tour_context] if part
         )
 
+        # Detect language from user message
+        language = detect_language(user_message)
+
         ai_response = ask_travel_ai(
             user_message=user_message,
             context=context,
+            language=language,
         )
         sources_block = _build_sources_block(source_places)
         final_response = f"{ai_response}\n\n{sources_block}"
@@ -470,10 +497,13 @@ class ChatThreadListCreateView(APIView):
         title = data.get("title") or ""
         city = data.get("city") or ""
         kind = data["kind"]
+        travelers = data.get("travelers")
+        traveler_type = data.get("traveler_type") or ""
 
         if not title:
             if city:
-                title = f"{city} trip" if kind == "planner" else f"{city} chat"
+                # Use new auto-title format: city_travelers
+                title = generate_auto_title(city, travelers, traveler_type)
             else:
                 title = "New chat"
 
@@ -484,6 +514,7 @@ class ChatThreadListCreateView(APIView):
             city=city,
             start_date=data.get("start_date"),
             end_date=data.get("end_date"),
+            auto_title=True,  # Mark as auto-generated
         )
 
         return Response(
@@ -499,6 +530,24 @@ class ChatThreadDetailView(APIView):
         thread, error_response = _get_thread_for_request(request, thread_id)
         if error_response:
             return error_response
+        return Response(ChatThreadDetailSerializer(thread).data, status=status.HTTP_200_OK)
+
+    def patch(self, request, thread_id):
+        # Update thread title (user-edited)
+        thread, error_response = _get_thread_for_request(request, thread_id)
+        if error_response:
+            return error_response
+
+        title = request.data.get("title", "").strip()
+        if not title:
+            return Response({"detail": "Title cannot be empty."}, status=status.HTTP_400_BAD_REQUEST)
+        if len(title) > 100:
+            return Response({"detail": "Title cannot exceed 100 characters."}, status=status.HTTP_400_BAD_REQUEST)
+
+        thread.title = title
+        thread.auto_title = False  # Disable auto-title when user edits manually
+        thread.save(update_fields=["title", "auto_title", "updated_at"])
+
         return Response(ChatThreadDetailSerializer(thread).data, status=status.HTTP_200_OK)
 
     def delete(self, request, thread_id):
@@ -542,15 +591,15 @@ class ChatEntryListCreateView(APIView):
                 role="assistant",
                 content=trip_result["response"],
             )
-            return Response(
-                {
-                    "response": trip_result["response"],
-                    "sources": trip_result["sources"],
-                    "tokens_left": request.user.tokens,
-                    "plan": trip_result["plan"],
-                },
-                status=status.HTTP_200_OK,
-            )
+            response_data = {
+                "response": trip_result["response"],
+                "sources": trip_result["sources"],
+                "tokens_left": request.user.tokens,
+                "plan": trip_result["plan"],
+            }
+            if "thread" in trip_result:
+                response_data["thread"] = trip_result["thread"]
+            return Response(response_data, status=status.HTTP_200_OK)
 
         selected_city = _detect_city_from_message(user_message, fallback_city=thread.city or "")
         source_places = _get_top_places_for_city(selected_city)
@@ -566,10 +615,14 @@ class ChatEntryListCreateView(APIView):
             part for part in [trip_context, places_context, hotel_context, tour_context] if part
         )
 
+        # Detect language from user message
+        language = detect_language(user_message)
+
         ai_response = ask_travel_ai(
             user_message=user_message,
             context=context,
             history=_recent_history_text(thread),
+            language=language,
         )
         sources_block = _build_sources_block(source_places)
         final_response = f"{ai_response}\n\n{sources_block}"

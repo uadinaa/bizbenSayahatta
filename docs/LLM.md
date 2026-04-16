@@ -1,187 +1,445 @@
-# LLM Analysis Summary
+# LLM Process Documentation
 
-**Analyzed:** 2026-04-10
+**Last Updated:** 2026-04-15
 
 ---
 
-## 1. Google Places Service (`back/places/services/google_places.py`)
+## Overview
 
-### Structure
-Single-file service with functional organization:
+The LLM layer is a multi-step pipeline that combines deterministic data retrieval with GPT-4o-mini to produce grounded, structured travel itineraries. The key design principle is **algorithmic-first, LLM-polish**: a rule-based planner builds the trip structure, then the LLM formats it into readable markdown and fills in travel advice.
 
-| Function | Purpose |
-|----------|---------|
-| `fetch_places_from_google()` | POST to Google Places Text Search API |
-| `save_places_to_db()` | Upsert places via `update_or_create` |
-| `get_places()` | Main entry: cache-first, then API fetch |
-| `_build_photo_url()` | Construct photo URL from place photo name |
-| `_extract_neighborhood()` | Parse neighborhood from address components |
-| `_extract_country()` | Extract country from address components |
-| `_extract_city()` | Extract city/locality from address components |
+**Model:** `gpt-4o-mini`  
+**Temperature:** 0.7  
+**Location:** `back/llm/services/`
 
-### Normalization
-Places are normalized in `save_places_to_db()` via `update_or_create` on `google_place_id`:
+---
 
-```python
-Place.objects.update_or_create(
-    google_place_id=place["id"],
-    defaults={
-        "name": place["displayName"]["text"],
-        "category": category,
-        "types": place.get("types", []),
-        "rating": place.get("rating"),
-        "user_ratings_total": place.get("userRatingCount"),
-        "price_level": place.get("priceLevel"),
-        "opening_hours": place.get("regularOpeningHours"),
-        "photo_url": _build_photo_url(photos[0]) if photos else None,
-        "website": place.get("websiteUri"),
-        "neighborhood": _extract_neighborhood(place),
-        "address": place.get("formattedAddress", ""),
-        "city": city,
-        "country": _extract_country(place),
-        "lat": location.get("latitude"),
-        "lng": location.get("longitude"),
-    },
-)
+## 1. Pipeline Overview
+
+```
+User message
+    ↓
+1. Requirements Extraction  (travel_chat.py)
+    ↓
+2. Cache Lookups             (hotel_cache.py, tripadvisor_service.py, places/services/cache.py)
+    ↓
+3. Algorithmic Trip Plan     (trip_planner.py)
+    ↓
+4. Context Assembly          (travel_chat.py helpers)
+    ↓
+5. GPT-4o-mini Call          (openai_service.py)
+    ↓
+6. Trip Persistence          (final_trip.py)
+    ↓
+Response (markdown + structured JSON)
 ```
 
-### Caching
-- **Backend:** Django database (`Place.cached_at` field)
-- **TTL:** 24 hours
-- **Key:** Composite query `(city__iexact, category__iexact, cached_at__gte=cutoff)`
-- **Helper:** `places/services/cache.py::get_cached_places()` queries places with `cached_at >= now - 24h`
+---
+
+## 2. Requirements Extraction (`travel_chat.py`)
+
+### `collect_trip_requirements(text) → TripRequirements`
+
+Parses free-form user messages using **regex patterns** to extract:
+
+| Field | Extractor | Example |
+|-------|-----------|---------|
+| `destination` | `_extract_destination()` | "Paris" |
+| `budget` | `_extract_budget()` | "$200", "200 dollars" |
+| `duration_days` | `_extract_duration_days()` | "5 days", "a week", "June 1-7" |
+| `num_travelers` | `_extract_travelers()` | "2 people", "for 3" |
+| `traveler_type` | `_extract_traveler_type()` | solo / couple / family / group |
+| `travel_style` | `_extract_travel_style()` | adventure / relaxation / culture / food / mix |
+| `kids_age_band` | `_extract_kids_age_band()` | toddler / child / teens |
+| `citizenship` | `_extract_citizenship()` | "US passport", "British citizen" |
+
+**Return type:** `TripRequirements` dataclass — all fields are optional; missing fields trigger `build_missing_details_response()`.
+
+### `extract_hotel_search_params(text) → HotelSearchParams`
+
+Same approach for hotel-specific messages. Extracts:
+- `city`, `checkin`, `checkout` (ISO dates)
+- `budget` (per night)
+- `adults`, `children`
+
+### `build_missing_details_response(requirements) → str`
+
+When required fields (destination, dates) are absent, generates a targeted follow-up question asking only for the missing info.
 
 ---
 
-## 2. Booking.com Service (`back/llm/services/booking_service.py`)
+## 3. Algorithmic Trip Planner (`trip_planner.py`)
 
-### Structure
-Modular service with helper functions:
+### `build_trip_plan(requirements, user) → dict`
 
-| Function | Purpose |
-|----------|---------|
-| `search_hotels()` | Main entry: search with budget/style filters |
-| `get_hotel_locations()` | Resolve city name to Booking.com `dest_id` |
-| `get_hotel_details()` | Fetch single hotel details |
-| `_normalize_hotel_property()` | Normalize API response to standard format |
-| `_parse_distance_to_km()` | Parse "X.X km from center" strings |
-| `_extract_highlights()` | Extract amenities/highlights from facilities |
-| `_is_family_friendly()` | Check family-friendly flags |
-| `_extract_cancellation_policy()` | Extract cancellation text |
-| `_build_booking_url()` | Construct affiliate booking URL |
+The planner runs **before** the LLM and produces a structured itinerary JSON. The LLM only polishes this output into markdown — it does not invent new destinations or places.
 
-### Normalization
-`_normalize_hotel_property()` converts Booking.com response to standard dict:
+**Algorithm steps:**
 
-```python
+1. **Query places** from DB filtered by `city` (uses places matching the destination)
+2. **Interest scoring** via `_score_place(place, user)`:
+   - `rating × 2` (base score)
+   - `+2.5` if place is in user's favorites
+   - `+1.5` for each matching user interest (e.g., museums, food, nature)
+3. **Budget filtering** — removes places whose price level exceeds the budget tier
+4. **Family filtering** via `_is_family_safe_place(place, requirements)`:
+   - Removes bars, night clubs, casinos if `traveler_type != adult`
+   - Removes hiking areas if `kids_age_band == toddler`
+5. **Distance clustering** via `_cluster_places(places)`:
+   - Groups places that are within 1.5km of each other
+   - Deduplicates items within 200m of each other
+6. **Daily schedule assembly:**
+   - Pace-based stop count: `slow=3`, `medium=4`, `fast=5` stops/day
+   - Max 2 museums per day
+   - Max 1 food stop per day
+   - Reduces activities on Day 1 if arrival is afternoon
+
+**Output (structured JSON):**
+```json
 {
-    "id": str(hotel_id),
-    "name": name,
-    "price_per_night": round(price_per_night, 2),
-    "currency": "USD",
-    "rating": float(review_score),  # Booking.com uses 0-10 scale
-    "review_count": int(review_count),
-    "address": address,
-    "lat": float(latitude) or None,
-    "lng": float(longitude) or None,
-    "distance_to_center_km": distance_km,
-    "hotel_class": int(hotel_class),
-    "booking_url": booking_url,
-    "highlights": highlights[:5],
-    "family_friendly": bool,
-    "cancellation_policy": str,
+  "city": "Paris",
+  "country": "France",
+  "duration_days": 5,
+  "days": [
+    {
+      "day": 1,
+      "date": "2025-06-01",
+      "stops": [
+        {
+          "name": "Eiffel Tower",
+          "category": "landmark",
+          "rating": 4.7,
+          "lat": 48.8584,
+          "lng": 2.2945,
+          "address": "Champ de Mars, Paris"
+        }
+      ]
+    }
+  ]
 }
 ```
 
-### Caching
-- **Backend:** Django locmem cache (`django.core.cache.backends.locmem.LocMemCache`)
-- **TTL:** 6 hours (`CACHE_HOURS = 6`)
-- **Key format:** `hotels:{city_slug}:{checkin}:{checkout}:{budget_int}:{adults}`
-- **Builder:** `hotel_cache.py::build_hotel_cache_key()`
-- **Behavior:** Only caches non-empty results (avoids caching API failures)
-
 ---
 
-## 3. PlaceCard Component (`front/src/components/places/PlaceCard.jsx`)
+## 4. Context Assembly (`travel_chat.py`)
 
-### Props
+Before calling GPT-4o-mini, three context blocks are assembled and injected into the system prompt. Injection order matters — higher priority items appear first.
 
-| Prop | Type | Required | Default | Description |
-|------|------|----------|---------|-------------|
-| `place` | object | **Yes** | - | Place data (name, photo_url, rating, etc.) |
-| `variant` | string | No | `"inspiration"` | `"inspiration"` or `"wishlist"` |
-| `onOpen` | function | No | - | Click handler for detail view |
-| `onToggleFavorite` | function | No | - | Heart button click handler |
-| `isFavorited` | boolean | No | `place.is_must_visit` | Override favorite state |
+### 4.1 Grounded Places Block
 
-### Behavior
-- **Photo:** Lazy-loaded; shows placeholder if `photo_url` missing
-- **Heart button:** Calls `onToggleFavorite`, uses `redHeart`/`emptyHeart` SVGs
-- **Location:** Uses `formatLocation()` utility (wishlist shows `city, country`)
-- **Category:** Formatted via `formatCategory()` utility
-- **Price:** Converted via `priceTierLabel()` (e.g., `PRICE_LEVEL_MODERATE` → `$$`)
-
----
-
-## 4. Inspiration Page (`front/src/pages/Inspiration.jsx`)
-
-### Fetching
-Uses `fetchInspirationPlaces()` from `api/places.js`:
-
-```javascript
-const response = await api.get(`places/inspiration/?${params.toString()}`);
-// params: page, search, category, budget, open_now
+```python
+_build_places_context_for_city(city) → str
 ```
 
-**Backend:** `PlacesListAPIView` (DRF `ListAPIView`) with:
-- `DjangoFilterBackend` for `category`, `status`
-- `OrderingFilter` for `rating`, `saves_count`
-- `SearchFilter` for `name`, `city`, `country`, `category`, `address`, `neighborhood`
+- Queries top 8 places by rating from the DB for the city
+- Format: `NAME (CATEGORY) — Rating: X.X — Address: ...`
+- Includes a grounding instruction to prevent hallucination:
+  > "Do not invent places not listed here. If the cache is incomplete, ask the user to refresh."
 
-### Rendering
-1. Fetches places with filters (search, category, budget, open_now)
-2. Maps results to `PlaceCard` components:
-   ```jsx
-   {places.map(place => (
-     <PlaceCard
-       key={place.id}
-       place={place}
-       variant="inspiration"
-       onOpen={() => openPlaceDetail(place)}
-       onToggleFavorite={() => toggleMustVisit(place.id)}
-     />
-   ))}
-   ```
-3. Pagination via `next`/`previous` links from API response
+### 4.2 Hotel Options Block
+
+```python
+_build_hotel_context_block(hotels, params) → str
+```
+
+- Formats up to 5 hotels from Booking.com results
+- Format per hotel: name, price/night, rating, distance to center, booking URL
+- Header: `"HOTEL OPTIONS FOR {city} ({checkin} → {checkout}, budget ${budget}/night):"`
+
+### 4.3 Tour/Attraction Options Block
+
+```python
+_build_tour_context_block(tours) → str
+```
+
+- Formats tours returned from Apify TripAdvisor scraper
+- Filtered to rating ≥ 8.0/10 before injection
+- Format per tour: name, duration, price, rating, booking URL
+- Header: `"TOURS & ATTRACTIONS FOR {city}:"`
+
+### 4.4 Chat History
+
+- Last 6 `ChatEntry` records from the thread (role + content)
+- Prepended to the user message as conversation context
 
 ---
 
-## 5. Environment Variables (`.env`)
+## 5. OpenAI Integration (`openai_service.py`)
 
-### TripAdvisor API Key
-**Confirmed present in `back/.env`:**
+### `ask_travel_ai(user_message, context="", history=None) → str`
+
+**Full message construction:**
+
+```python
+messages = [
+    {"role": "system", "content": SYSTEM_PROMPT},
+    {"role": "user",   "content": context},        # assembled blocks
+    *[{"role": m.role, "content": m.content} for m in history[-6:]],
+    {"role": "user",   "content": user_message},
+]
 ```
-TRIPADVISER_API_KEY=UMFBHBGABWCMLSRP6XQ3
+
+**System Prompt:**
+```
+Ты — умный помощник по путешествиям.
+Помогаешь планировать поездки, маршруты, достопримечательности,
+даёшь советы по городам, транспорту и бюджету.
+Отвечай кратко и по делу.
+
+CRITICAL PLANNING RULES:
+1. PROXIMITY ENFORCEMENT — all same-day stops within 1.5km
+2. DEDUPLICATE OVERLAPPING LANDMARKS — merge nearby items
+3. HOTEL RECOMMENDATIONS — 1-2 hotels per city matching budget
+4. ESTIMATED COST PER DAY — breakdown: transport + fees + food
+5. RESPECT ARRIVAL TIME ON DAY 1 — reduced activities for afternoon arrivals
+6. CAFE/MEAL STOP EACH DAY — include local food specialties
+7. HOTEL OPTIONS — suggest 2-3 matching budget & travel style
+8. TOURS/ATTRACTIONS — prioritize 8.0+/10 ratings
 ```
 
-**Note:** Spelled `TRIPADVISER` (not `TRIPADVISOR`) in the env file.
-
-### Other API Keys Found
-| Key | Value (truncated) | Purpose |
-|-----|-------------------|---------|
-| `GOOGLE_MAPS_API_KEY` | `AIzaSyBdaYggGpCKKWKH2H-iQbACHlhLvVU9jV8` | Google Places |
-| `OPENAI_API_KEY` | `sk-proj-sI_paXX8RF...` | GPT-4o-mini |
-| `VITE_RAPIDAPI_KEY` | `06c86f9b1cms...` | Booking.com |
-| `TICKETMASTER_API_KEY` | `WCmZMSr8UdyE...` | Events (unused?) |
-| `OPEN_WEATHER_API_KEY` | `f80b68e194...` | Weather (unused?) |
-| `serpApi` | `af4bb46561...` | Search (unused?) |
-| `STRIPE_SECRET_KEY` | `sk_test_51TG4cJ...` | Payments (test mode) |
+**SDK call:**
+```python
+client = OpenAI(api_key=settings.OPENAI_API_KEY)
+response = client.responses.create(
+    model="gpt-4o-mini",
+    input=messages,
+    temperature=0.7,
+)
+```
 
 ---
 
-## Summary Table
+### `polish_trip_plan(plan: dict) → str`
 
-| Component | Backend | Cache Backend | TTL | Key Format |
-|-----------|---------|---------------|-----|------------|
-| Google Places | `places/services/google_places.py` | DB (`Place.cached_at`) | 24h | `(city, category)` query |
-| Booking.com | `llm/services/booking_service.py` | locmem | 6h | `hotels:{city}:{checkin}:{checkout}:{budget}:{adults}` |
+Takes the structured JSON from `build_trip_plan()` and formats it into a user-facing markdown itinerary.
+
+**Prompt sent to GPT-4o-mini:**
+```
+Format this trip plan as a readable markdown itinerary.
+Include: Trip overview, Day-by-day highlights, Best time to visit, Practical tips.
+Source of truth is the structured plan — do NOT invent new places.
+
+Plan: {json.dumps(plan, ensure_ascii=False)}
+```
+
+**Output:** Markdown string persisted to `FinalTrip.response_markdown`.
+
+---
+
+## 6. External Data Services (LLM Context Sources)
+
+### 6.1 Booking.com Hotels (`booking_service.py`)
+
+Used to populate the hotel context block injected into the LLM.
+
+**API:** `https://booking-com.p.rapidapi.com/v1` via RapidAPI  
+**Auth:** `X-RapidAPI-Key: {VITE_RAPIDAPI_KEY}`, `X-RapidAPI-Host: booking-com15.p.rapidapi.com`
+
+**Flow:**
+1. `GET /hotels/locations?query={city}` → resolve `dest_id`
+2. `GET /hotels/search` → search with `price_min`, `price_max`, `order_by`, `adults_number`
+3. `_normalize_hotel_property()` → standard dict
+
+**Travel style → sort order mapping:**
+```python
+{
+    "active":    "distance_from_search",
+    "relaxed":   "popularity",
+    "cultural":  "distance_from_search",
+    "budget":    "price",
+    "family":    "popularity",
+}
+```
+
+**Normalized hotel fields:**
+```python
+{
+    "id", "name", "price_per_night", "currency",
+    "rating",          # 0-10 Booking.com scale
+    "review_count", "address", "lat", "lng",
+    "distance_to_center_km", "hotel_class",
+    "booking_url",     # includes affiliate aid=356980
+    "highlights",      # max 5 amenities
+    "family_friendly", "cancellation_policy"
+}
+```
+
+**Cache:** `hotel_cache.py` — 6h locmem, key: `hotels:{city_slug}:{checkin}:{checkout}:{budget_int}:{adults}`
+
+---
+
+### 6.2 TripAdvisor / Apify (`tripadvisor_service.py`)
+
+Used to populate the tours/attractions context block.
+
+**Actor:** `automation-lab~tripadvisor-scraper`  
+**API Base:** `https://api.apify.com/v2`  
+**Auth:** `Authorization: Bearer {APIFY_API_KEY}`
+
+**Flow:**
+1. `POST /acts/.../runs` with city query
+2. Poll `GET /actor-runs/{run_id}` every 5s, max 60s
+3. On SUCCEEDED: `GET /datasets/{dataset_id}/items`
+4. `_normalize_tour()` → standard tour dict
+5. Filter to rating ≥ 8.0 before injecting into context
+
+**Normalized tour fields:**
+```python
+{
+    "id", "name", "description",
+    "price_amount", "price_currency",
+    "rating",        # 0-10 TripAdvisor scale
+    "num_reviews", "photo_url", "web_url",
+    "duration",      # e.g. "3 hours"
+    "booking_url", "category", "subcategory",
+    "award", "city"
+}
+```
+
+**Cache:** 24h locmem, key: `tripadvisor:tours:{city_slug}`
+
+---
+
+### 6.3 Google Places (grounded place context)
+
+Places are fetched and cached **separately** (see `places/services/google_places.py`). The LLM layer reads from the DB cache, it never calls Google Places directly.
+
+**Query:** `Place.objects.filter(city__iexact=city).order_by("-rating")[:8]`  
+**Cache TTL:** 24h via `Place.cached_at` field
+
+---
+
+## 7. Token System
+
+Controls API usage costs per user.
+
+| Action | Token Cost |
+|--------|-----------|
+| Send chat message | 1 token |
+| Generate trip plan | 2 tokens |
+
+**Implementation:**
+```python
+# views.py
+_consume_tokens_or_respond(user, amount)
+# Returns HTTP 402 if user.tokens < amount
+# Otherwise: user.tokens -= amount; user.save()
+```
+
+**Default:** New users start with 100 tokens (`User.tokens` default=100).  
+**Premium:** Active subscription bypasses token check.
+
+---
+
+## 8. Database Models (`llm/models.py`)
+
+### `ChatThread`
+```python
+user: ForeignKey(User)
+kind: ChoiceField ["planner", "ai"]
+title: CharField
+city: CharField
+start_date: DateField
+end_date: DateField
+plan_json: JSONField       # raw trip plan from trip_planner.py
+is_archived: BooleanField
+```
+
+### `ChatEntry`
+```python
+thread: ForeignKey(ChatThread)
+role: ChoiceField ["user", "assistant", "system"]
+content: TextField
+created_at: DateTimeField
+```
+
+### `FinalTrip`
+```python
+thread: OneToOneField(ChatThread)
+city: CharField
+country: CharField
+itinerary: JSONField          # day-by-day stops with geocoords
+route: JSONField              # ordered list of stops for map
+plan_snapshot: JSONField      # raw plan at time of generation
+response_markdown: TextField  # LLM-polished itinerary
+```
+
+---
+
+## 9. API Endpoints
+
+| Method | Endpoint | Purpose | Tokens |
+|--------|----------|---------|--------|
+| GET | `/api/llm/threads/` | List user's chat threads | 0 |
+| POST | `/api/llm/threads/` | Create new thread | 0 |
+| GET | `/api/llm/threads/{id}/messages/` | Fetch thread messages | 0 |
+| POST | `/api/llm/threads/{id}/messages/` | Send message → AI response | 1 |
+| POST | `/api/llm/threads/{id}/plan/` | Generate full trip plan | 2 |
+| GET | `/api/chats/{id}/trip/` | Fetch saved FinalTrip | 0 |
+| PATCH | `/api/llm/threads/{id}/archive/` | Toggle archive | 0 |
+| DELETE | `/api/llm/threads/{id}/` | Delete thread | 0 |
+
+---
+
+## 10. Full Chat → Plan Flow (End-to-End)
+
+```
+User types: "Plan 5 days in Rome, $1500 total, couple, cultural trip"
+    ↓
+POST /api/llm/threads/{id}/messages/
+    ↓
+[Token check: user.tokens >= 1]
+    ↓
+ChatEntry.create(role="user", content=message)
+    ↓
+collect_trip_requirements(message)
+    → destination="Rome", budget=300/day, duration=5, style="cultural", travelers=2
+    ↓
+If requirements incomplete → build_missing_details_response() → return early
+    ↓
+extract_hotel_search_params(message)
+    → {city="Rome", checkin=..., checkout=..., budget=300, adults=2}
+    ↓
+[Hotel cache check] → miss → booking_service.search_hotels() → cache 6h
+    ↓
+[TripAdvisor cache check] → miss → tripadvisor_service.fetch_tripadvisor_tours("Rome") → cache 24h
+    ↓
+[Places cache check] → hit → top 8 by rating from DB
+    ↓
+build_trip_plan(requirements, user)
+    → Filter, score, cluster, build 5-day itinerary JSON
+    ↓
+_build_places_context_for_city("Rome")      # block 1
+_build_hotel_context_block(hotels, params)  # block 2
+_build_tour_context_block(tours)            # block 3
+[last 6 chat messages]                      # block 4
+    ↓
+ask_travel_ai(user_message, context=blocks, history=last_6)
+    → client.responses.create(model="gpt-4o-mini", input=messages, temperature=0.7)
+    ↓
+polish_trip_plan(plan_json)
+    → GPT-4o-mini formats as markdown with hotels, tours, cost breakdowns embedded
+    ↓
+user.tokens -= 1
+ChatEntry.create(role="assistant", content=markdown)
+sync_final_trip(thread, {itinerary, route, markdown})
+    → FinalTrip.create() or update()
+    ↓
+Response: {response: markdown, plan: JSON, trip_id: ...}
+    ↓
+React: renders markdown in chat panel + stores plan for map display
+```
+
+---
+
+## 11. Key Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| Algorithmic planner before LLM | Ensures deterministic, proximity-correct itineraries; LLM only formats |
+| Grounded places only | Prevents LLM from hallucinating places; all recommendations from DB cache |
+| 3-layer context injection | Places (accuracy) → Hotels (booking) → Tours (enrichment) |
+| Regex extraction, not LLM | Faster, cheaper, predictable for structured travel params |
+| Token system | Per-message cost control; premium users bypass |
+| 24h / 6h cache TTLs | Balance between data freshness and API cost reduction |
+| LocMem cache | Sufficient for single-worker dev; upgrade to Redis for multi-worker prod |

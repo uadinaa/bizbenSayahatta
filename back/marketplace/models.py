@@ -127,6 +127,9 @@ class Trip(models.Model):
     approved_at = models.DateTimeField(null=True, blank=True)
     approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="approved_trips")
     version = models.PositiveIntegerField(default=1)
+    # Booking fields
+    max_travelers = models.PositiveIntegerField(default=10, help_text="Maximum travelers that can book this trip")
+    current_bookings = models.PositiveIntegerField(default=0, editable=False, help_text="Cached count of confirmed bookings")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -136,6 +139,47 @@ class Trip(models.Model):
             models.Index(fields=["status", "visibility", "rating"]),
             models.Index(fields=["advisor", "status"]),
         ]
+
+
+class TripBooking(models.Model):
+    """Model for users booking advisor trips."""
+    STATUS_PENDING = "PENDING"
+    STATUS_CONFIRMED = "CONFIRMED"
+    STATUS_CANCELLED = "CANCELLED"
+    STATUS_COMPLETED = "COMPLETED"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending"),
+        (STATUS_CONFIRMED, "Confirmed"),
+        (STATUS_CANCELLED, "Cancelled"),
+        (STATUS_COMPLETED, "Completed"),
+    ]
+
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name="bookings")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="trip_bookings")
+    number_of_travelers = models.PositiveIntegerField(default=1)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True)
+    booked_at = models.DateTimeField(auto_now_add=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cancelled_bookings",
+    )
+    cancellation_reason = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-booked_at"]
+        unique_together = ("trip", "user")  # One booking per user per trip
+        indexes = [
+            models.Index(fields=["trip", "status"]),
+            models.Index(fields=["user", "status"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user} booked trip {self.trip_id} ({self.status})"
 
 
 class TripMedia(models.Model):
@@ -255,6 +299,28 @@ class WishlistItem(models.Model):
 
     class Meta:
         unique_together = ("folder", "place")
+
+
+class SavedTrip(models.Model):
+    """Model for saving marketplace trips to user's wishlist (similar to ExternalSavedPlace)."""
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="saved_trips",
+    )
+    trip = models.ForeignKey(
+        Trip,
+        on_delete=models.CASCADE,
+        related_name="saved_by",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "trip")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user} saved trip {self.trip}"
 
 
 class ReferralReward(models.Model):

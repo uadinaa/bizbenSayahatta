@@ -21,6 +21,7 @@ from .models import (
     TripAdvisorApplication,
     TripAdvisorProfile,
     Trip,
+    TripBooking,
     TripMedia,
     TripVersion,
     Comment,
@@ -30,6 +31,7 @@ from .models import (
     UserRestriction,
     ModerationLog,
     SubscriptionEvent,
+    SavedTrip,
 )
 from .permissions import IsAdminRole, IsManagerRole, IsTripAdvisorRole
 from .serializers import (
@@ -45,6 +47,8 @@ from .serializers import (
     TripModerationSerializer,
     TripVersionSerializer,
     TripMediaSerializer,
+    TripBookingSerializer,
+    TripBookingCreateSerializer,
     CommentSerializer,
     WishlistFolderSerializer,
     WishlistItemSerializer,
@@ -54,6 +58,7 @@ from .serializers import (
 from .services.audit import log_action
 from .services.ranking import refresh_profile_ranking
 from .services.trips import create_trip_version, submit_trip_for_moderation, approve_trip, reject_trip
+from .services.bookings import book_trip, cancel_booking, confirm_booking, get_user_bookings, get_trip_bookings
 
 
 class AdvisorCategoryListView(ListAPIView):
@@ -154,6 +159,9 @@ class AdvisorTripListCreateView(APIView):
             qs = qs.filter(status=Trip.STATUS_APPROVED, visibility=Trip.VISIBILITY_PUBLIC)
             if category:
                 qs = qs.filter(category__slug=category)
+        elif tab == "booked":
+            # Show trips that have at least one booking
+            qs = qs.filter(advisor=request.user).filter(bookings__isnull=False).distinct()
         else:
             qs = qs.filter(status=Trip.STATUS_APPROVED, visibility=Trip.VISIBILITY_PUBLIC).order_by("-rating", "-created_at")
 
@@ -540,7 +548,13 @@ class PublicTripListView(ListAPIView):
 
     def get_queryset(self):
         tab = self.request.query_params.get("tab", "recommended")
+        saved = self.request.query_params.get("saved", "").lower() in {"true", "1", "yes"}
         qs = Trip.objects.filter(status=Trip.STATUS_APPROVED, visibility=Trip.VISIBILITY_PUBLIC).select_related("category", "advisor")
+
+        if saved and self.request.user.is_authenticated:
+            # Filter to only saved trips
+            qs = qs.filter(saved_by__user=self.request.user)
+
         if tab == "top-rated":
             return qs.order_by("-rating", "-review_count")
         if tab == "categories":
@@ -548,6 +562,50 @@ class PublicTripListView(ListAPIView):
             if category:
                 qs = qs.filter(Q(category__slug=category) | Q(category__name__iexact=category))
         return qs.order_by("-created_at")
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["request"] = self.request
+        # Pre-compute saved trips for the authenticated user
+        if self.request.user.is_authenticated:
+            saved_trip_ids = set(
+                SavedTrip.objects.filter(user=self.request.user).values_list("trip_id", flat=True)
+            )
+            context["saved_trip_ids"] = saved_trip_ids
+        else:
+            context["saved_trip_ids"] = set()
+        return context
+
+
+class SavedTripToggleView(APIView):
+    """Toggle a trip in the user's saved trips (wishlist)."""
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
+
+    def post(self, request, trip_id):
+        """Save a trip to wishlist."""
+        trip = get_object_or_404(Trip, id=trip_id, status=Trip.STATUS_APPROVED, visibility=Trip.VISIBILITY_PUBLIC)
+
+        saved_trip, created = SavedTrip.objects.get_or_create(
+            user=request.user,
+            trip=trip,
+        )
+
+        return Response(
+            {"trip_id": trip_id, "is_saved": True, "created": created},
+            status=status.HTTP_200_OK,
+        )
+
+    def delete(self, request, trip_id):
+        """Remove a trip from wishlist."""
+        SavedTrip.objects.filter(
+            user=request.user,
+            trip_id=trip_id,
+        ).delete()
+
+        return Response(
+            {"trip_id": trip_id, "is_saved": False},
+            status=status.HTTP_200_OK,
+        )
 
 
 class PlaceCommentPagination(PageNumberPagination):
@@ -663,6 +721,126 @@ class PlaceCommentLikeView(APIView):
             status=status.HTTP_200_OK,
         )
 
+
+class BookTripView(APIView):
+    """
+    Book a trip (for regular users).
+    POST /api/marketplace/trips/{trip_id}/book/
+    """
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
+
+    def post(self, request, trip_id):
+        trip = get_object_or_404(Trip, id=trip_id)
+
+        serializer = TripBookingCreateSerializer(data=request.data, context={"trip": trip})
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            booking = book_trip(
+                trip=trip,
+                user=request.user,
+                number_of_travelers=serializer.validated_data["number_of_travelers"],
+            )
+        except ValidationError as e:
+            return Response({"detail": str(e.detail)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            TripBookingSerializer(booking).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class MyBookingsView(ListAPIView):
+    """
+    Get current user's trip bookings.
+    GET /api/marketplace/my-bookings/
+    """
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
+    serializer_class = TripBookingSerializer
+    pagination_class = None  # Return plain array, not paginated
+
+    def get_queryset(self):
+        status_filter = self.request.query_params.get("status")
+        return get_user_bookings(self.request.user, status_filter).select_related("trip")
+
+
+class TripBookingsListView(APIView):
+    """
+    Get all bookings for a trip (for trip advisor).
+    GET /api/marketplace/trips/{trip_id}/bookings/
+    """
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked, IsTripAdvisorRole]
+
+    def get(self, request, trip_id):
+        trip = get_object_or_404(Trip, id=trip_id, advisor=request.user)
+        status_filter = self.request.query_params.get("status")
+        bookings = get_trip_bookings(trip, status_filter)
+        return Response(TripBookingSerializer(bookings, many=True).data, status=status.HTTP_200_OK)
+
+
+class CancelBookingView(APIView):
+    """
+    Cancel a trip booking.
+    POST /api/marketplace/bookings/{booking_id}/cancel/
+
+    Users can cancel their own bookings.
+    Trip advisors can cancel any booking on their trips.
+    """
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
+
+    def post(self, request, booking_id):
+        booking = get_object_or_404(TripBooking, id=booking_id)
+
+        # Check permissions: user can cancel own booking, advisor can cancel bookings on their trips
+        if booking.user != request.user and booking.trip.advisor != request.user:
+            return Response(
+                {"detail": "You do not have permission to cancel this booking."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        reason = request.data.get("reason", "")
+
+        try:
+            cancel_booking(
+                booking=booking,
+                cancel_reason=reason,
+                cancelled_by=request.user,
+            )
+        except ValidationError as e:
+            return Response({"detail": str(e.detail)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            TripBookingSerializer(booking).data,
+            status=status.HTTP_200_OK,
+        )
+
+
+class ConfirmBookingView(APIView):
+    """
+    Confirm a pending booking (for trip advisors).
+    POST /api/marketplace/bookings/{booking_id}/confirm/
+    """
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked, IsTripAdvisorRole]
+
+    def post(self, request, booking_id):
+        booking = get_object_or_404(TripBooking, id=booking_id)
+
+        # Only the trip advisor can confirm bookings
+        if booking.trip.advisor != request.user:
+            return Response(
+                {"detail": "You do not have permission to confirm this booking."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            confirm_booking(booking=booking)
+        except ValidationError as e:
+            return Response({"detail": str(e.detail)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            TripBookingSerializer(booking).data,
+            status=status.HTTP_200_OK,
+        )
 
 def _public_trip_queryset():
     return Trip.objects.filter(

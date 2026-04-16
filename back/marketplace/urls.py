@@ -7,6 +7,21 @@ urlpatterns = [
     path("categories/", views.AdvisorCategoryListView.as_view(), name="advisor-category-list"),
     path("public/trips/", views.PublicTripListView.as_view(), name="public-trip-list"),
     path(
+        "public/trips/<int:trip_id>/save/",
+        views.SavedTripToggleView.as_view(),
+        name="public-trip-save",
+    ),
+    path(
+        "public/trips/<int:trip_id>/book/",
+        views.BookTripView.as_view(),
+        name="public-trip-book",
+    ),
+    path(
+        "public/trips/<int:trip_id>/bookings/",
+        views.TripBookingsListView.as_view(),
+        name="public-trip-bookings",
+    ),
+    path(
         "public/trips/<int:trip_id>/comments/<int:comment_id>/like/",
         views.TripCommentLikeView.as_view(),
         name="public-trip-comment-like",
@@ -31,6 +46,17 @@ urlpatterns = [
 
     path("wishlist/folders/", views.WishlistFolderListCreateView.as_view(), name="wishlist-folder-list-create"),
     path("wishlist/folders/<int:folder_id>/items/", views.WishlistFolderItemView.as_view(), name="wishlist-folder-items"),
+    path("my-bookings/", views.MyBookingsView.as_view(), name="my-bookings"),
+    path(
+        "bookings/<int:booking_id>/cancel/",
+        views.CancelBookingView.as_view(),
+        name="booking-cancel",
+    ),
+    path(
+        "bookings/<int:booking_id>/confirm/",
+        views.ConfirmBookingView.as_view(),
+        name="booking-confirm",
+    ),
 
     path("manager/applications/", views.ManagerApplicationQueueView.as_view(), name="manager-application-queue"),
     path("manager/applications/<int:application_id>/review/", views.ManagerApplicationReviewView.as_view(), name="manager-application-review"),

@@ -293,18 +293,13 @@
 }
 
 .card {
-  width: 380px;
   background: #fff;
   border-radius: 18px;
   overflow: hidden;
   border: 1px solid #ece9e1;
-  gap: 20px;
-
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.06);
-
   display: flex;
   flex-direction: column;
-
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 

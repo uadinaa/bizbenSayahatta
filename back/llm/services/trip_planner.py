@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Iterable, List, Optional
 import math
+from datetime import datetime
 
 from places.models import InterestMapping, MustVisitPlace, Place, SavedPlace
 from users.models import UserPreferences
@@ -18,6 +19,12 @@ FAR_DISTANCE_KM = 8.0
 NEARBY_DISTANCE_KM = 3.5
 DUPLICATE_DISTANCE_KM = 0.2  # 200m - places closer than this are considered duplicates
 MAX_DAY_SPREAD_KM = 1.5  # Max distance between any two places on the same day
+
+# Restaurant types for meal recommendations
+RESTAURANT_CATEGORIES = {
+    "lunch": ["restaurant", "cafe", "meal_takeaway", "bakery"],
+    "dinner": ["restaurant", "bar", "pub"],
+}
 
 DEFAULT_INTEREST_TYPE_MAP = {
     "cute museums": ["museum", "art_gallery"],
@@ -450,6 +457,117 @@ def _build_day_stops(
     return day_stops
 
 
+def _get_restaurant_candidates(city: str, price_level: Optional[int] = None) -> List[Place]:
+    """Get restaurant candidates for lunch/dinner recommendations."""
+    restaurants = list(Place.objects.filter(
+        city__iexact=city,
+        category__in=["restaurant", "cafe", "bar", "pub"]
+    ).order_by("-rating")[:50])
+
+    if price_level is not None:
+        restaurants = [
+            p for p in restaurants
+            if p.price_level is None or _price_level_to_number(p.price_level) <= price_level + 1
+        ]
+
+    return restaurants
+
+
+def _select_restaurants_for_day(
+    day_stops: List[ScoredPlace],
+    restaurant_candidates: List[Place],
+    used_ids: set,
+    has_kids: bool = False,
+) -> dict:
+    """
+    Select lunch and dinner restaurants for a day based on day's location.
+    Returns dict with 'lunch' and 'dinner' keys.
+    """
+    if not day_stops:
+        return {"lunch": None, "dinner": None}
+
+    # Compute day's centroid for proximity
+    centroid = _compute_centroid([stop.place for stop in day_stops])
+
+    lunch = None
+    dinner = None
+
+    # Find nearby restaurants
+    available = [r for r in restaurant_candidates if r.id not in used_ids and r.lat and r.lng]
+
+    # Sort by distance to day's centroid
+    available.sort(key=lambda r: _distance_km(r.lat, r.lng, centroid[0], centroid[1]) if centroid else 0)
+
+    # Pick lunch (casual, closer to midday activities)
+    for r in available:
+        if r.category in ["restaurant", "cafe", "bakery"]:
+            if has_kids and r.category == "bar":
+                continue
+            lunch = _format_restaurant(r)
+            used_ids.add(r.id)
+            break
+
+    # Pick dinner (can be more formal, bar/pub ok for evening)
+    for r in available:
+        if r.id in used_ids:
+            continue
+        if r.category in ["restaurant", "bar", "pub"]:
+            dinner = _format_restaurant(r)
+            used_ids.add(r.id)
+            break
+
+    return {"lunch": lunch, "dinner": dinner}
+
+
+def _format_restaurant(place: Place) -> dict:
+    """Format a restaurant place for output."""
+    return {
+        "id": place.id,
+        "name": place.name,
+        "category": place.category,
+        "rating": place.rating,
+        "address": place.address,
+        "price_level": place.price_level,
+        "lat": place.lat,
+        "lng": place.lng,
+        "photo_url": place.photo_url,
+        "website": place.website,
+    }
+
+
+def _get_events_for_city(city: str, start_date: str = None, end_date: str = None) -> List[dict]:
+    """
+    Get events from Ticketmaster for the city.
+    Returns list of event dicts.
+    """
+    from places.services.ticketmaster_events import get_events_cached
+
+    cached_events = get_events_cached(city)
+    if not cached_events:
+        return []
+
+    # Filter by date range if provided
+    if start_date and end_date:
+        try:
+            start = datetime.fromisoformat(start_date).date()
+            end = datetime.fromisoformat(end_date).date()
+            filtered = []
+            for event in cached_events:
+                event_date = event.get("date")
+                if event_date:
+                    try:
+                        ed = datetime.fromisoformat(event_date).date()
+                        if start <= ed <= end:
+                            filtered.append(event)
+                    except:
+                        pass
+            cached_events = filtered
+        except:
+            pass
+
+    return cached_events[:10]  # Max 10 events
+
+
 def build_trip_plan(
     *,
     user,
@@ -463,6 +581,11 @@ def build_trip_plan(
     traveler_type: Optional[str] = None,
     has_kids: bool = False,
     kids_age_band: Optional[str] = None,
+    start_date: str = None,
+    end_date: str = None,
+    include_hotels: bool = False,
+    checkin: str = None,
+    checkout: str = None,
 ):
     normalized_interests = _normalize_interests(interests)
     budget, normalized_interests, travel_style = _apply_preferences(
@@ -526,8 +649,16 @@ def build_trip_plan(
     total_needed = days * stops_per_day
     candidates = scored_places[: max(total_needed * 2, total_needed)]
 
+    # Get restaurant candidates
+    price_level_for_restaurants = budget
+    restaurant_candidates = _get_restaurant_candidates(city, price_level_for_restaurants)
+
+    # Get events for the city
+    events = _get_events_for_city(city, start_date, end_date)
+
     day_plans = []
     used_ids = set()
+    restaurant_used_ids = set()
     centroid = _compute_centroid(places)
     for day_number in range(1, days + 1):
         day_places = _build_day_stops(
@@ -563,13 +694,59 @@ def build_trip_plan(
                 }
             )
 
+        # Select restaurants for this day
+        meals = _select_restaurants_for_day(
+            day_places,
+            restaurant_candidates,
+            restaurant_used_ids,
+            has_kids=has_kids,
+        )
+
+        # Find events for this day (if dates provided)
+        day_events = []
+        if events and start_date and end_date:
+            try:
+                day_date = datetime.fromisoformat(start_date).date()
+                day_offset = day_number - 1
+                from datetime import timedelta
+                current_date = day_date + timedelta(days=day_offset)
+                for event in events:
+                    event_date = event.get("date")
+                    if event_date:
+                        try:
+                            ed = datetime.fromisoformat(event_date).date()
+                            if ed == current_date:
+                                day_events.append(event)
+                        except:
+                            pass
+            except:
+                pass
+
         summary_names = ", ".join(stop["name"] for stop in stops)
         day_plans.append(
             {
                 "day": day_number,
                 "summary": f"Day {day_number}: {summary_names}",
                 "stops": stops,
+                "lunch": meals["lunch"],
+                "dinner": meals["dinner"],
+                "events": day_events,
             }
+        )
+
+    # Get hotel recommendations if requested
+    hotels = []
+    if include_hotels and checkin and checkout:
+        from .hotel_cache import get_hotels_cached
+        # Calculate budget per night (use default if no budget specified)
+        budget_per_night = budget / days if budget else 150  # Default $150/night
+        hotels = get_hotels_cached(
+            city_name=city,
+            checkin=checkin,
+            checkout=checkout,
+            budget_per_night=budget_per_night,
+            adults=1,  # Can be extended to use actual traveler count
+            travel_style=travel_style,
         )
 
     tips = []
@@ -580,6 +757,8 @@ def build_trip_plan(
         )
     if not normalized_interests:
         tips.append("Add interests for more personalized results.")
+    if not restaurant_candidates:
+        tips.append("No restaurants found in cache. Consider refreshing place data.")
 
     return {
         "city": city,
@@ -593,5 +772,7 @@ def build_trip_plan(
         "has_kids": has_kids,
         "kids_age_band": kids_age_band,
         "itinerary": day_plans,
+        "hotels": hotels,
+        "events": events,
         "tips": tips,
     }

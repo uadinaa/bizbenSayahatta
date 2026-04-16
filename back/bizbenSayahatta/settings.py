@@ -25,7 +25,7 @@ DATABASE_URL = (os.getenv("DATABASE_URL") or "").strip()
 RAPIDAPI_HOST = os.getenv("VITE_RAPIDAPI_HOST", "booking-com15.p.rapidapi.com")
 RAPIDAPI_KEY = os.getenv("VITE_RAPIDAPI_KEY", "")
 TRIPADVISER_API_KEY = os.getenv("TRIPADVISER_API_KEY", "")
-
+TICKETMASTER_API_KEY = os.getenv("TICKETMASTER_API_KEY")
 # Stripe (Payment Links + webhooks). Never commit real keys.
 STRIPE_SECRET_KEY = (os.getenv("STRIPE_SECRET_KEY") or "").strip()
 STRIPE_WEBHOOK_SECRET = (os.getenv("STRIPE_WEBHOOK_SECRET") or "").strip()

@@ -16,7 +16,14 @@ from rest_framework.views import APIView
 from django.contrib.auth import get_user_model
 from users.models import UserPreferences
 
-from places.models import Place, VisitedPlace, SavedPlace, MustVisitPlace, UserMapPlace
+from places.models import (
+    Place,
+    VisitedPlace,
+    SavedPlace,
+    MustVisitPlace,
+    UserMapPlace,
+    ExternalSavedPlace,
+)
 from places.serializers import (
     PlaceSerializer,
     PlaceMapSerializer,
@@ -29,6 +36,7 @@ from places.serializers import (
 from places.services.google_places import get_places
 from places.services.save_place import save_place_for_user, set_place_wishlist_state
 from places.services.tripadvisor_service import get_tours_cached
+from places.services.ticketmaster_events import get_events_cached
 from bizbenSayahatta.api_exceptions import MapPlaceAlreadyExistsError
 from users.permissions import IsActiveAndNotBlocked
 
@@ -40,6 +48,8 @@ BADGE_LEVELS = [
     {"code": "adventurer", "label": "Adventurer", "threshold": 10},
     {"code": "globetrotter", "label": "Globetrotter", "threshold": 20},
 ]
+
+DEFAULT_DISCOVERY_CITIES = ["Paris", "Milan", "Rome", "Lyon"]
 
 
 def _get_badges(visited_count):
@@ -215,18 +225,68 @@ class InspirationListAPIView(ListAPIView):
                 "places": places_serializer.data,
             }
 
-        # Fetch TripAdvisor tours (with caching)
-        # Extract city from search param for tour fetching
-        city = request.query_params.get("search") or request.query_params.get("city")
-        tours = []
-        if city:
-            try:
-                tours = get_tours_cached(city=city, max_results=10)
-            except Exception:
-                # Silently fail - don't crash the page if TripAdvisor API is down
-                tours = []
+        # Fetch TripAdvisor tours (with caching).
+        # ?city= takes priority; fall back to ?search= as city hint.
+        city = (
+            request.query_params.get("city", "").strip()
+            or request.query_params.get("search", "").strip()
+        )
+        discovery_cities = [city] if city else DEFAULT_DISCOVERY_CITIES
 
-        response_data["tours"] = tours
+        tours = []
+        for city_name in discovery_cities:
+            try:
+                city_tours = get_tours_cached(city=city_name, max_results=5)
+                print(f"[tours] fetched {len(city_tours)} tours for city='{city_name}'")
+                tours.extend(city_tours)
+            except Exception as exc:
+                print(f"[tours] ERROR fetching tours for city='{city_name}': {exc}")
+
+        events = []
+        for city_name in discovery_cities:
+            try:
+                city_events = get_events_cached(city=city_name, size=5)
+                print(f"[events] fetched {len(city_events)} events for city='{city_name}'")
+                events.extend(city_events)
+            except Exception as exc:
+                print(f"[events] ERROR fetching events for city='{city_name}': {exc}")
+
+        # Deduplicate merged external data
+        seen_tour_ids = set()
+        unique_tours = []
+        for tour in tours:
+            tour_id = str(tour.get("id") or "")
+            if not tour_id or tour_id in seen_tour_ids:
+                continue
+            seen_tour_ids.add(tour_id)
+            unique_tours.append(tour)
+
+        seen_event_ids = set()
+        unique_events = []
+        for event in events:
+            event_id = str(event.get("id") or "")
+            if not event_id or event_id in seen_event_ids:
+                continue
+            seen_event_ids.add(event_id)
+            unique_events.append(event)
+
+        external_favorites = set()
+        if request.user.is_authenticated:
+            rows = ExternalSavedPlace.objects.filter(user=request.user).values("source", "external_id")
+            external_favorites = {f"{row['source']}:{row['external_id']}" for row in rows}
+
+        for tour in unique_tours:
+            external_key = f"tripadvisor:{tour.get('id', '')}"
+            tour["source"] = ExternalSavedPlace.SOURCE_TRIPADVISOR
+            tour["is_must_visit"] = external_key in external_favorites
+
+        for event in unique_events:
+            external_key = f"ticketmaster:{event.get('id', '')}"
+            event["source"] = ExternalSavedPlace.SOURCE_TICKETMASTER
+            event["is_must_visit"] = external_key in external_favorites
+
+        response_data["tours"] = unique_tours
+        response_data["events"] = unique_events
 
         return Response(response_data)
 
@@ -318,10 +378,45 @@ class WishlistAPIView(APIView):
         if category and category.lower() != "all":
             places = [place for place in places if place.category.lower() == category.lower()]
         serializer = PlaceMapSerializer(places, many=True, context={"request": request})
-        return Response(
-            serializer.data,
-            status=status.HTTP_200_OK,
+        google_items = serializer.data
+
+        external_rows = (
+            ExternalSavedPlace.objects.filter(user=request.user)
+            .order_by("-created_at")
         )
+        external_items = [
+            {
+                "id": f"{row.source}-{row.external_id}",
+                "external_id": row.external_id,
+                "source": row.source,
+                "name": row.name,
+                "category": row.category or "tour",
+                "address": "",
+                "city": row.city,
+                "country": row.country,
+                "lat": None,
+                "lng": None,
+                "rating": row.rating,
+                "price_level": row.price_level,
+                "opening_hours": None,
+                "photo_url": row.photo_url,
+                "website": row.web_url,
+                "neighborhood": "",
+                "is_must_visit": True,
+                "status": None,
+                "saves_count": 1,
+                "description": row.description,
+                "booking_url": row.booking_url,
+                "web_url": row.web_url,
+                "duration": row.duration,
+                "venue": row.venue,
+                "start_date": row.start_date,
+                "price_amount": row.price_amount,
+                "price_currency": row.price_currency,
+            }
+            for row in external_rows
+        ]
+        return Response(google_items + external_items, status=status.HTTP_200_OK)
 
 
 class VisitPlaceAPIView(APIView):
@@ -406,6 +501,66 @@ class PlaceMustVisitAPIView(APIView):
             is_favorited=next_value,
         )
         return Response(result, status=status.HTTP_200_OK)
+
+
+class ExternalPlaceMustVisitAPIView(APIView):
+    permission_classes = [IsAuthenticated, IsActiveAndNotBlocked]
+
+    def post(self, request):
+        source = str(request.data.get("source", "")).strip().lower()
+        external_id = str(request.data.get("external_id", "")).strip()
+        if source not in {
+            ExternalSavedPlace.SOURCE_TRIPADVISOR,
+            ExternalSavedPlace.SOURCE_TICKETMASTER,
+        }:
+            return Response({"detail": "Unsupported source."}, status=status.HTTP_400_BAD_REQUEST)
+        if not external_id:
+            return Response({"detail": "external_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if "is_must_visit" in request.data:
+            next_value = bool(request.data.get("is_must_visit"))
+        else:
+            next_value = not ExternalSavedPlace.objects.filter(
+                user=request.user,
+                source=source,
+                external_id=external_id,
+            ).exists()
+
+        if next_value:
+            payload = {
+                "name": request.data.get("name", ""),
+                "category": request.data.get("category", "") or "tour",
+                "city": request.data.get("city", ""),
+                "country": request.data.get("country", ""),
+                "description": request.data.get("description", ""),
+                "photo_url": request.data.get("photo_url", ""),
+                "rating": request.data.get("rating"),
+                "price_level": request.data.get("price_level"),
+                "booking_url": request.data.get("booking_url", ""),
+                "web_url": request.data.get("web_url", ""),
+                "duration": request.data.get("duration", ""),
+                "venue": request.data.get("venue", ""),
+                "start_date": request.data.get("start_date", ""),
+                "price_amount": request.data.get("price_amount"),
+                "price_currency": request.data.get("price_currency", ""),
+            }
+            ExternalSavedPlace.objects.update_or_create(
+                user=request.user,
+                source=source,
+                external_id=external_id,
+                defaults=payload,
+            )
+        else:
+            ExternalSavedPlace.objects.filter(
+                user=request.user,
+                source=source,
+                external_id=external_id,
+            ).delete()
+
+        return Response(
+            {"id": f"{source}-{external_id}", "external_id": external_id, "source": source, "is_must_visit": next_value},
+            status=status.HTTP_200_OK,
+        )
 
 
 class UserMapPlaceListCreateAPIView(APIView):

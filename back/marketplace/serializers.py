@@ -10,6 +10,7 @@ from .models import (
     Trip,
     TripMedia,
     TripVersion,
+    TripBooking,
     Comment,
     CommentLike,
     WishlistFolder,
@@ -124,6 +125,11 @@ class TripSerializer(serializers.ModelSerializer):
     advisor_id = serializers.IntegerField(read_only=True)
     category = AdvisorCategorySerializer(read_only=True)
     category_id = serializers.IntegerField(write_only=True)
+    is_saved = serializers.SerializerMethodField()
+    is_booked_by_me = serializers.SerializerMethodField()
+    is_full = serializers.SerializerMethodField()
+    current_bookings = serializers.IntegerField(read_only=True)
+    max_travelers = serializers.IntegerField(required=False)
 
     class Meta:
         model = Trip
@@ -155,6 +161,11 @@ class TripSerializer(serializers.ModelSerializer):
             "approved_at",
             "created_at",
             "updated_at",
+            "is_saved",
+            "is_booked_by_me",
+            "is_full",
+            "current_bookings",
+            "max_travelers",
         )
         read_only_fields = (
             "status",
@@ -165,7 +176,26 @@ class TripSerializer(serializers.ModelSerializer):
             "approved_at",
             "created_at",
             "updated_at",
+            "current_bookings",
         )
+
+    def get_is_saved(self, obj):
+        saved_trip_ids = self.context.get("saved_trip_ids", set())
+        return obj.id in saved_trip_ids
+
+    def get_is_booked_by_me(self, obj):
+        request = self.context.get("request")
+        if not request or not hasattr(request, 'user') or not request.user.is_authenticated:
+            return False
+        # Check if user has an active booking for this trip
+        return TripBooking.objects.filter(
+            trip=obj,
+            user=request.user,
+            status__in=[TripBooking.STATUS_PENDING, TripBooking.STATUS_CONFIRMED],
+        ).exists()
+
+    def get_is_full(self, obj):
+        return obj.current_bookings >= obj.max_travelers
 
     def validate(self, attrs):
         category_id = attrs.get("category_id")
@@ -340,3 +370,64 @@ class ModerationLogSerializer(serializers.ModelSerializer):
             "metadata",
             "created_at",
         )
+
+
+class TripBookingSerializer(serializers.ModelSerializer):
+    """Serializer for TripBooking model."""
+    user_id = serializers.IntegerField(read_only=True)
+    user_email = serializers.EmailField(source="user.email", read_only=True)
+    user_username = serializers.CharField(source="user.username", read_only=True)
+    trip_id = serializers.IntegerField(read_only=True)
+    trip_title = serializers.CharField(source="trip.title", read_only=True)
+    trip_destination = serializers.CharField(source="trip.destination", read_only=True)
+
+    class Meta:
+        model = TripBooking
+        fields = (
+            "id",
+            "trip_id",
+            "trip_title",
+            "trip_destination",
+            "user_id",
+            "user_email",
+            "user_username",
+            "number_of_travelers",
+            "status",
+            "booked_at",
+            "confirmed_at",
+            "cancelled_at",
+            "cancelled_by",
+            "cancellation_reason",
+        )
+        read_only_fields = (
+            "id",
+            "trip_id",
+            "trip_title",
+            "trip_destination",
+            "user_id",
+            "user_email",
+            "user_username",
+            "booked_at",
+            "confirmed_at",
+            "cancelled_at",
+            "cancelled_by",
+        )
+
+
+class TripBookingCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating a new trip booking."""
+    number_of_travelers = serializers.IntegerField(min_value=1, default=1)
+
+    class Meta:
+        model = TripBooking
+        fields = ("number_of_travelers",)
+
+    def validate_number_of_travelers(self, value):
+        trip = self.context.get("trip")
+        if trip:
+            available_spots = trip.max_travelers - trip.current_bookings
+            if value > available_spots:
+                raise serializers.ValidationError(
+                    f"Only {available_spots} spots available for this trip."
+                )
+        return value

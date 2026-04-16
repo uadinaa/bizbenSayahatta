@@ -6,11 +6,184 @@ from datetime import date, datetime
 from typing import Dict, Iterable, List, Optional
 from urllib.parse import quote_plus
 
+from django.conf import settings
+from openai import OpenAI
 from places.models import Place
 from users.services import calculate_level_and_badges
 
 from .geocoding import geocode_place
 from .trip_planner import build_trip_plan
+
+# Initialize OpenAI for fuzzy extraction
+client = OpenAI(api_key=settings.OPENAI_API_KEY)
+
+
+# Fuzzy matching mappings for common typos
+TRAVEL_TYPE_TYPOS = {
+    "silo": "solo",
+    "solos": "solo",
+    "sool": "solo",
+    "sollo": "solo",
+    "cupel": "couple",
+    "cuple": "couple",
+    "couple": "couple",
+    "familia": "family",
+    "familiy": "family",
+    "famlly": "family",
+    "famili": "family",
+    "group": "group",
+    "grop": "group",
+    "grouop": "group",
+    "freinds": "friends",
+    "freinds trip": "group",
+}
+
+TRAVEL_STYLE_TYPOS = {
+    "adventure": "adventure",
+    "adventur": "adventure",
+    "adventue": "adventure",
+    "adventrue": "adventure",
+    "hiking": "adventure",
+    "active": "adventure",
+    "activ": "adventure",
+    "outdoor": "adventure",
+    "explore": "adventure",
+    "relax": "relaxation",
+    "relaxing": "relaxation",
+    "relaxation": "relaxation",
+    "relaxs": "relaxation",
+    "relx": "relaxation",
+    "chill": "relaxation",
+    "spa": "relaxation",
+    "beach": "relaxation",
+    "culture": "culture",
+    "cultural": "culture",
+    "museum": "culture",
+    "musem": "culture",
+    "history": "culture",
+    "historic": "culture",
+    "art": "culture",
+    "food": "food",
+    "foodie": "food",
+    "foodies": "food",
+    "restaurant": "food",
+    "resturant": "food",
+    "cuisine": "food",
+    "local food": "food",
+    "street food": "food",
+    "mix": "mix",
+    "mixed": "mix",
+    "everything": "mix",
+    "bit of everything": "mix",
+    "all": "mix",
+}
+
+
+def _fuzzy_match_travel_type(text: str) -> str:
+    """Match travel type with fuzzy matching for typos."""
+    lowered = text.lower()
+
+    # First try direct fuzzy matching
+    for typo, correct in TRAVEL_TYPE_TYPOS.items():
+        if typo in lowered:
+            return correct
+
+    # Try phonetic-like matching for "solo"
+    if any(pattern in lowered for pattern in ["sl", "slo", "so lo", "s olo"]):
+        return "solo"
+
+    # Try phonetic-like matching for "couple"
+    if any(pattern in lowered for pattern in ["cpl", "cupl", "coupl", "cpel"]):
+        return "couple"
+
+    return ""
+
+
+def _fuzzy_match_travel_style(text: str) -> str:
+    """Match travel style with fuzzy matching for typos."""
+    lowered = text.lower()
+
+    # First try direct fuzzy matching
+    for typo, correct in TRAVEL_STYLE_TYPOS.items():
+        if typo in lowered:
+            return correct
+
+    # Try phonetic-like matching
+    if any(pattern in lowered for pattern in ["advnt", "advnture", "advencure"]):
+        return "adventure"
+    if any(pattern in lowered for pattern in ["relx", "relax", "rilax"]):
+        return "relaxation"
+    if any(pattern in lowered for pattern in ["cultr", "culutre", "clture"]):
+        return "culture"
+    if any(pattern in lowered for pattern in ["fod", "foood", "fud"]):
+        return "food"
+
+    return ""
+
+
+def _ai_extract_params(text: str) -> dict:
+    """
+    Use OpenAI to extract structured data from user message.
+    Handles typos, misspellings, and ambiguous input.
+    """
+    prompt = f"""
+Extract travel parameters from this user message. Return JSON only.
+
+User message: "{text}"
+
+Extract these fields:
+- destination: city name (or null)
+- budget: total budget as integer (or null)
+- duration_days: number of days as integer (or null)
+- start_date: start date as ISO string "YYYY-MM-DD" (or null)
+- end_date: end date as ISO string "YYYY-MM-DD" (or null)
+- travelers: number of travelers as integer (or null)
+- traveler_type: one of "solo", "couple", "family", "group" (or null)
+- travel_style: one of "adventure", "relaxation", "culture", "food", "mix" (or null)
+- has_kids: boolean (or null)
+- needs_hotel: boolean - true if user mentions hotel/accommodation, false if they say they don't need it (or null if not mentioned)
+
+IMPORTANT: Handle typos and misspellings. For example:
+- "silo" = "solo", "cupel" = "couple", "familia" = "family"
+- "adventur" = "adventure", "relx" = "relaxation", "cultr" = "culture"
+- Dates: "8th May till 12th" = start_date: "YYYY-05-08", end_date: "YYYY-05-12"
+- Dates: "08.05-12.05" = start_date: "YYYY-05-08", end_date: "YYYY-05-12"
+- Hotel: "I need a hotel" = needs_hotel: true, "I have a place to stay" = needs_hotel: false
+
+Return ONLY valid JSON, no markdown, no explanation.
+"""
+
+    try:
+        response = client.responses.create(
+            model="gpt-4o-mini",
+            input=[
+                {
+                    "role": "system",
+                    "content": [
+                        {"type": "input_text", "text": "You are a travel data extractor. Extract parameters and return JSON only, no markdown."}
+                    ],
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "input_text", "text": prompt}
+                    ],
+                },
+            ],
+            temperature=0.1,
+        )
+
+        import json
+        import re
+        # Strip markdown code blocks if present
+        output = response.output_text.strip()
+        output = re.sub(r'^```json\s*', '', output)
+        output = re.sub(r'^```\s*', '', output)
+        output = re.sub(r'\s*```$', '', output)
+        result = json.loads(output)
+        return result
+    except Exception:
+        return {}
 
 
 DAY_COLORS = ["#E53E3E", "#DD6B20", "#D69E2E", "#38A169", "#3182CE", "#805AD5"]
@@ -40,6 +213,7 @@ TRAVEL_TYPE_QUESTIONS = {
     "traveler_type": "Is this a solo trip, couple, group of friends, or family with kids?",
     "travel_style": "What travel style do you want: adventure, relaxation, culture, food, or a mix?",
     "kids_age": "Will there be any children? If yes, what age range: toddler, 5-10, or teens?",
+    "hotel": "Do you need hotel recommendations for your stay?",
 }
 
 
@@ -48,12 +222,16 @@ class TripRequirements:
     destination: str = ""
     budget_total: Optional[int] = None
     duration_days: Optional[int] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
     travelers: Optional[int] = None
     traveler_type: str = ""
     travel_style: str = ""
     has_kids: bool = False
     kids_age_band: str = ""
     citizenship: str = ""
+    needs_hotel: bool = True  # Default to True, chat will ask
+    hotel_requested: bool = False  # User explicitly asked for hotel
 
 @dataclass
 class HotelSearchParams:
@@ -98,25 +276,245 @@ def _extract_budget(text: str) -> Optional[int]:
     return None
 
 
-def _extract_duration_days(text: str) -> Optional[int]:
-    day_match = re.search(r"(\d{1,2})\s*(day|days|night|nights)\b", text, flags=re.IGNORECASE)
-    if day_match:
-        return int(day_match.group(1))
+MONTH_NAMES = {
+    'january': 1, 'jan': 1,
+    'february': 2, 'feb': 2,
+    'march': 3, 'mar': 3,
+    'april': 4, 'apr': 4,
+    'may': 5,
+    'june': 6, 'jun': 6,
+    'july': 7, 'jul': 7,
+    'august': 8, 'aug': 8,
+    'september': 9, 'sep': 9, 'sept': 9,
+    'october': 10, 'oct': 10,
+    'november': 11, 'nov': 11,
+    'december': 12, 'dec': 12,
+}
 
-    week_match = re.search(r"(\d{1,2})\s*(week|weeks)\b", text, flags=re.IGNORECASE)
-    if week_match:
-        return int(week_match.group(1)) * 7
+# Spelled-out numbers for duration extraction
+NUMBER_WORDS = {
+    'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
+    'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10,
+    'eleven': 11, 'twelve': 12, 'thirteen': 13, 'fourteen': 14, 'fifteen': 15,
+    'sixteen': 16, 'seventeen': 17, 'eighteen': 18, 'nineteen': 19, 'twenty': 20,
+    'thirty': 30, 'forty': 40, 'fifty': 50, 'sixty': 60,
+}
 
-    date_match = re.search(
+def _parse_date_string(text: str) -> Optional[date]:
+    """Parse various date formats and return a date object."""
+    text = text.strip().lower()
+
+    # Try ISO format: YYYY-MM-DD
+    try:
+        return date.fromisoformat(text)
+    except ValueError:
+        pass
+
+    # Try DD.MM or DD/MM (assume current year)
+    match = re.match(r"(\d{1,2})[./](\d{1,2})(?:[./](\d{4}))?", text)
+    if match:
+        day, month = int(match.group(1)), int(match.group(2))
+        year = int(match.group(3)) if match.group(3) else datetime.now().year
+        try:
+            return date(year, month, day)
+        except ValueError:
+            pass
+
+    # Try "8th May", "May 8", "8 May" format
+    match = re.match(r"(\d{1,2})(?:st|nd|rd|th)?\s*(\w+)", text)
+    if match:
+        day = int(match.group(1))
+        month_str = match.group(2).lower()
+        month = MONTH_NAMES.get(month_str) or MONTH_NAMES.get(month_str[:3])
+        if month:
+            year = datetime.now().year
+            try:
+                return date(year, month, day)
+            except ValueError:
+                pass
+
+    # Try "May 8th", "May 8" format
+    match = re.match(r"(\w+)\s+(\d{1,2})(?:st|nd|rd|th)?", text)
+    if match:
+        month_str = match.group(1).lower()
+        day = int(match.group(2))
+        month = MONTH_NAMES.get(month_str) or MONTH_NAMES.get(month_str[:3])
+        if month:
+            year = datetime.now().year
+            try:
+                return date(year, month, day)
+            except ValueError:
+                pass
+
+    return None
+
+
+def _extract_date_range(text: str) -> tuple[Optional[str], Optional[str]]:
+    """Extract start and end dates as ISO strings from various formats."""
+
+    # Format: "8th May till 12th" or "8th May to 12th May"
+    date_range_match = re.search(
+        r"(\d{1,2})(?:st|nd|rd|th)?\s+(\w+)\s+(?:till|to|-)\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s+(\w+))?",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if date_range_match:
+        start_day = int(date_range_match.group(1))
+        start_month_str = date_range_match.group(2).lower()
+        end_day = int(date_range_match.group(3))
+        end_month_str = date_range_match.group(4).lower() if date_range_match.group(4) else start_month_str
+
+        start_month = MONTH_NAMES.get(start_month_str) or MONTH_NAMES.get(start_month_str[:3])
+        end_month = MONTH_NAMES.get(end_month_str) or MONTH_NAMES.get(end_month_str[:3])
+
+        if start_month and end_month:
+            year = datetime.now().year
+            try:
+                start_date = date(year, start_month, start_day)
+                end_date = date(year, end_month, end_day)
+                return start_date.isoformat(), end_date.isoformat()
+            except ValueError:
+                pass
+
+    # Format: "May 8 to May 12" or "May 8th to May 12th"
+    month_day_range_match = re.search(
+        r"(\w+)\s+(\d{1,2})(?:st|nd|rd|th)?\s+(?:till|to|-)\s+(\w+)\s+(\d{1,2})(?:st|nd|rd|th)?",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if month_day_range_match:
+        start_month_str = month_day_range_match.group(1).lower()
+        start_day = int(month_day_range_match.group(2))
+        end_month_str = month_day_range_match.group(3).lower()
+        end_day = int(month_day_range_match.group(4))
+
+        start_month = MONTH_NAMES.get(start_month_str) or MONTH_NAMES.get(start_month_str[:3])
+        end_month = MONTH_NAMES.get(end_month_str) or MONTH_NAMES.get(end_month_str[:3])
+
+        if start_month and end_month:
+            year = datetime.now().year
+            try:
+                start_date = date(year, start_month, start_day)
+                end_date = date(year, end_month, end_day)
+                return start_date.isoformat(), end_date.isoformat()
+            except ValueError:
+                pass
+
+    # Format: "08.05-12.05" or "08.05 till 12.05"
+    dd_mm_range_match = re.search(
+        r"(\d{1,2})[./](\d{1,2})\s*(?:till|to|-)\s*(\d{1,2})[./](\d{1,2})",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if dd_mm_range_match:
+        start_day, start_month = int(dd_mm_range_match.group(1)), int(dd_mm_range_match.group(2))
+        end_day, end_month = int(dd_mm_range_match.group(3)), int(dd_mm_range_match.group(4))
+        year = datetime.now().year
+        try:
+            start_date = date(year, start_month, start_day)
+            end_date = date(year, end_month, end_day)
+            return start_date.isoformat(), end_date.isoformat()
+        except ValueError:
+            pass
+
+    # Format: YYYY-MM-DD to YYYY-MM-DD
+    iso_date_match = re.search(
         r"(\d{4}-\d{2}-\d{2})\s*(?:to|-)\s*(\d{4}-\d{2}-\d{2})",
         text,
         flags=re.IGNORECASE,
     )
-    if date_match:
-        start = date.fromisoformat(date_match.group(1))
-        end = date.fromisoformat(date_match.group(2))
-        delta = (end - start).days + 1
-        return delta if delta > 0 else None
+    if iso_date_match:
+        try:
+            start = date.fromisoformat(iso_date_match.group(1))
+            end = date.fromisoformat(iso_date_match.group(2))
+            return start.isoformat(), end.isoformat()
+        except ValueError:
+            pass
+
+    return None, None
+
+
+def _extract_duration_days(text: str) -> Optional[int]:
+    # First try to extract date range from various formats
+    # Format: "8th May till 12th" or "8th May to 12th May"
+    date_range_match = re.search(
+        r"(\d{1,2})(?:st|nd|rd|th)?\s+(\w+)\s+(?:till|to|-)\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s+(\w+))?",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if date_range_match:
+        start_day = int(date_range_match.group(1))
+        start_month_str = date_range_match.group(2).lower()
+        end_day = int(date_range_match.group(3))
+        end_month_str = date_range_match.group(4).lower() if date_range_match.group(4) else start_month_str
+
+        start_month = MONTH_NAMES.get(start_month_str) or MONTH_NAMES.get(start_month_str[:3])
+        end_month = MONTH_NAMES.get(end_month_str) or MONTH_NAMES.get(end_month_str[:3])
+
+        if start_month and end_month:
+            year = datetime.now().year
+            try:
+                start_date = date(year, start_month, start_day)
+                end_date = date(year, end_month, end_day)
+                delta = (end_date - start_date).days + 1
+                return delta if delta > 0 else None
+            except ValueError:
+                pass
+
+    # Format: "08.05-12.05" or "08.05 till 12.05"
+    dd_mm_range_match = re.search(
+        r"(\d{1,2})[./](\d{1,2})\s*(?:till|to|-)\s*(\d{1,2})[./](\d{1,2})",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if dd_mm_range_match:
+        start_day, start_month = int(dd_mm_range_match.group(1)), int(dd_mm_range_match.group(2))
+        end_day, end_month = int(dd_mm_range_match.group(3)), int(dd_mm_range_match.group(4))
+        year = datetime.now().year
+        try:
+            start_date = date(year, start_month, start_day)
+            end_date = date(year, end_month, end_day)
+            delta = (end_date - start_date).days + 1
+            return delta if delta > 0 else None
+        except ValueError:
+            pass
+
+    # Format: YYYY-MM-DD to YYYY-MM-DD
+    iso_date_match = re.search(
+        r"(\d{4}-\d{2}-\d{2})\s*(?:to|-)\s*(\d{4}-\d{2}-\d{2})",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if iso_date_match:
+        try:
+            start = date.fromisoformat(iso_date_match.group(1))
+            end = date.fromisoformat(iso_date_match.group(2))
+            delta = (end - start).days + 1
+            return delta if delta > 0 else None
+        except ValueError:
+            pass
+
+    # Direct day/night mention (numeric): "7 days", "5 nights"
+    day_match = re.search(r"(\d{1,2})\s*(day|days|night|nights)\b", text, flags=re.IGNORECASE)
+    if day_match:
+        return int(day_match.group(1))
+
+    # Spelled-out day/night mention: "four days", "five nights", "seven days"
+    lowered = text.lower()
+    for word, num in NUMBER_WORDS.items():
+        if re.search(rf"\b{word}\s*(day|days|night|nights)\b", lowered):
+            return num
+
+    # Spelled-out week mention: "two weeks", "three weeks"
+    for word, num in NUMBER_WORDS.items():
+        if re.search(rf"\b{word}\s*(week|weeks)\b", lowered):
+            return num * 7
+
+    # Numeric week mention
+    week_match = re.search(r"(\d{1,2})\s*(week|weeks)\b", text, flags=re.IGNORECASE)
+    if week_match:
+        return int(week_match.group(1)) * 7
+
     return None
 
 
@@ -129,6 +527,12 @@ def _extract_travelers(text: str) -> Optional[int]:
     if "solo" in lowered or "myself" in lowered:
         return 1
     if "couple" in lowered:
+        return 2
+
+    # Try fuzzy matching for typos like "silo"
+    if _fuzzy_match_travel_type(text) == "solo":
+        return 1
+    if _fuzzy_match_travel_type(text) == "couple":
         return 2
 
     count = 0
@@ -144,7 +548,16 @@ def _extract_travelers(text: str) -> Optional[int]:
         elif any(token in lowered for token in {"kids", "children", "child", "toddler", "teen"}):
             count += 1
 
-    return count or None
+    if count:
+        return count
+
+    # Try AI extraction as final fallback
+    ai_result = _ai_extract_params(text)
+    ai_travelers = ai_result.get("travelers")
+    if ai_travelers:
+        return int(ai_travelers)
+
+    return None
 
 
 def _extract_traveler_type(text: str) -> tuple[str, bool]:
@@ -157,6 +570,18 @@ def _extract_traveler_type(text: str) -> tuple[str, bool]:
         return "group", False
     if "solo" in lowered or "myself" in lowered:
         return "solo", False
+
+    # Try fuzzy matching for typos
+    fuzzy_result = _fuzzy_match_travel_type(text)
+    if fuzzy_result:
+        return fuzzy_result, fuzzy_result == "family"
+
+    # Try AI extraction as final fallback
+    ai_result = _ai_extract_params(text)
+    ai_type = ai_result.get("traveler_type")
+    if ai_type:
+        return ai_type, ai_type == "family"
+
     return "", False
 
 
@@ -165,6 +590,18 @@ def _extract_travel_style(text: str, fallback: str = "") -> str:
     for style, keywords in STYLE_KEYWORDS.items():
         if any(keyword in lowered for keyword in keywords):
             return style
+
+    # Try fuzzy matching for typos
+    fuzzy_result = _fuzzy_match_travel_style(text)
+    if fuzzy_result:
+        return fuzzy_result
+
+    # Try AI extraction as final fallback
+    ai_result = _ai_extract_params(text)
+    ai_style = ai_result.get("travel_style")
+    if ai_style:
+        return ai_style
+
     return fallback
 
 
@@ -347,6 +784,43 @@ def extract_hotel_search_params(
     )
 
 
+def _extract_hotel_preference(text: str) -> tuple[bool, bool]:
+    """
+    Extract if user needs hotel and if they explicitly requested it.
+    Returns (needs_hotel, hotel_requested) tuple.
+    """
+    lowered = text.lower()
+
+    # User explicitly says they DON'T need hotel
+    no_hotel_phrases = [
+        "i have a place", "i have place", "staying with friends", "staying with family",
+        "already have accommodation", "got accommodation", "no hotel needed",
+        "don't need hotel", "dont need hotel", "no need hotel", "not looking for hotel",
+        "have accommodation", "have a place to stay", "place to stay"
+    ]
+    for phrase in no_hotel_phrases:
+        if phrase in lowered:
+            return False, False
+
+    # User explicitly ASKS for hotel
+    hotel_phrases = [
+        "hotel", "accommodation", "place to stay", "where to stay", "need a hotel",
+        "looking for hotel", "find hotel", "book hotel", "stay at"
+    ]
+    for phrase in hotel_phrases:
+        if phrase in lowered:
+            return True, True
+
+    # Try AI extraction
+    ai_result = _ai_extract_params(text)
+    ai_needs_hotel = ai_result.get("needs_hotel")
+    if ai_needs_hotel is not None:
+        return bool(ai_needs_hotel), bool(ai_needs_hotel)
+
+    # Default: needs hotel but hasn't explicitly requested yet
+    return True, False
+
+
 def collect_trip_requirements(
     *,
     text: str,
@@ -355,16 +829,31 @@ def collect_trip_requirements(
     fallback_citizenship: str = "",
 ) -> TripRequirements:
     traveler_type, has_kids = _extract_traveler_type(text)
+    start_date, end_date = _extract_date_range(text)
+    needs_hotel, hotel_requested = _extract_hotel_preference(text)
+
+    # If date range not found, try AI extraction
+    if not start_date and not end_date:
+        ai_result = _ai_extract_params(text)
+        if not start_date:
+            start_date = ai_result.get("start_date")
+        if not end_date:
+            end_date = ai_result.get("end_date")
+
     return TripRequirements(
         destination=_extract_destination(text, fallback_city=fallback_city),
         budget_total=_extract_budget(text),
         duration_days=_extract_duration_days(text),
+        start_date=start_date,
+        end_date=end_date,
         travelers=_extract_travelers(text),
         traveler_type=traveler_type,
         travel_style=_extract_travel_style(text, fallback=fallback_style),
         has_kids=has_kids,
         kids_age_band=_extract_kids_age_band(text),
         citizenship=_extract_citizenship(text, fallback=fallback_citizenship),
+        needs_hotel=needs_hotel,
+        hotel_requested=hotel_requested,
     )
 
 
@@ -384,6 +873,8 @@ def get_missing_requirements(requirements: TripRequirements) -> List[str]:
         missing.append("travel_style")
     if requirements.has_kids and not requirements.kids_age_band:
         missing.append("kids_age")
+    if requirements.needs_hotel and not requirements.hotel_requested:
+        missing.append("hotel")
     return missing
 
 
@@ -610,6 +1101,34 @@ def _safety_tips(destination: str, country: str, has_kids: bool) -> List[str]:
     return tips[:5]
 
 
+def generate_auto_title(city: str, travelers: Optional[int] = None, traveler_type: str = "") -> str:
+    """
+    Generate an auto title for chat threads based on city and travelers.
+    Format: city_travelers (e.g., "Paris_2people", "Rome_couple", "Tokyo_solo")
+    """
+    if not city:
+        return "New chat"
+
+    # Normalize city name (capitalize first letter of each word)
+    city_formatted = city.strip().title()
+
+    # Determine travelers label
+    if travelers == 1 or traveler_type == "solo":
+        travelers_label = "solo"
+    elif travelers == 2 or traveler_type == "couple":
+        travelers_label = "couple"
+    elif travelers is not None and travelers > 2:
+        travelers_label = f"{travelers}people"
+    elif traveler_type == "family":
+        travelers_label = "family"
+    elif traveler_type == "group":
+        travelers_label = "group"
+    else:
+        travelers_label = "trip"
+
+    return f"{city_formatted}_{travelers_label}"
+
+
 def _format_history_line(user) -> str:
     profile = calculate_level_and_badges(user)
     history_prompt = profile.get("history_prompt", "")
@@ -768,7 +1287,60 @@ def _format_trip_response(plan: Dict[str, object]) -> str:
         lines.append(day.get("summary") or "")
         for stop in day.get("stops", []):
             lines.append(f"- {stop['name']} — {stop['address']}")
+
+        # Add lunch recommendation
+        lunch = day.get("lunch")
+        if lunch:
+            lines.append("")
+            lines.append(f"🍽️ **Lunch:** [{lunch['name']}]({lunch.get('website') or '#'}) — {lunch.get('address', lunch['category'])}")
+            if lunch.get('rating'):
+                lines.append(f"   Rating: {lunch['rating']} ⭐ | Price: {lunch.get('price_level', 'N/A')}")
+
+        # Add dinner recommendation
+        dinner = day.get("dinner")
+        if dinner:
+            lines.append(f"🍽️ **Dinner:** [{dinner['name']}]({dinner.get('website') or '#'}) — {dinner.get('address', dinner['category'])}")
+            if dinner.get('rating'):
+                lines.append(f"   Rating: {dinner['rating']} ⭐ | Price: {dinner.get('price_level', 'N/A')}")
+
+        # Add events for the day
+        day_events = day.get("events", [])
+        if day_events:
+            lines.append("")
+            lines.append("🎭 **Events Today:**")
+            for event in day_events:
+                event_name = event.get("name", "Unknown Event")
+                event_url = event.get("web_url") or event.get("url", "#")
+                event_date = event.get("date") or event.get("start_date", "")
+                # Venue can be a string or a dict with 'name' key
+                venue = event.get("venue", "")
+                event_venue = venue.get("name", "") if isinstance(venue, dict) else venue
+                lines.append(f"- [{event_name}]({event_url}) at {event_venue} {event_date}")
+
         lines.append("")
+
+    # Add hotel recommendations section
+    hotels = plan.get("hotels", [])
+    if hotels:
+        lines.append("## 🏨 Hotel Recommendations")
+        lines.append("━━━━━━━━━━━━━━━━━━━━━━━━")
+        for hotel in hotels[:5]:
+            hotel_name = hotel.get("name", "Unknown Hotel")
+            hotel_url = hotel.get("booking_url", "#")
+            price = hotel.get("price_per_night", 0)
+            rating = hotel.get("rating", 0)
+            distance = hotel.get("distance_to_center_km", 0)
+            hotel_class = hotel.get("hotel_class", 0)
+            highlights = hotel.get("highlights", [])
+
+            stars = "⭐" * hotel_class if hotel_class else ""
+            lines.append(f"### [{hotel_name}]({hotel_url}) {stars}")
+            lines.append(f"- **Price:** ${price}/night")
+            lines.append(f"- **Rating:** {rating}/10 ({hotel.get('review_count', 0)} reviews)")
+            lines.append(f"- **Distance to center:** {distance} km")
+            if highlights:
+                lines.append(f"- **Highlights:** {', '.join(highlights[:5])}")
+            lines.append("")
 
     country = plan.get("country") or _country_for_destination(str(plan.get("city") or ""))
     citizenship = ""
@@ -828,6 +1400,7 @@ def enrich_thread_plan_for_final_trip(
     merged["country"] = country
     merged["travelers"] = travelers
     merged["duration_days"] = days
+    merged["trip_length"] = days
     merged["travel_style"] = merged.get("travel_style") or ""
     merged["traveler_type"] = merged.get("traveler_type") or ""
     merged["family_note"] = (
@@ -875,6 +1448,16 @@ def generate_trip_payload(
 
     history_line = _format_history_line(user)
 
+    # Determine dates for trip planner
+    start_date = requirements.start_date
+    end_date = requirements.end_date
+    if thread:
+        start_date = start_date or (thread.start_date.isoformat() if thread.start_date else None)
+        end_date = end_date or (thread.end_date.isoformat() if thread.end_date else None)
+
+    # Include hotels if requested or needed
+    include_hotels = requirements.hotel_requested or requirements.needs_hotel
+
     plan = build_trip_plan(
         user=user,
         city=requirements.destination,
@@ -885,6 +1468,11 @@ def generate_trip_payload(
         traveler_type=requirements.traveler_type,
         has_kids=requirements.has_kids,
         kids_age_band=requirements.kids_age_band or ("child" if requirements.has_kids else ""),
+        start_date=start_date,
+        end_date=end_date,
+        include_hotels=include_hotels,
+        checkin=start_date,
+        checkout=end_date,
     )
 
     partial_note = ""
@@ -899,13 +1487,18 @@ def generate_trip_payload(
             traveler_type=requirements.traveler_type,
             has_kids=requirements.has_kids,
             kids_age_band=requirements.kids_age_band or ("child" if requirements.has_kids else ""),
+            start_date=start_date,
+            end_date=end_date,
+            include_hotels=include_hotels,
+            checkin=start_date,
+            checkout=end_date,
         )
         if retry_plan["days_generated"] >= plan["days_generated"]:
             plan = retry_plan
         if plan["days_generated"] < days:
             partial_note = (
                 f"I could only confirm {plan['days_generated']} day(s) from the cached place data, "
-                "so I’m sharing the strongest partial route for now."
+                "so I'm sharing the strongest partial route for now."
             )
 
     for index, day in enumerate(plan.get("itinerary", [])):
@@ -923,6 +1516,7 @@ def generate_trip_payload(
         **plan,
         "country": country,
         "duration_days": days,
+        "trip_length": days,
         "travelers": requirements.travelers,
         "traveler_type": requirements.traveler_type,
         "travel_style": requirements.travel_style,

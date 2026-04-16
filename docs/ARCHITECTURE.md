@@ -1,6 +1,6 @@
 # bizbenSayahatta Architecture Documentation
 
-**Last Updated:** 2026-04-10
+**Last Updated:** 2026-04-15
 
 ---
 
@@ -42,6 +42,7 @@
 | `TripStatus.jsx` | `/trip-status` | Trip moderation/review status |
 | `ManagerAdvisorReview.jsx` | `/manager/advisor` | Admin/manager review interface |
 | `SharedMaps.jsx` | `/shared-maps` | View other users' shared travel maps |
+| `PublicTravelMap.jsx` | `/share/travel-map/:token` | Public-facing travel map view (via map share token) |
 
 ### 2.2 Key Components (`/front/src/components/`)
 
@@ -156,6 +157,8 @@ tokens: PositiveIntegerField (default=100)
 referral_code: CharField (unique)
 ranking_score: FloatField (default=0)
 status_level: CharField (default="BRONZE")
+is_map_public: BooleanField (default=False)
+map_share_token: CharField (unique, auto-generated UUID)
 ```
 
 **UserPreferences**
@@ -426,6 +429,13 @@ created_at: DateTimeField
 - `ask_travel_ai(user_message, context, history)` - GPT-4o-mini chat with travel system prompt
 - `polish_trip_plan(plan)` - Formats raw plan JSON into readable markdown
 
+**tripadvisor_service.py**
+- `fetch_tripadvisor_tours(city)` - Start Apify TripAdvisor scraper job, poll for completion, return tours list
+- `_normalize_tour(raw)` - Normalize Apify result to standard tour dict (id, name, price, rating, duration, booking_url, city)
+- In-memory cache with 24h TTL, key: `tripadvisor:tours:{city_slug}`
+- Input: `automation-lab~tripadvisor-scraper` Apify actor, `includeAttractions=True`, `maxItemsPerQuery` up to 1000
+- Timeout protection: max 60s poll loop before abandoning run
+
 **booking_service.py**
 - `search_hotels(city, checkin, checkout, budget, adults, children, travel_style)` - Main hotel search
 - `get_hotel_locations(city)` - Resolve city to dest_id
@@ -454,6 +464,12 @@ created_at: DateTimeField
 
 **geocoding.py**
 - `geocode_place(place_name, city, country)` - Nominatim (OpenStreetMap) geocoding
+
+**hotel_cache.py**
+- 6-hour TTL locmem cache for Booking.com hotel results
+- `get_hotels_cached()` / `cache_hotels()` / `is_hotel_cached()`
+- Key format: `hotels:{city_slug}:{checkin}:{checkout}:{budget_int}:{adults}`
+- Only caches non-empty results to prevent caching API failures
 
 **final_trip.py**
 - `sync_final_trip(thread, payload)` - Persist generated trip to FinalTrip model
@@ -550,30 +566,39 @@ Booking URLs include `aid=356980&label=ref-{hotel_id}` for tracking
 
 ### 4.3 OpenAI API
 
-**Model:** `gpt-4o-mini`
+**Model:** `gpt-4o-mini`  
+**Temperature:** 0.7  
+**SDK call:** `client.responses.create()`
 
-**Usage:** AI travel assistant chat
+**Usage:** AI travel assistant chat and itinerary polishing
 
-**Endpoint:** `client.responses.create()` (Anthropic SDK format)
-
-**System Prompt:**
+**System Prompt (Russian, with English planning rules):**
 ```
 Ты — умный помощник по путешествиям.
 Помогаешь планировать поездки, маршруты, достопримечательности,
 даёшь советы по городам, транспорту и бюджету.
 Отвечай кратко и по делу.
 
-When HOTEL OPTIONS are provided:
-- Suggest 2-3 hotel options matching budget and travel style
-- If "active/hiking", prefer hotels near nature/mountains
-- If traveling with children, only suggest family-friendly hotels
-- Always include booking URL
+CRITICAL PLANNING RULES:
+1. PROXIMITY ENFORCEMENT — all same-day stops within 1.5km
+2. DEDUPLICATE OVERLAPPING LANDMARKS — merge nearby items
+3. HOTEL RECOMMENDATIONS — 1-2 hotels per city matching budget
+4. ESTIMATED COST PER DAY — breakdown: transport + fees + food
+5. RESPECT ARRIVAL TIME ON DAY 1 — reduced activities for afternoon arrivals
+6. CAFE/MEAL STOP EACH DAY — include local food specialties
+7. HOTEL OPTIONS — suggest 2-3 matching budget & travel style
+8. TOURS/ATTRACTIONS — prioritize 8.0+/10 ratings
 ```
 
-**Context Injection:**
-- Grounded places from DB (max 8)
-- Hotel options block (max 5)
-- Recent chat history (last 6 messages)
+**Context Injection (priority order):**
+
+1. **Grounded places** — top 8 by rating from city DB (`_build_places_context_for_city()`)
+   - Warns LLM: "Do not invent places. Ask user to refresh cache."
+2. **Hotel options** — up to 5 from Booking.com (`_build_hotel_context_block()`)
+   - Formatted with price/night, rating, distance-to-center, booking URL
+3. **Tour/attraction options** — from Apify TripAdvisor (`_build_tour_context_block()`)
+   - Filtered to 8.0+/10 rating; formatted with duration, price, booking URL
+4. **Recent chat history** — last 6 messages from the thread
 
 **Token Cost:**
 - Chat message: 1 token
@@ -581,7 +606,55 @@ When HOTEL OPTIONS are provided:
 
 ---
 
-### 4.4 Nominatim (OpenStreetMap)
+### 4.4 Apify (TripAdvisor Scraper)
+
+**Actor:** `automation-lab~tripadvisor-scraper`
+
+**API Base:** `https://api.apify.com/v2`
+
+**Usage:** Fetch tours and attractions for LLM context injection during trip planning
+
+**Flow:**
+1. `POST /acts/.../runs` - Start async scraping job with city query
+2. `GET /actor-runs/{run_id}` - Poll until status SUCCEEDED (max 60s)
+3. `GET /datasets/{dataset_id}/items` - Retrieve scraped results (up to 1000 items)
+
+**Request Input:**
+```json
+{
+  "currency": "USD",
+  "includeAttractions": true,
+  "includeRestaurants": false,
+  "language": "en",
+  "maxItemsPerQuery": 50,
+  "query": "{city}"
+}
+```
+
+**Normalized Output (per tour):**
+```python
+{
+  "id": str, "name": str, "description": str,
+  "price_amount": float, "price_currency": str,
+  "rating": float, "num_reviews": int,
+  "photo_url": str, "web_url": str,
+  "duration": str, "booking_url": str,
+  "category": str, "subcategory": str,
+  "award": str, "city": str
+}
+```
+
+**Caching:**
+- Backend: Django locmem cache
+- TTL: 24 hours
+- Key: `tripadvisor:tours:{city_slug}`
+- Only caches non-empty results
+
+**Environment Variable:** `APIFY_API_KEY`
+
+---
+
+### 4.5 Nominatim (OpenStreetMap)
 
 **Endpoint:** `https://nominatim.openstreetmap.org/search`
 
@@ -598,7 +671,7 @@ Headers:
 
 ---
 
-### 4.5 Stripe
+### 4.6 Stripe
 
 **Usage:** Payment Links for TripAdvisor subscription
 
@@ -643,7 +716,8 @@ CACHES = {
 | Data Type | TTL | Strategy |
 |-----------|-----|----------|
 | Places (city+category) | 24 hours | `Place.cached_at` timestamp check |
-| Hotels (search params) | 6 hours | Django cache with composite key |
+| Hotels (search params) | 6 hours | Django locmem cache with composite key |
+| TripAdvisor tours | 24 hours | Django locmem cache with city slug key |
 | Chat tokens | N/A | Database counter (not cached) |
 
 ### 5.3 Places Caching (`places/services/cache.py`)
@@ -729,9 +803,15 @@ trip_planner.build_trip_plan()
     ↓
 [Cluster by distance, build day-by-day itinerary]
     ↓
+[Build LLM context (priority order):]
+  1. Grounded places: top 8 by rating from DB → _build_places_context_for_city()
+  2. Hotel options: Booking.com results → _build_hotel_context_block()
+  3. Tour options: Apify TripAdvisor results → _build_tour_context_block()
+  4. Recent chat history: last 6 messages from thread
+    ↓
 openai_service.polish_trip_plan(plan_json)
     ↓
-GPT-4o-mini: Format as markdown itinerary
+GPT-4o-mini: Format as markdown itinerary with hotels + tours embedded
     ↓
 sync_final_trip(thread, payload) → FinalTrip.create()
     ↓
@@ -836,7 +916,7 @@ GPT-4o-mini includes hotels in response with booking URLs
 
 ### 8.2 Frontend Routes (React Router)
 
-Routes defined in main app routing (not shown in scanned files, inferred from pages):
+Routes defined in main app routing:
 - `/` → Home
 - `/planner` → PlannerTest (AI chat)
 - `/inspiration` → Inspiration (place discovery)
@@ -846,6 +926,10 @@ Routes defined in main app routing (not shown in scanned files, inferred from pa
 - `/profile` → Profile
 - `/login`, `/signup` → Auth
 - `/error` → ErrorPage
+- `/trip-status` → TripStatus (moderation)
+- `/manager/advisor` → ManagerAdvisorReview (admin)
+- `/shared-maps` → SharedMaps (community maps)
+- `/share/travel-map/:token` → PublicTravelMap (public map via share token)
 
 ---
 
@@ -886,11 +970,13 @@ DEFAULT_THROTTLE_RATES = {
 | `GOOGLE_MAPS_API_KEY` | Google Places API | Yes |
 | `DATABASE_URL` | PostgreSQL connection (SSL required) | Yes |
 | `VITE_RAPIDAPI_HOST` | Booking.com API host | No (default: booking-com15.p.rapidapi.com) |
-| `VITE_RAPIDAPI_KEY` | RapidAPI key | Yes for hotels |
+| `VITE_RAPIDAPI_KEY` | RapidAPI key for Booking.com hotels | Yes for hotels |
+| `APIFY_API_KEY` | Apify actor runner for TripAdvisor scraper | Yes for tours |
 | `VITE_API_BASE` | Frontend API base URL | No (default: http://127.0.0.1:8000/api/) |
 | `STRIPE_SECRET_KEY` | Stripe payments | Yes for payments |
 | `STRIPE_WEBHOOK_SECRET` | Webhook verification | Yes for webhooks |
 | `STRIPE_PAYMENT_LINK_URL` | Payment Link base URL | Yes for checkout |
+| `FRONTEND_APP_URL` | SPA origin for shared map link generation | Yes in production |
 | `SECRET_KEY` | Django secret | No (dev default exists) |
 | `DEBUG` | Debug mode | No (default: False) |
 

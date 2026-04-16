@@ -18,6 +18,9 @@ export const toggleSavedTrip = async (tripId, isSaved) => {
   }
 };
 
+// Note: API base is configured in axios.js as http://127.0.0.1:8000/api/
+// So marketplace/ paths become /api/marketplace/
+
 /**
  * Book a trip.
  * @param {number} tripId - The trip ID
@@ -25,7 +28,7 @@ export const toggleSavedTrip = async (tripId, isSaved) => {
  * @returns {Promise<object>} - Booking data
  */
 export const bookTrip = async (tripId, numberOfTravelers = 1) => {
-  const response = await api.post(`marketplace/public/trips/${tripId}/book/`, {
+  const response = await api.post(`marketplace/trips/${tripId}/book/`, {
     number_of_travelers: numberOfTravelers,
   });
   return response.data;
@@ -43,6 +46,8 @@ export const cancelBooking = async (bookingId, reason = "") => {
   });
   return response.data;
 };
+
+// Note: Confirm booking endpoint for trip advisors
 
 /**
  * Get user's bookings.
@@ -63,7 +68,7 @@ export const getMyBookings = async (status = null) => {
  */
 export const getTripBookings = async (tripId, status = null) => {
   const params = status ? { status } : {};
-  const response = await api.get(`marketplace/public/trips/${tripId}/bookings/`, { params });
+  const response = await api.get(`marketplace/trips/${tripId}/bookings/`, { params });
   return response.data;
 };
 

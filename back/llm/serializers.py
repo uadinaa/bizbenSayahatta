@@ -32,6 +32,8 @@ class ChatThreadCreateSerializer(serializers.Serializer):
     city = serializers.CharField(required=False, allow_blank=True)
     start_date = serializers.DateField(required=False, allow_null=True)
     end_date = serializers.DateField(required=False, allow_null=True)
+    travelers = serializers.IntegerField(required=False, allow_null=True)
+    traveler_type = serializers.CharField(required=False, allow_blank=True)
 
 
 class ChatThreadListSerializer(serializers.ModelSerializer):
@@ -43,11 +45,16 @@ class ChatThreadListSerializer(serializers.ModelSerializer):
             "title",
             "city",
             "start_date",
+            "plan_json",
             "end_date",
             "is_archived",
+            "auto_title",
             "updated_at",
         ]
 
+class ChatThreadUpdateSerializer(serializers.Serializer):
+    title = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    
 
 class ChatThreadDetailSerializer(serializers.ModelSerializer):
     class Meta:
@@ -61,6 +68,7 @@ class ChatThreadDetailSerializer(serializers.ModelSerializer):
             "end_date",
             "plan_json",
             "is_archived",
+            "auto_title",
             "updated_at",
         ]
 
@@ -89,6 +97,7 @@ class FinalTripSerializer(serializers.ModelSerializer):
             "trip_type",
             "travelers",
             "daily_budget",
+            "trip_length",
             "start_date",
             "end_date",
             "safety_tips",

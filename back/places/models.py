@@ -91,6 +91,49 @@ class SavedPlace(models.Model):
         return f"{self.user} saved {self.place}"
 
 
+class ExternalSavedPlace(models.Model):
+    SOURCE_TRIPADVISOR = "tripadvisor"
+    SOURCE_TICKETMASTER = "ticketmaster"
+    SOURCE_CHOICES = (
+        (SOURCE_TRIPADVISOR, "TripAdvisor"),
+        (SOURCE_TICKETMASTER, "Ticketmaster"),
+    )
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="saved_external_places",
+    )
+    source = models.CharField(max_length=32, choices=SOURCE_CHOICES, db_index=True)
+    external_id = models.CharField(max_length=255, db_index=True)
+
+    # Snapshot fields for wishlist rendering
+    name = models.CharField(max_length=255)
+    category = models.CharField(max_length=120, blank=True, default="")
+    city = models.CharField(max_length=120, blank=True, default="")
+    country = models.CharField(max_length=120, blank=True, default="")
+    description = models.TextField(blank=True, default="")
+    photo_url = models.URLField(max_length=1000, blank=True, default="")
+    rating = models.FloatField(null=True, blank=True)
+    price_level = models.CharField(max_length=30, null=True, blank=True)
+    booking_url = models.URLField(max_length=1000, blank=True, default="")
+    web_url = models.URLField(max_length=1000, blank=True, default="")
+    duration = models.CharField(max_length=120, blank=True, default="")
+    venue = models.CharField(max_length=255, blank=True, default="")
+    start_date = models.CharField(max_length=120, blank=True, default="")
+    price_amount = models.FloatField(null=True, blank=True)
+    price_currency = models.CharField(max_length=16, blank=True, default="")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("user", "source", "external_id")
+
+    def __str__(self):
+        return f"{self.user} saved external {self.source}:{self.external_id}"
+
+
 class InterestMapping(models.Model):
     name = models.CharField(max_length=100, unique=True)
     mappings = models.JSONField(default=dict, blank=True)
@@ -163,3 +206,103 @@ class UserMapPlace(models.Model):
 
     def __str__(self):
         return f"{self.user} map place {self.city}, {self.country}"
+
+
+class CachedTour(models.Model):
+    """Database cache for TripAdvisor tours/attractions."""
+    SOURCE_TRIPADVISOR = "tripadvisor"
+    SOURCE_CHOICES = (
+        (SOURCE_TRIPADVISOR, "TripAdvisor"),
+    )
+
+    external_id = models.CharField(max_length=255, db_index=True)
+    source = models.CharField(max_length=32, choices=SOURCE_CHOICES, default=SOURCE_TRIPADVISOR)
+    city = models.CharField(max_length=120, db_index=True)
+
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, default="")
+    category = models.CharField(max_length=120, blank=True, default="")
+    subcategory = models.CharField(max_length=120, blank=True, default="")
+
+    rating = models.FloatField(null=True, blank=True)
+    num_reviews = models.IntegerField(default=0)
+    price_amount = models.FloatField(null=True, blank=True)
+    price_currency = models.CharField(max_length=16, blank=True, default="USD")
+
+    photo_url = models.URLField(max_length=1000, blank=True, default="")
+    web_url = models.URLField(max_length=1000, blank=True, default="")
+    booking_url = models.URLField(max_length=1000, blank=True, default="")
+    duration = models.CharField(max_length=120, blank=True, default="")
+
+    award = models.JSONField(null=True, blank=True)
+
+    cached_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("source", "external_id")
+        indexes = [
+            models.Index(fields=["city", "source"]),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.city})"
+
+
+class CachedEvent(models.Model):
+    """Database cache for Ticketmaster events."""
+    SOURCE_TICKETMASTER = "ticketmaster"
+    SOURCE_CHOICES = (
+        (SOURCE_TICKETMASTER, "Ticketmaster"),
+    )
+
+    external_id = models.CharField(max_length=255, db_index=True)
+    source = models.CharField(max_length=32, choices=SOURCE_CHOICES, default=SOURCE_TICKETMASTER)
+    city = models.CharField(max_length=120, db_index=True)
+
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, default="")
+    category = models.CharField(max_length=120, blank=True, default="")
+    subcategory = models.CharField(max_length=120, blank=True, default="")
+
+    venue = models.CharField(max_length=255, blank=True, default="")
+    start_date = models.CharField(max_length=120, blank=True, default="")
+
+    rating = models.FloatField(null=True, blank=True)
+    num_reviews = models.IntegerField(default=0)
+    price_amount = models.FloatField(null=True, blank=True)
+    price_currency = models.CharField(max_length=16, blank=True, default="USD")
+
+    photo_url = models.URLField(max_length=1000, blank=True, default="")
+    web_url = models.URLField(max_length=1000, blank=True, default="")
+    booking_url = models.URLField(max_length=1000, blank=True, default="")
+    duration = models.CharField(max_length=120, blank=True, default="")
+
+    cached_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("source", "external_id")
+        indexes = [
+            models.Index(fields=["city", "source"]),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.city})"
+
+
+class CacheMetadata(models.Model):
+    """Metadata for tracking when external data was last fetched for a city."""
+    SOURCE_CHOICES = (
+        ("tripadvisor", "TripAdvisor"),
+        ("ticketmaster", "Ticketmaster"),
+    )
+
+    city = models.CharField(max_length=120, db_index=True)
+    source = models.CharField(max_length=32, choices=SOURCE_CHOICES, db_index=True)
+    last_fetched = models.DateTimeField(auto_now=True)
+    has_data = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ("city", "source")
+
+    def __str__(self):
+        return f"{self.city} - {self.source} (has_data: {self.has_data})"

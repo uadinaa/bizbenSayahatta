@@ -100,6 +100,11 @@
   color: white;
 }
 
+/* REJECTED */
+.trip-filters button.rejected.active {
+  background: #ef4444;
+  color: white;
+}
 /* ===============================
    PRIMARY ACTION
 ================================= */

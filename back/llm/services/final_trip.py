@@ -71,6 +71,12 @@ def sync_final_trip(thread, payload: Dict[str, Any] | None):
     )
     start_date = _coerce_date(payload.get("start_date")) or thread.start_date
     end_date = _coerce_date(payload.get("end_date")) or thread.end_date
+    trip_length = _to_int_or_none(
+        payload.get("trip_length")
+        or payload.get("duration_days")
+        or payload.get("days_requested")
+        or payload.get("days_generated")
+    )
     safety_tips = payload.get("safety_tips")
     if safety_tips is None:
         safety_tips = []
@@ -84,6 +90,7 @@ def sync_final_trip(thread, payload: Dict[str, Any] | None):
         "trip_type": trip_type,
         "travelers": travelers,
         "daily_budget": daily_budget,
+        "trip_length": trip_length,
         "start_date": start_date,
         "end_date": end_date,
         "safety_tips": safety_tips,
