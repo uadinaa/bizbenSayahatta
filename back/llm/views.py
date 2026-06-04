@@ -24,7 +24,6 @@ from .services.travel_chat import (
     collect_trip_requirements,
     enrich_thread_plan_for_final_trip,
     extract_hotel_search_params,
-    generate_auto_title,
     generate_trip_payload,
     get_missing_requirements,
     strip_trip_sources_from_markdown,
@@ -249,25 +248,26 @@ def _generate_thread_trip_response(thread, user, message: str):
                 }
             raise
 
-        # Generate auto title if thread doesn't have one or still uses default
-        should_update_title = (
-            thread.auto_title or
-            not thread.title or
-            thread.title == "New chat" or
-            thread.title == f"{thread.city} trip"
-        )
+        # Auto-title disabled - keep existing title or use "New chat"
+        # should_update_title = (
+        #     thread.auto_title or
+        #     not thread.title or
+        #     thread.title == "New chat" or
+        #     thread.title == f"{thread.city} trip"
+        # )
 
         thread.plan_json = payload
         thread.city = payload.get("city") or thread.city
 
-        if should_update_title:
-            city = payload.get("city") or requirements.destination or thread.city
-            travelers = payload.get("travelers") or requirements.travelers
-            traveler_type = payload.get("traveler_type") or requirements.traveler_type
-            new_title = generate_auto_title(city, travelers, traveler_type)
-            thread.title = new_title
+        # Auto-title disabled - don't update title automatically
+        # if should_update_title:
+        #     city = payload.get("city") or requirements.destination or thread.city
+        #     travelers = payload.get("travelers") or requirements.travelers
+        #     traveler_type = payload.get("traveler_type") or requirements.traveler_type
+        #     new_title = generate_auto_title(city, travelers, traveler_type)
+        #     thread.title = new_title
 
-        thread.save(update_fields=["plan_json", "city", "title", "updated_at"])
+        thread.save(update_fields=["plan_json", "city", "updated_at"])
         sync_final_trip(thread, payload)
         full_md = payload["response_markdown"]
         sources_already = ChatEntry.objects.filter(
@@ -497,15 +497,12 @@ class ChatThreadListCreateView(APIView):
         title = data.get("title") or ""
         city = data.get("city") or ""
         kind = data["kind"]
-        travelers = data.get("travelers")
-        traveler_type = data.get("traveler_type") or ""
+        # travelers = data.get("travelers")  # Auto-title disabled
+        # traveler_type = data.get("traveler_type") or ""  # Auto-title disabled
 
+        # Auto-title disabled - always use "New chat" as default
         if not title:
-            if city:
-                # Use new auto-title format: city_travelers
-                title = generate_auto_title(city, travelers, traveler_type)
-            else:
-                title = "New chat"
+            title = "New chat"
 
         thread = ChatThread.objects.create(
             user=request.user,
@@ -514,7 +511,7 @@ class ChatThreadListCreateView(APIView):
             city=city,
             start_date=data.get("start_date"),
             end_date=data.get("end_date"),
-            auto_title=True,  # Mark as auto-generated
+            auto_title=False,  # Auto-title disabled
         )
 
         return Response(

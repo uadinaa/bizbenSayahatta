@@ -142,15 +142,16 @@ api.interceptors.response.use(
       url.includes("payments/") ||
       url.includes("marketplace/advisor/apply/");
 
-    if (
-      (!status || status >= 500) &&
-      !skipGlobalErrorPage &&
-      !window.location.pathname.startsWith("/error")
-    ) {
-      const nextStatus = status || 503;
-      window.location.assign(`/error?status=${nextStatus}`);
-      return Promise.reject(error);
-    }
+    // if (
+    //   (!status || status >= 500) &&
+    //   !skipGlobalErrorPage &&
+    //   !window.location.pathname.startsWith("/error")
+    // ) {
+    //   const nextStatus = status || 503;
+    //   window.location.assign(`/error?status=${nextStatus}`);
+    //   return Promise.reject(error);
+    // }
+    
 
     return Promise.reject(error);
   }

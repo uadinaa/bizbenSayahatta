@@ -1,6 +1,6 @@
 # bizbenSayahatta Architecture Documentation
 
-**Last Updated:** 2026-04-15
+**Last Updated:** 2026-04-27
 
 ---
 
@@ -11,7 +11,8 @@
 - **Place discovery** via Google Places API with caching
 - **AI-powered trip planning** using OpenAI GPT-4o-mini
 - **Hotel search** via Booking.com RapidAPI
-- **TripAdvisor marketplace** for user-generated travel itineraries
+- **Event discovery** via TicketMaster API with caching
+- **TripAdvisor marketplace** for user-generated travel itineraries (application system)
 - **Social features** including wishlists, visited places, and shared maps
 - **Payment integration** via Stripe for premium features
 
@@ -19,8 +20,9 @@
 - **Backend:** Django 5.0 + Django REST Framework
 - **Frontend:** React 19 + Vite + Redux Toolkit
 - **Database:** PostgreSQL (via DATABASE_URL)
-- **Cache:** Django locmem cache (in-memory)
+- **Cache:** Django locmem cache (in-memory) + database caching (`CachedEvent`, `CachedTour`)
 - **AI:** OpenAI GPT-4o-mini
+- **External APIs:** Google Places, Booking.com (RapidAPI), TicketMaster, OpenStreetMap Nominatim
 
 ---
 
@@ -132,7 +134,19 @@ back/
 ├── users/              # Auth, user model, preferences
 ├── places/             # Place model, Google Places integration
 ├── llm/                # AI chat, trip planning, OpenAI integration
-├── marketplace/        # TripAdvisor marketplace, trips, reviews
+├── marketplace/        # TripAdvisor application system, trips, reviews
+├── payments/           # Stripe payment integration
+├── admin_api/          # Admin audit logs
+└── graphs/             # (Unused/empty)
+```
+
+### 3.2 Places App Services (`/back/places/services/`)
+
+**ticketmaster_events.py**
+- `fetch_events_from_ticketmaster(city, size)` - GET /discovery/v2/events.json
+- `_normalize_event(event, city)` - Normalize to standard event dict (id, name, venue, start_date, category, etc.)
+- `get_events_cached(city, size, force_refresh)` - Cache-first with 24h TTL
+- Database models: `CachedEvent`, `CacheMetadata`
 ├── payments/           # Stripe payment integration
 ├── admin_api/          # Admin audit logs
 └── graphs/             # (Unused/empty)
@@ -246,6 +260,32 @@ lon: FloatField
 ```python
 name: CharField (unique)
 mappings: JSONField
+```
+
+**CachedEvent** - Database cache for TicketMaster events
+```python
+external_id: CharField (indexed)
+source: CharField [ticketmaster]
+city: CharField (indexed)
+name: CharField
+description: TextField
+category: CharField  # Segment (Music, Sports, Arts, etc.)
+subcategory: CharField  # Genre
+venue: CharField
+start_date: CharField  # ISO date/time
+price_amount: FloatField
+price_currency: CharField
+photo_url: URLField
+booking_url: URLField
+cached_at: DateTimeField
+```
+
+**CacheMetadata** - Tracks API fetch status per city/source
+```python
+city: CharField (indexed)
+source: CharField [tripadvisor, ticketmaster]
+last_fetched: DateTimeField
+has_data: BooleanField
 ```
 
 #### `llm/models.py`
@@ -429,12 +469,11 @@ created_at: DateTimeField
 - `ask_travel_ai(user_message, context, history)` - GPT-4o-mini chat with travel system prompt
 - `polish_trip_plan(plan)` - Formats raw plan JSON into readable markdown
 
-**tripadvisor_service.py**
-- `fetch_tripadvisor_tours(city)` - Start Apify TripAdvisor scraper job, poll for completion, return tours list
-- `_normalize_tour(raw)` - Normalize Apify result to standard tour dict (id, name, price, rating, duration, booking_url, city)
-- In-memory cache with 24h TTL, key: `tripadvisor:tours:{city_slug}`
-- Input: `automation-lab~tripadvisor-scraper` Apify actor, `includeAttractions=True`, `maxItemsPerQuery` up to 1000
-- Timeout protection: max 60s poll loop before abandoning run
+**ticketmaster_events.py** (in `places/services/`)
+- `fetch_events_from_ticketmaster(city, size)` - Fetch events from TicketMaster Discovery API
+- `_normalize_event(event, city)` - Normalize TicketMaster response to standard event dict
+- `get_events_cached(city, size, force_refresh)` - Main entry with 24h cache
+- Caching: Django locmem (30 min) + `CachedEvent` model (24h) + `CacheMetadata` for error tracking
 
 **booking_service.py**
 - `search_hotels(city, checkin, checkout, budget, adults, children, travel_style)` - Main hotel search
@@ -490,7 +529,7 @@ created_at: DateTimeField
 
 ## 4. External APIs
 
-### 4.1 Google Places API (New)
+### 4.1 Google Places API
 
 **Endpoint:** `https://places.googleapis.com/v1/places:searchText`
 
@@ -596,8 +635,8 @@ CRITICAL PLANNING RULES:
    - Warns LLM: "Do not invent places. Ask user to refresh cache."
 2. **Hotel options** — up to 5 from Booking.com (`_build_hotel_context_block()`)
    - Formatted with price/night, rating, distance-to-center, booking URL
-3. **Tour/attraction options** — from Apify TripAdvisor (`_build_tour_context_block()`)
-   - Filtered to 8.0+/10 rating; formatted with duration, price, booking URL
+3. **Event/attraction options** — from TicketMaster API (`_get_events_for_city()` in `trip_planner.py`)
+   - Filtered by date range; formatted with name, venue, date, booking URL, category
 4. **Recent chat history** — last 6 messages from the thread
 
 **Token Cost:**
@@ -606,51 +645,59 @@ CRITICAL PLANNING RULES:
 
 ---
 
-### 4.4 Apify (TripAdvisor Scraper)
+### 4.4 TicketMaster API
 
-**Actor:** `automation-lab~tripadvisor-scraper`
+**Endpoint:** `https://app.ticketmaster.com/discovery/v2`
 
-**API Base:** `https://api.apify.com/v2`
+**Usage:** Fetch events, concerts, sports, and attractions for LLM context injection during trip planning
 
-**Usage:** Fetch tours and attractions for LLM context injection during trip planning
+**Endpoints Used:**
+1. `GET /discovery/v2/events.json` - Search events by city with filters
 
-**Flow:**
-1. `POST /acts/.../runs` - Start async scraping job with city query
-2. `GET /actor-runs/{run_id}` - Poll until status SUCCEEDED (max 60s)
-3. `GET /datasets/{dataset_id}/items` - Retrieve scraped results (up to 1000 items)
+**Request:**
+```http
+GET /discovery/v2/events.json?apikey={TICKETMASTER_API_KEY}&city={city}&size=20&sort=date,asc
 
-**Request Input:**
-```json
-{
-  "currency": "USD",
-  "includeAttractions": true,
-  "includeRestaurants": false,
-  "language": "en",
-  "maxItemsPerQuery": 50,
-  "query": "{city}"
-}
+Headers:
+  Accept: application/json
 ```
 
-**Normalized Output (per tour):**
+**Query Parameters:**
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `apikey` | TicketMaster API key | Required |
+| `city` | Destination city name | Required |
+| `size` | Number of results (max 200) | 20 |
+| `sort` | Sort order: `date,asc`, `name,asc`, etc. | `date,asc` |
+| `startDateTime` | Filter events after ISO date | Optional |
+| `endDateTime` | Filter events before ISO date | Optional |
+| `classificationName` | Filter by segment/genre | Optional |
+
+**Normalized Output (per event):**
 ```python
 {
   "id": str, "name": str, "description": str,
   "price_amount": float, "price_currency": str,
-  "rating": float, "num_reviews": int,
+  "rating": None, "num_reviews": 0,
   "photo_url": str, "web_url": str,
   "duration": str, "booking_url": str,
-  "category": str, "subcategory": str,
-  "award": str, "city": str
+  "category": str,  # Segment name (e.g., "Music", "Sports")
+  "subcategory": str,  # Genre name (e.g., "Rock", "Football")
+  "award": None,
+  "city": str,
+  "venue": str,  # Venue name
+  "start_date": str  # ISO date/time
 }
 ```
 
 **Caching:**
-- Backend: Django locmem cache
+- Backend: Django locmem cache + `CachedEvent` model
 - TTL: 24 hours
-- Key: `tripadvisor:tours:{city_slug}`
+- Key: `ticketmaster:events:{city_slug}`
 - Only caches non-empty results
+- `CacheMetadata` tracks fetch status per city
 
-**Environment Variable:** `APIFY_API_KEY`
+**Environment Variable:** `TICKETMASTER_API_KEY`
 
 ---
 
@@ -717,7 +764,7 @@ CACHES = {
 |-----------|-----|----------|
 | Places (city+category) | 24 hours | `Place.cached_at` timestamp check |
 | Hotels (search params) | 6 hours | Django locmem cache with composite key |
-| TripAdvisor tours | 24 hours | Django locmem cache with city slug key |
+| TicketMaster events | 24 hours | Django locmem cache + `CachedEvent` model |
 | Chat tokens | N/A | Database counter (not cached) |
 
 ### 5.3 Places Caching (`places/services/cache.py`)
@@ -806,7 +853,7 @@ trip_planner.build_trip_plan()
 [Build LLM context (priority order):]
   1. Grounded places: top 8 by rating from DB → _build_places_context_for_city()
   2. Hotel options: Booking.com results → _build_hotel_context_block()
-  3. Tour options: Apify TripAdvisor results → _build_tour_context_block()
+  3. Event options: TicketMaster events → _get_events_for_city() in trip_planner.py
   4. Recent chat history: last 6 messages from thread
     ↓
 openai_service.polish_trip_plan(plan_json)
@@ -969,9 +1016,9 @@ DEFAULT_THROTTLE_RATES = {
 | `OPENAI_API_KEY` | OpenAI GPT-4o-mini | Yes |
 | `GOOGLE_MAPS_API_KEY` | Google Places API | Yes |
 | `DATABASE_URL` | PostgreSQL connection (SSL required) | Yes |
+| `TICKETMASTER_API_KEY` | TicketMaster events API | Yes for events |
 | `VITE_RAPIDAPI_HOST` | Booking.com API host | No (default: booking-com15.p.rapidapi.com) |
 | `VITE_RAPIDAPI_KEY` | RapidAPI key for Booking.com hotels | Yes for hotels |
-| `APIFY_API_KEY` | Apify actor runner for TripAdvisor scraper | Yes for tours |
 | `VITE_API_BASE` | Frontend API base URL | No (default: http://127.0.0.1:8000/api/) |
 | `STRIPE_SECRET_KEY` | Stripe payments | Yes for payments |
 | `STRIPE_WEBHOOK_SECRET` | Webhook verification | Yes for webhooks |
