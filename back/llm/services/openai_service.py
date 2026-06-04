@@ -7,11 +7,11 @@ client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 # System prompts in different languages
 SYSTEM_PROMPTS = {
-    "ru": """
-Ты — умный помощник по путешествиям.
-Помогаешь планировать поездки, маршруты, достопримечательности,
-даёшь советы по городам, транспорту и бюджету.
-Отвечай кратко и по делу.
+    "en": """
+    
+You are a smart travel assistant.
+Help plan trips, routes, attractions, give tips on cities, transport and budget. 
+Answer briefly and to the point.
 
 CRITICAL PLANNING RULES — MUST FOLLOW:
 
@@ -207,7 +207,7 @@ def ask_travel_ai(user_message: str, context: str = "", history=None, language: 
     )
 
     response = client.responses.create(
-        model="gpt-4o-mini",
+        model="gpt-5-mini",
         input=input_parts,
         temperature=0.7,
     )
