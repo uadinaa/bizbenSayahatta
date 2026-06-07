@@ -12,6 +12,7 @@
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
     "@reduxjs/toolkit": "^2.11.2",
+    "@vercel/speed-insights": "^2.0.0",
     "axios": "^1.13.4",
     "docx": "^9.6.1",
     "dom-to-image-more": "^3.7.2",
@@ -26,8 +27,7 @@
     "react-leaflet": "^5.0.0",
     "react-markdown": "^10.1.0",
     "react-redux": "^9.2.0",
-    "react-router-dom": "^7.13.0",
-    "react-simple-maps": "^3.0.0"
+    "react-router-dom": "^7.13.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

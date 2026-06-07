@@ -18,12 +18,18 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf.urls.static import static
 from django.conf import settings
+from django.http import HttpResponse
 
 from users.views import CustomTokenObtainPairView, CustomTokenRefreshView
 from places.views import TravelMapShareHTMLView
 
 
+def _health(_request):
+    return HttpResponse("ok", content_type="text/plain")
+
+
 urlpatterns = [
+    path("", _health),
     path('admin/', admin.site.urls),
     path('api/admin/', include('admin_api.urls')),
     path('api/users/', include('users.urls')),
@@ -42,7 +48,7 @@ urlpatterns = [
     path("share/travel-map/<int:user_id>/", TravelMapShareHTMLView.as_view(), name="travel-map-share-og"),
 ]
 
-if settings.DEBUG:
+if settings.DEBUG and not getattr(settings, "USE_CLOUDINARY_STORAGE", False):
     urlpatterns += static(
         settings.MEDIA_URL,
         document_root=settings.MEDIA_ROOT

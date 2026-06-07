@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 import os
 from django.core.exceptions import ImproperlyConfigured
 import dj_database_url
+import cloudinary
 
 load_dotenv()
 
@@ -29,10 +30,27 @@ TICKETMASTER_API_KEY = os.getenv("TICKETMASTER_API_KEY")
 # Stripe (Payment Links + webhooks). Never commit real keys.
 STRIPE_SECRET_KEY = (os.getenv("STRIPE_SECRET_KEY") or "").strip()
 STRIPE_WEBHOOK_SECRET = (os.getenv("STRIPE_WEBHOOK_SECRET") or "").strip()
+
 # Base Payment Link URL (no query string). client_reference_id is appended per checkout.
 STRIPE_PAYMENT_LINK_URL = (os.getenv("STRIPE_PAYMENT_LINK_URL") or "").strip()
 # Public SPA origin for shared travel-map links and Open Graph fallbacks.
 FRONTEND_APP_URL = (os.getenv("FRONTEND_APP_URL") or "http://127.0.0.1:5173").rstrip("/")
+
+#
+# Cloudinary (media uploads)
+#
+CLOUDINARY_CLOUD_NAME = (os.getenv("CLOUDINARY_CLOUD_NAME") or "").strip()
+CLOUDINARY_API_KEY = (os.getenv("CLOUDINARY_API_KEY") or "").strip()
+CLOUDINARY_API_SECRET = (os.getenv("CLOUDINARY_API_SECRET") or "").strip()
+USE_CLOUDINARY_STORAGE = bool(CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET)
+
+if USE_CLOUDINARY_STORAGE:
+    cloudinary.config(
+        cloud_name=CLOUDINARY_CLOUD_NAME,
+        api_key=CLOUDINARY_API_KEY,
+        api_secret=CLOUDINARY_API_SECRET,
+        secure=True,
+    )
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -43,12 +61,28 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
+
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-secret-key")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = ["*"]
+
+# Render / reverse proxy: локально заголовка нет — Django его игнорирует; на Render нужен для is_secure().
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
+
+# Django 4+: для POST с HTTPS (в т.ч. логин в /admin/) нужны доверенные origin.
+_csrf_origins = (os.getenv("CSRF_TRUSTED_ORIGINS") or "").strip()
+if _csrf_origins:
+    CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_origins.split(",") if o.strip()]
+else:
+    CSRF_TRUSTED_ORIGINS = [
+        "https://bizbensayahatta.onrender.com",
+        "https://bizbensayahatta.vercel.app",
+        "https://www.bizbensayahatta.vercel.app",
+    ]
 
 
 # Application definition
@@ -72,6 +106,12 @@ INSTALLED_APPS = [
     'payments.apps.PaymentsConfig',
 ]
 
+if USE_CLOUDINARY_STORAGE:
+    INSTALLED_APPS += [
+        "cloudinary",
+        "cloudinary_storage",
+    ]
+
 MIDDLEWARE = [
     "bizbenSayahatta.middleware.RequestIdMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -85,16 +125,19 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-#CORS_ALLOW_ALL_ORIGINS = True
-
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:5174",
-    "http://127.0.0.1:5174",
+# Браузер шлёт Origin ровно как в адресной строке: с www или без, preview *.vercel.app и т.д.
+_default_cors_origins = [
     "https://bizbensayahatta.vercel.app",
+    "https://www.bizbensayahatta.vercel.app",
     "https://bizbensayahatta.onrender.com",
 ]
+_cors_extra = (os.getenv("CORS_ALLOWED_ORIGINS") or "").strip()
+if _cors_extra:
+    _from_env = [o.strip() for o in _cors_extra.split(",") if o.strip()]
+    # merge: дефолты + env, без дублей, порядок сохраняется
+    CORS_ALLOWED_ORIGINS = list(dict.fromkeys(_default_cors_origins + _from_env))
+else:
+    CORS_ALLOWED_ORIGINS = _default_cors_origins
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -187,6 +230,18 @@ MEDIA_URL = '/media/'
 
 MEDIA_ROOT = BASE_DIR / 'media'
 
+if USE_CLOUDINARY_STORAGE:
+    # Django 4.2+ STORAGES. Use CompressedStaticFilesStorage (not Manifest*): on Render/Heroku
+    # a missing or stale staticfiles manifest after collectstatic causes HTTP 500 on /admin/.
+    STORAGES = {
+        "default": {
+            "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+        },
+    }
+
 # Allow typical phone photos for avatar/cover uploads.
 DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024
@@ -226,6 +281,11 @@ LOGGING = {
     },
     "loggers": {
         "bizbenSayahatta.errors": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        "django.request": {
             "handlers": ["console"],
             "level": "ERROR",
             "propagate": False,

@@ -23,6 +23,7 @@ import RequireAuth from "./components/RequireAuth.jsx";
 import { store } from "./store.js";
 import { fetchProfile } from "./slices/authSlice.jsx";
 import { getStoredAccessToken } from "./utils/sessionData.js";
+import { SpeedInsights } from "@vercel/speed-insights/react"
 
 // AuthInitializer component to verify token and fetch user on app load
 function AuthInitializer({ children }) {

@@ -3,6 +3,8 @@ anyio==4.12.1
 asgiref==3.11.1
 certifi==2026.1.4
 charset-normalizer==3.4.4
+cloudinary==1.44.1
+django-cloudinary-storage==0.3.0
 distro==1.9.0
 dj-database-url==3.1.2
 Django==6.0.2
